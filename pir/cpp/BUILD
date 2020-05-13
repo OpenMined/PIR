@@ -25,6 +25,7 @@ cc_test(
     name = "seal_test",
     srcs = ["seal_test.cpp"],
     linkopts = PIR_DEFAULT_LINKOPTS,
+    includes = ["."],
     deps = [
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
@@ -41,4 +42,5 @@ cmake_external(
    lib_source = "@SEAL//:all",
    out_include_dir = "native/src",
    static_libraries = ["libseal-3.5.a"],
+   visibility = ["//visibility:public"],
 )

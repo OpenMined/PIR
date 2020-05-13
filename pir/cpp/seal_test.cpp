@@ -14,9 +14,13 @@
 // limitations under the License.
 //
 
+#include "seal/seal.h"
+
 #include "gtest/gtest.h"
 
 namespace pir {
+
+using namespace seal;
 
 class SEALTest : public ::testing::Test {
  protected:
@@ -24,6 +28,10 @@ class SEALTest : public ::testing::Test {
   void TearDown() {}
 };
 
-TEST_F(SEALTest, TestSanity) { EXPECT_TRUE(1); }
+TEST_F(SEALTest, TestSanity) {
+  EncryptionParameters parms;
+
+  EXPECT_TRUE(1);
+}
 
 }  // namespace pir
