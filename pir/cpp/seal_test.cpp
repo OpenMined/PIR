@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-#include "SEAL/include/SEAL-3.5/seal/seal.h"
+#include "seal/seal.h"
 
 #include "gtest/gtest.h"
 

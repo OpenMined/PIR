@@ -25,17 +25,17 @@ cc_test(
     name = "seal_test",
     srcs = ["seal_test.cpp"],
     linkopts = PIR_DEFAULT_LINKOPTS,
-    includes = [".", "SEAL/include/SEAL-3.5/"],
+    includes = [".", "com_microsoft_seal/include/SEAL-3.5/"],
     deps = [
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
-        ":SEAL",
+        ":com_microsoft_seal",
     ],
    copts = ["-pthread", "-std=c++17", "-D_GLIBCXX_USE_CXX11_ABI=1", "-fPIC"],
 )
 
 cmake_external(
-   name = "SEAL",
+   name = "com_microsoft_seal",
    cmake_options = [
         "-DSEAL_USE_MSGSL=OFF",
         "-DSEAL_USE_ZLIB=OFF",
@@ -44,7 +44,7 @@ cmake_external(
         "MAKE_INSTALL_PREFIX": "$EXT_BUILD_DEPS/seal",
         "SEAL_LIB_BUILD_TYPE": "Static_PIC",
    },
-   lib_source = "@SEAL//:src",
+   lib_source = "@com_microsoft_seal//:src",
    install_prefix = "native/src",
    static_libraries = ["libseal-3.5.a"],
    visibility = ["//visibility:public"],
