@@ -16,7 +16,7 @@ These are the common requirements across all target languages of this project.
 The repository uses a folder structure to isolate the supported targets from one another:
 
 ```
-psi_cardinality/<target language>/<sources>
+pir/<target language>/<sources>
 ```
 
 ### C++
@@ -37,7 +37,7 @@ git_repository(
    init_submodules = True,
 )
 
-load("@org_openmined_psi_cardinality//pir:preload.bzl", "pir_preload")
+load("@org_openmined_pir//pir:preload.bzl", "pir_preload")
 
 pir_preload()
 
