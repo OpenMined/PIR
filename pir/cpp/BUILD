@@ -20,25 +20,80 @@ load("@rules_foreign_cc//tools/build_defs:cmake.bzl", "cmake_external")
 PIR_DEFAULT_LINKOPTS = [
     "-lrt",
 ]
+PIR_DEFAULT_INCLUDES = [".", "com_microsoft_seal/include/SEAL-3.5/"]
+PIR_DEFAULT_COPTS =  ["-std=c++17"]
+
+cc_library(
+    name = "pir_client",
+    srcs = ["client.cpp"],
+    hdrs = ["client.h"],
+    includes = PIR_DEFAULT_INCLUDES,
+    deps = [
+        ":com_microsoft_seal",
+    ],
+   copts = PIR_DEFAULT_COPTS,
+)
+
+cc_test(
+    name = "pir_client_test",
+    srcs = ["client_test.cpp"],
+    includes = PIR_DEFAULT_INCLUDES,
+    linkopts = PIR_DEFAULT_LINKOPTS,
+    deps = [
+        ":pir_client",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+    
+    ],
+   copts = PIR_DEFAULT_COPTS,
+)
+
+cc_library(
+    name = "pir_server",
+    srcs = ["server.cpp"],
+    hdrs = ["server.h"],
+    includes = PIR_DEFAULT_INCLUDES,
+    deps = [
+        ":com_microsoft_seal",
+    ],
+   copts = PIR_DEFAULT_COPTS,
+)
+
+cc_test(
+    name = "pir_server_test",
+    srcs = ["server_test.cpp"],
+    includes = PIR_DEFAULT_INCLUDES,
+    linkopts = PIR_DEFAULT_LINKOPTS,
+    deps = [
+        ":pir_server",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+    
+    ],
+   copts = PIR_DEFAULT_COPTS,
+)
+
 
 cc_test(
     name = "seal_test",
     srcs = ["seal_test.cpp"],
     linkopts = PIR_DEFAULT_LINKOPTS,
-    includes = [".", "com_microsoft_seal/include/SEAL-3.5/"],
+    includes = PIR_DEFAULT_INCLUDES,
     deps = [
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
         ":com_microsoft_seal",
     ],
-   copts = ["-pthread", "-std=c++17", "-D_GLIBCXX_USE_CXX11_ABI=1", "-fPIC"],
+   copts = PIR_DEFAULT_COPTS,
 )
+
 
 cmake_external(
    name = "com_microsoft_seal",
    cmake_options = [
         "-DSEAL_USE_MSGSL=OFF",
         "-DSEAL_USE_ZLIB=OFF",
+        "-DCMAKE_CXX_STANDARD=17",
    ],
    cache_entries = {
         "MAKE_INSTALL_PREFIX": "$EXT_BUILD_DEPS/seal",
