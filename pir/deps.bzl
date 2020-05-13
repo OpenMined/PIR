@@ -16,6 +16,7 @@
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
+load("@rules_foreign_cc//:workspace_definitions.bzl", "rules_foreign_cc_dependencies")
 
 def pir_deps():
     if "com_google_googletest" not in native.existing_rules():
@@ -34,8 +35,17 @@ def pir_deps():
             url = "https://github.com/google/benchmark/archive/8cead007830bdbe94b7cc259e873179d0ef84da6.zip",
         )
 
+    if "SEAL" not in native.existing_rules():
+        http_archive(
+            name = "SEAL",
+            sha256 = "9dfb1482d0bade6c1c76f2aa06aca6203f98aadc4ad94ca0f316be916b45fbd5",
+            strip_prefix = "SEAL-3.5.1",
+            build_file_content = """filegroup(name = "all", srcs = glob(["**"]), visibility = ["//visibility:public"])""",
+            urls = ["https://github.com/microsoft/SEAL/archive/v3.5.1.tar.gz"],
+        )
+
     rules_proto_dependencies()
 
     rules_proto_toolchains()
 
-
+    rules_foreign_cc_dependencies()

@@ -15,20 +15,30 @@
 #
 
 package(default_visibility = ["//visibility:public"])
+load("@rules_foreign_cc//tools/build_defs:cmake.bzl", "cmake_external")
 
-PSI_CARDINALITY_DEFAULT_LINKOPTS = [
-    # Needed on some Linux systems. See also
-    # https://github.com/google/cctz/issues/47
-    # https://github.com/tensorflow/tensorflow/issues/15129
+PIR_DEFAULT_LINKOPTS = [
     "-lrt",
 ]
 
 cc_test(
     name = "seal_test",
     srcs = ["seal_test.cpp"],
-    linkopts = PSI_CARDINALITY_DEFAULT_LINKOPTS,
+    linkopts = PIR_DEFAULT_LINKOPTS,
     deps = [
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
+        ":SEAL",
     ],
+)
+
+cmake_external(
+   name = "SEAL",
+   cmake_options = [
+        "-DSEAL_USE_MSGSL=OFF",
+        "-DSEAL_USE_ZLIB=OFF",
+   ],
+   lib_source = "@SEAL//:all",
+   out_include_dir = "native/src",
+   static_libraries = ["libseal-3.5.a"],
 )

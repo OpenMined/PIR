@@ -27,3 +27,11 @@ def pir_preload():
                 "https://github.com/bazelbuild/rules_proto/archive/97d8af4dc474595af3900dd85cb3a29ad28cc313.tar.gz",
             ],
         )
+
+    if "rules_foreign_cc" not in native.existing_rules():
+        http_archive(
+            name = "rules_foreign_cc",
+            sha256 = "3e83c1a3f9ddc512eb9b45a9c16df2f6738e8769302b3042826d9443fb57e3fd",
+            strip_prefix = "rules_foreign_cc-master",
+            url = "https://github.com/bazelbuild/rules_foreign_cc/archive/master.zip",
+            )
