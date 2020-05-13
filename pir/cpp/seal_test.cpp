@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-#include "seal/seal.h"
+#include "SEAL/include/SEAL-3.5/seal/seal.h"
 
 #include "gtest/gtest.h"
 
@@ -29,9 +29,35 @@ class SEALTest : public ::testing::Test {
 };
 
 TEST_F(SEALTest, TestSanity) {
-  EncryptionParameters parms;
+  // config
+  uint32_t poly_modulus_degree = 4096, plain_modulus = 1032193;
 
-  EXPECT_TRUE(1);
+  // params
+  EncryptionParameters parms(scheme_type::BFV);
+  parms.set_poly_modulus_degree(poly_modulus_degree);
+  parms.set_plain_modulus(plain_modulus);
+  auto coeff =
+      CoeffModulus::BFVDefault(poly_modulus_degree, sec_level_type::tc128);
+  parms.set_coeff_modulus(coeff);
+
+  // context
+  auto context = SEALContext::Create(parms, true, sec_level_type::tc128);
+  KeyGenerator keygen(context);
+
+  IntegerEncoder encoder(context);
+  Encryptor encryptor(context, keygen.public_key());
+  Evaluator evaluator(context);
+  Decryptor decryptor(context, keygen.secret_key());
+
+  // evaluator
+  Ciphertext encrypted;
+  Plaintext plain;
+  encryptor.encrypt(encoder.encode(0x12345678), encrypted);
+  plain = "2";
+  evaluator.multiply_plain_inplace(encrypted, plain);
+  decryptor.decrypt(encrypted, plain);
+  ASSERT_EQ(static_cast<uint64_t>(2 * 0x12345678),
+            encoder.decode_uint64(plain));
 }
 
 }  // namespace pir

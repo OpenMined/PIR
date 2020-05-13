@@ -40,7 +40,7 @@ def pir_deps():
             name = "SEAL",
             sha256 = "9dfb1482d0bade6c1c76f2aa06aca6203f98aadc4ad94ca0f316be916b45fbd5",
             strip_prefix = "SEAL-3.5.1",
-            build_file_content = """filegroup(name = "all", srcs = glob(["**"]), visibility = ["//visibility:public"])""",
+            build_file_content = """filegroup(name = "src", srcs = glob(["**"]), visibility = ["//visibility:public"])""",
             urls = ["https://github.com/microsoft/SEAL/archive/v3.5.1.tar.gz"],
         )
 
