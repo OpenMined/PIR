@@ -13,32 +13,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-#include "server.h"
 
-#include "absl/memory/memory.h"
-#include "seal/seal.h"
+#ifndef PIR_CONTEXT_H_
+#define PIR_CONTEXT_H_
+
 #include "util/statusor.h"
 
 namespace pir {
 
 using ::private_join_and_compute::StatusOr;
 
-PIRServer::PIRServer(std::unique_ptr<PIRContext> context)
-    : context_(std::move(context)) {}
+class PIRContext {
+ public:
+  static StatusOr<std::unique_ptr<PIRContext>> Create();
 
-StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create() {
-  auto context = PIRContext::Create().ValueOrDie();
-  return absl::WrapUnique(new PIRServer(std::move(context)));
-}
-
-StatusOr<std::string> PIRServer::ProcessRequest(
-    const std::string& request) const {
-  return {};
-}
-
-StatusOr<int> PIRServer::PopulateDatabase(
-    const std::vector<std::string>& database) {
-  return {};
-}
+ private:
+  PIRContext();
+};
 
 }  // namespace pir
+
+#endif  // PIR_CONTEXT_H_

@@ -17,27 +17,30 @@
 #ifndef PIR_CLIENT_H_
 #define PIR_CLIENT_H_
 
-#include <optional>
 #include <string>
 
-#include "seal/seal.h"
+#include "context.h"
+#include "util/statusor.h"
 
 namespace pir {
+
+using ::private_join_and_compute::StatusOr;
 
 class PIRClient {
  public:
   // Creates and returns a new client instance.
-  static std::unique_ptr<PIRClient> Create(
-      const seal::EncryptionParameters &params);
+  static StatusOr<std::unique_ptr<PIRClient>> Create();
 
-  std::optional<std::string> CreateRequest(uint64_t desiredIndex) const;
+  StatusOr<std::string> CreateRequest(uint64_t desiredIndex) const;
 
-  std::optional<std::string> ProcessResponse(const std::string &response) const;
+  StatusOr<std::string> ProcessResponse(const std::string &response) const;
 
   PIRClient() = delete;
 
  private:
-  PIRClient(const seal::EncryptionParameters &params);
+  PIRClient(std::unique_ptr<PIRContext>);
+
+  std::unique_ptr<PIRContext> context_;
 };
 
 }  // namespace pir

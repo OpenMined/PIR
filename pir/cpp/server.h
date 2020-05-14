@@ -17,27 +17,31 @@
 #ifndef PIR_SERVER_H_
 #define PIR_SERVER_H_
 
-#include <optional>
 #include <string>
+#include <vector>
 
-#include "seal/seal.h"
+#include "context.h"
+#include "util/statusor.h"
 
 namespace pir {
+
+using ::private_join_and_compute::StatusOr;
 
 class PIRServer {
  public:
   // Creates and returns a new server instance.
-  static std::unique_ptr<PIRServer> Create(
-      const seal::EncryptionParameters& params);
+  static StatusOr<std::unique_ptr<PIRServer>> Create();
 
-  std::optional<std::string> ProcessRequest(const std::string& request) const;
+  StatusOr<std::string> ProcessRequest(const std::string& request) const;
 
-  int PopulateDatabase(const std::vector<std::string>& db);
+  StatusOr<int> PopulateDatabase(const std::vector<std::string>& db);
 
   PIRServer() = delete;
 
  private:
-  PIRServer(const seal::EncryptionParameters& params);
+  PIRServer(std::unique_ptr<PIRContext>);
+
+  std::unique_ptr<PIRContext> context_;
 };
 
 }  // namespace pir

@@ -17,11 +17,21 @@
 package(default_visibility = ["//visibility:public"])
 load("@rules_foreign_cc//tools/build_defs:cmake.bzl", "cmake_external")
 
-PIR_DEFAULT_LINKOPTS = [
-    "-lrt",
-]
 PIR_DEFAULT_INCLUDES = [".", "com_microsoft_seal/include/SEAL-3.5/"]
 PIR_DEFAULT_COPTS =  ["-std=c++17"]
+
+cc_library(
+    name = "pir_context",
+    srcs = ["context.cpp"],
+    hdrs = ["context.h"],
+    includes = PIR_DEFAULT_INCLUDES,
+    deps = [
+        ":com_microsoft_seal",
+        "@com_google_absl//absl/memory",
+        "@private_join_and_compute//util:status",
+    ],
+   copts = PIR_DEFAULT_COPTS,
+)
 
 cc_library(
     name = "pir_client",
@@ -29,7 +39,9 @@ cc_library(
     hdrs = ["client.h"],
     includes = PIR_DEFAULT_INCLUDES,
     deps = [
-        ":com_microsoft_seal",
+        ":pir_context",
+        "@com_google_absl//absl/memory",
+        "@private_join_and_compute//util:status",
     ],
    copts = PIR_DEFAULT_COPTS,
 )
@@ -38,7 +50,6 @@ cc_test(
     name = "pir_client_test",
     srcs = ["client_test.cpp"],
     includes = PIR_DEFAULT_INCLUDES,
-    linkopts = PIR_DEFAULT_LINKOPTS,
     deps = [
         ":pir_client",
         "@com_google_googletest//:gtest",
@@ -54,7 +65,9 @@ cc_library(
     hdrs = ["server.h"],
     includes = PIR_DEFAULT_INCLUDES,
     deps = [
-        ":com_microsoft_seal",
+        ":pir_context",
+        "@com_google_absl//absl/memory",
+        "@private_join_and_compute//util:status",
     ],
    copts = PIR_DEFAULT_COPTS,
 )
@@ -63,7 +76,6 @@ cc_test(
     name = "pir_server_test",
     srcs = ["server_test.cpp"],
     includes = PIR_DEFAULT_INCLUDES,
-    linkopts = PIR_DEFAULT_LINKOPTS,
     deps = [
         ":pir_server",
         "@com_google_googletest//:gtest",
@@ -77,7 +89,6 @@ cc_test(
 cc_test(
     name = "seal_test",
     srcs = ["seal_test.cpp"],
-    linkopts = PIR_DEFAULT_LINKOPTS,
     includes = PIR_DEFAULT_INCLUDES,
     deps = [
         "@com_google_googletest//:gtest",

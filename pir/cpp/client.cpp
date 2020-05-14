@@ -15,22 +15,27 @@
 //
 #include "client.h"
 
+#include "absl/memory/memory.h"
 #include "seal/seal.h"
+#include "util/statusor.h"
 
 namespace pir {
 
-PIRClient::PIRClient(const seal::EncryptionParameters &params) {}
+using ::private_join_and_compute::StatusOr;
 
-std::unique_ptr<PIRClient> PIRClient::Create(
-    const seal::EncryptionParameters &params) {
-  return std::unique_ptr<PIRClient>(new PIRClient(params));
+PIRClient::PIRClient(std::unique_ptr<PIRContext> context)
+    : context_(std::move(context)) {}
+
+StatusOr<std::unique_ptr<PIRClient>> PIRClient::Create() {
+  auto context = PIRContext::Create().ValueOrDie();
+  return absl::WrapUnique(new PIRClient(std::move(context)));
 }
 
-std::optional<std::string> PIRClient::CreateRequest(uint64_t index) const {
+StatusOr<std::string> PIRClient::CreateRequest(uint64_t index) const {
   return {};
 }
 
-std::optional<std::string> PIRClient::ProcessResponse(
+StatusOr<std::string> PIRClient::ProcessResponse(
     const std::string &response) const {
   return {};
 }
