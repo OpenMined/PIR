@@ -52,6 +52,7 @@ cc_test(
     includes = PIR_DEFAULT_INCLUDES,
     deps = [
         ":pir_client",
+        ":pir_context",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
     
@@ -78,6 +79,7 @@ cc_test(
     includes = PIR_DEFAULT_INCLUDES,
     deps = [
         ":pir_server",
+        ":pir_context",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
     

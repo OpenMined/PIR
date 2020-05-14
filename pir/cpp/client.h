@@ -31,9 +31,11 @@ class PIRClient {
   // Creates and returns a new client instance.
   static StatusOr<std::unique_ptr<PIRClient>> Create();
 
-  StatusOr<std::string> CreateRequest(uint64_t desiredIndex) const;
+  StatusOr<std::string> CreateRequest(uint64_t desiredIndex,
+                                      uint64_t dbSize) const;
 
-  StatusOr<std::string> ProcessResponse(const std::string &response) const;
+  StatusOr<std::vector<uint64_t>> ProcessResponse(
+      const std::string &response) const;
 
   PIRClient() = delete;
 

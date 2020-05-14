@@ -24,14 +24,21 @@ namespace {
 class PIRClientTest : public ::testing::Test {
  protected:
   void SetUp() {
-    // client_ = PIRClient::Create();
-    // ASSERT_TRUE(client_ != nullptr);
+    client_ = PIRClient::Create().ValueOrDie();
+    ASSERT_TRUE(client_ != nullptr);
   }
 
   std::unique_ptr<PIRClient> client_;
 };
 
-TEST_F(PIRClientTest, TestCorrectness) {}
+TEST_F(PIRClientTest, TestSanity) {
+  auto payload = client_->CreateRequest(2, 10).ValueOrDie();
+  auto out = client_->ProcessResponse(payload).ValueOrDie();
+
+  for (size_t idx = 0; idx < 10; idx++) {
+    ASSERT_TRUE(out[idx] == (idx == 2));
+  }
+}
 
 }  // namespace
 }  // namespace pir

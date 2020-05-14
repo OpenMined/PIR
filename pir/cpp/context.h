@@ -17,6 +17,7 @@
 #ifndef PIR_CONTEXT_H_
 #define PIR_CONTEXT_H_
 
+#include "seal/seal.h"
 #include "util/statusor.h"
 
 namespace pir {
@@ -27,8 +28,27 @@ class PIRContext {
  public:
   static StatusOr<std::unique_ptr<PIRContext>> Create();
 
+  std::string SerializeParams() const;
+  void DeserializeParams(const std::string& input);
+
+  StatusOr<std::string> Encrypt(const std::vector<uint64_t>&);
+  StatusOr<std::vector<uint64_t>> Decrypt(const std::string& in);
+  std::string PublicKey();
+
  private:
-  PIRContext();
+  PIRContext(const seal::EncryptionParameters&);
+
+  static seal::EncryptionParameters generateEncryptionParams(
+      uint32_t poly_modulus_degree = 4096, uint32_t plain_modulus = 1032193);
+
+  seal::EncryptionParameters parms_;
+
+  std::shared_ptr<seal::SEALContext> context_;
+  std::shared_ptr<seal::PublicKey> public_key_;
+  std::optional<std::shared_ptr<seal::SecretKey>> secret_key_;
+  std::shared_ptr<seal::BatchEncoder> encoder_;
+  std::shared_ptr<seal::Encryptor> encryptor_;
+  std::shared_ptr<seal::Decryptor> decryptor_;
 };
 
 }  // namespace pir

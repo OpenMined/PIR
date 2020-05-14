@@ -17,10 +17,12 @@
 
 #include "absl/memory/memory.h"
 #include "seal/seal.h"
+#include "util/canonical_errors.h"
 #include "util/statusor.h"
 
 namespace pir {
 
+using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
 
 PIRClient::PIRClient(std::unique_ptr<PIRContext> context)
@@ -31,13 +33,20 @@ StatusOr<std::unique_ptr<PIRClient>> PIRClient::Create() {
   return absl::WrapUnique(new PIRClient(std::move(context)));
 }
 
-StatusOr<std::string> PIRClient::CreateRequest(uint64_t index) const {
-  return {};
+StatusOr<std::string> PIRClient::CreateRequest(uint64_t desiredIndex,
+                                               uint64_t dbSize) const {
+  if (desiredIndex >= dbSize) {
+    return InvalidArgumentError("invalid index");
+  }
+  std::vector<uint64_t> request(dbSize, 0);
+  request[desiredIndex] = 1;
+
+  return context_->Encrypt(request);
 }
 
-StatusOr<std::string> PIRClient::ProcessResponse(
+StatusOr<std::vector<uint64_t>> PIRClient::ProcessResponse(
     const std::string &response) const {
-  return {};
+  return context_->Decrypt(response);
 }
 
 }  // namespace pir
