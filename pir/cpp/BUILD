@@ -17,14 +17,9 @@
 package(default_visibility = ["//visibility:public"])
 load("@rules_foreign_cc//tools/build_defs:cmake.bzl", "cmake_external")
 
-PIR_DEFAULT_LINKOPTS = [
-    "-lrt",
-]
-
 cc_test(
     name = "seal_test",
     srcs = ["seal_test.cpp"],
-    linkopts = PIR_DEFAULT_LINKOPTS,
     includes = [".", "com_microsoft_seal/include/SEAL-3.5/"],
     deps = [
         "@com_google_googletest//:gtest",
