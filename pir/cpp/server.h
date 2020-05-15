@@ -30,12 +30,30 @@ using ::private_join_and_compute::StatusOr;
 
 class PIRServer {
  public:
-  // Creates and returns a new server instance.
+  /**
+   * Creates and returns a new server instance.
+   * @returns TODO
+   **/
   static StatusOr<std::unique_ptr<PIRServer>> Create();
 
+  /**
+   * Handles a client request.
+   * @param[in] request The encoded client request
+   * @returns TODO
+   **/
   StatusOr<std::string> ProcessRequest(const std::string& request) const;
+
+  /**
+   * Loads a database to a plaintext.
+   * @param[in] db Database to load
+   * @returns TODO
+   **/
   StatusOr<int> PopulateDatabase(const std::vector<std::uint64_t>& db);
 
+  /**
+   * Returns the serialized params.
+   * @returns TODO
+   **/
   StatusOr<std::string> Params();
 
   PIRServer() = delete;

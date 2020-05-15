@@ -26,23 +26,70 @@ using ::private_join_and_compute::StatusOr;
 
 class PIRContext {
  public:
+  /**
+   * Creates a new context
+   * @returns TODO
+   **/
   static StatusOr<std::unique_ptr<PIRContext>> Create();
+
+  /**
+   * Creates a new context from existing params
+   * @param[in] params Serialized PIR parameters
+   * @returns TODO
+   **/
   static StatusOr<std::unique_ptr<PIRContext>> CreateFromParams(
       const std::string& params);
 
+  /**
+   * Returns the serialized PIR parameters
+   * @returns TODO
+   **/
   std::string SerializeParams() const;
-  void DeserializeParams(const std::string& input);
 
+  /**
+   * Encodes a vector to a Plaintext
+   * @param[in] in Array to be encoded
+   * @returns TODO
+   **/
   StatusOr<seal::Plaintext> Encode(const std::vector<uint64_t>& in);
+  /**
+   * Decodes a plaintext to a vector
+   * @param[in] in Plaintext to be decoded
+   * @returns TODO
+   **/
   StatusOr<std::vector<uint64_t>> Decode(const seal::Plaintext& in);
 
-  StatusOr<std::string> Encrypt(const std::vector<uint64_t>&);
+  /**
+   * Encodes, encrypts and serializes a vector
+   * @param[in] in Vector to be encrypted
+   * @returns TODO
+   **/
+  StatusOr<std::string> Encrypt(const std::vector<uint64_t>& in);
+
+  /**
+   * Deserializes, decrypts and decodes a vector
+   * @param[in] in Serialized ciphertext
+   * @returns TODO
+   **/
   StatusOr<std::vector<uint64_t>> Decrypt(const std::string& in);
 
+  /**
+   * Serializes a ciphertext
+   * @param[in] in Ciphertext to be serialized
+   * @returns TODO
+   **/
   StatusOr<std::string> Serialize(const seal::Ciphertext&);
+  /**
+   * Deserializes a ciphertext
+   * @param[in] in Serialized ciphertext
+   * @returns TODO
+   **/
   StatusOr<seal::Ciphertext> Deserialize(const std::string& in);
 
-  std::string PublicKey();
+  /**
+   * Returns an Evaluator instance
+   * @returns TODO
+   **/
   std::shared_ptr<seal::Evaluator>& Evaluator();
 
  private:

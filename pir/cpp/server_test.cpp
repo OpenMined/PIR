@@ -46,23 +46,22 @@ TEST_F(PIRServerTest, TestCorrectness) {
   });
 
   server_->PopulateDatabase(db);
-
   auto params = server_->Params().ValueOrDie();
-  auto client_ = PIRClient::CreateFromParams(params).ValueOrDie();
-  auto desiredIndex = std::rand() % dbSize;
 
-  auto payload = client_->CreateRequest(desiredIndex, dbSize).ValueOrDie();
+  for (auto& client_ : {PIRClient::Create().ValueOrDie(),
+                        PIRClient::CreateFromParams(params).ValueOrDie()}) {
+    auto desiredIndex = std::rand() % dbSize;
+    auto payload = client_->CreateRequest(desiredIndex, dbSize).ValueOrDie();
+    auto response = server_->ProcessRequest(payload).ValueOrDie();
+    auto out = client_->ProcessResponse(response).ValueOrDie();
 
-  auto response = server_->ProcessRequest(payload).ValueOrDie();
-
-  auto out = client_->ProcessResponse(response).ValueOrDie();
-
-  for (size_t idx = 0; idx < dbSize; idx++) {
-    if (idx != desiredIndex) {
-      ASSERT_TRUE(out[idx] == 0);
-      continue;
+    for (size_t idx = 0; idx < dbSize; idx++) {
+      if (idx != desiredIndex) {
+        ASSERT_TRUE(out[idx] == 0);
+        continue;
+      }
+      ASSERT_TRUE(out[idx] == db[idx]);
     }
-    ASSERT_TRUE(out[idx] == db[idx]);
   }
 }
 }  // namespace
