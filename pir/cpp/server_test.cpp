@@ -16,6 +16,11 @@
 
 #include "server.h"
 
+#include <algorithm>
+#include <iostream>
+#include <vector>
+
+#include "client.h"
 #include "gtest/gtest.h"
 
 namespace pir {
@@ -24,14 +29,41 @@ namespace {
 class PIRServerTest : public ::testing::Test {
  protected:
   void SetUp() {
-    // client_ = PIRServer::Create();
-    // ASSERT_TRUE(client_ != nullptr);
+    server_ = PIRServer::Create().ValueOrDie();
+    ASSERT_TRUE(server_ != nullptr);
   }
 
   std::unique_ptr<PIRServer> server_;
 };
 
-TEST_F(PIRServerTest, TestCorrectness) {}
+TEST_F(PIRServerTest, TestCorrectness) {
+  constexpr std::size_t dbSize = 1000;
+  std::vector<std::uint64_t> db(dbSize, 0);
 
+  std::generate(db.begin(), db.end(), [n = 0]() mutable {
+    ++n;
+    return 4 * n;
+  });
+
+  server_->PopulateDatabase(db);
+
+  auto params = server_->Params().ValueOrDie();
+  auto client_ = PIRClient::CreateFromParams(params).ValueOrDie();
+  auto desiredIndex = std::rand() % dbSize;
+
+  auto payload = client_->CreateRequest(desiredIndex, dbSize).ValueOrDie();
+
+  auto response = server_->ProcessRequest(payload).ValueOrDie();
+
+  auto out = client_->ProcessResponse(response).ValueOrDie();
+
+  for (size_t idx = 0; idx < dbSize; idx++) {
+    if (idx != desiredIndex) {
+      ASSERT_TRUE(out[idx] == 0);
+      continue;
+    }
+    ASSERT_TRUE(out[idx] == db[idx]);
+  }
+}
 }  // namespace
 }  // namespace pir

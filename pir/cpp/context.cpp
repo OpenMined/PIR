@@ -23,17 +23,34 @@ namespace pir {
 
 using ::private_join_and_compute::StatusOr;
 
+std::string serializeParams(const seal::EncryptionParameters& parms) {
+  std::stringstream stream;
+  parms.save(stream);
+  return stream.str();
+}
+
+seal::EncryptionParameters deserializeParams(const std::string& input) {
+  seal::EncryptionParameters parms;
+
+  std::stringstream stream;
+  stream << input;
+  parms.load(stream);
+
+  return parms;
+}
+
 PIRContext::PIRContext(const seal::EncryptionParameters& parms)
     : parms_(parms), context_(seal::SEALContext::Create(parms)) {
-  seal::KeyGenerator keygen(this->context_);
-  this->public_key_ = std::make_shared<seal::PublicKey>(keygen.public_key());
-  this->secret_key_ = std::make_shared<seal::SecretKey>(keygen.secret_key());
-  this->encoder_ = std::make_shared<seal::BatchEncoder>(this->context_);
+  seal::KeyGenerator keygen(context_);
+  public_key_ = std::make_shared<seal::PublicKey>(keygen.public_key());
+  secret_key_ = std::make_shared<seal::SecretKey>(keygen.secret_key());
+  encoder_ = std::make_shared<seal::BatchEncoder>(context_);
 
-  this->encryptor_ =
-      std::make_shared<seal::Encryptor>(this->context_, *this->public_key_);
-  this->decryptor_ = std::make_shared<seal::Decryptor>(
-      this->context_, *this->secret_key_.value());
+  encryptor_ = std::make_shared<seal::Encryptor>(context_, *public_key_);
+  decryptor_ =
+      std::make_shared<seal::Decryptor>(context_, *secret_key_.value());
+
+  evaluator_ = std::make_shared<seal::Evaluator>(context_);
 }
 
 StatusOr<std::unique_ptr<PIRContext>> PIRContext::Create() {
@@ -42,46 +59,64 @@ StatusOr<std::unique_ptr<PIRContext>> PIRContext::Create() {
   return absl::WrapUnique(new PIRContext(parms));
 }
 
-StatusOr<std::string> PIRContext::Encrypt(const std::vector<uint64_t>& in) {
-  seal::Ciphertext ciphertext(this->context_);
+StatusOr<std::unique_ptr<PIRContext>> PIRContext::CreateFromParams(
+    const std::string& parmsStr) {
+  return absl::WrapUnique(new PIRContext(deserializeParams(parmsStr)));
+}
+
+StatusOr<seal::Plaintext> PIRContext::Encode(const std::vector<uint64_t>& in) {
   seal::Plaintext plaintext;
+  encoder_->encode(in, plaintext);
+  return plaintext;
+}
 
-  this->encoder_->encode(in, plaintext);
-  this->encryptor_->encrypt(plaintext, ciphertext);
+StatusOr<std::vector<uint64_t>> PIRContext::Decode(const seal::Plaintext& in) {
+  std::vector<uint64_t> result;
+  encoder_->decode(in, result);
+  return result;
+}
 
+StatusOr<std::string> PIRContext::Serialize(
+    const seal::Ciphertext& ciphertext) {
   std::stringstream stream;
   ciphertext.save(stream);
   return stream.str();
 }
 
-StatusOr<std::vector<uint64_t>> PIRContext::Decrypt(const std::string& in) {
-  seal::Ciphertext ciphertext(this->context_);
-  seal::Plaintext plaintext;
+StatusOr<seal::Ciphertext> PIRContext::Deserialize(const std::string& in) {
+  seal::Ciphertext ciphertext(context_);
 
   std::stringstream stream;
   stream << in;
-  ciphertext.load(this->context_, stream);
+  ciphertext.load(context_, stream);
 
-  this->decryptor_->decrypt(ciphertext, plaintext);
+  return ciphertext;
+}
 
-  std::vector<uint64_t> result;
-  this->encoder_->decode(plaintext, result);
+StatusOr<std::string> PIRContext::Encrypt(const std::vector<uint64_t>& in) {
+  seal::Ciphertext ciphertext(context_);
 
-  return result;
+  auto plaintext = Encode(in).ValueOrDie();
+
+  encryptor_->encrypt(plaintext, ciphertext);
+
+  return Serialize(ciphertext);
+}
+
+StatusOr<std::vector<uint64_t>> PIRContext::Decrypt(const std::string& in) {
+  seal::Ciphertext ciphertext = Deserialize(in).ValueOrDie();
+  seal::Plaintext plaintext;
+
+  decryptor_->decrypt(ciphertext, plaintext);
+
+  return Decode(plaintext);
 }
 
 std::string PIRContext::SerializeParams() const {
-  std::stringstream stream;
-  parms_.save(stream);
-  return stream.str();
+  return serializeParams(parms_);
 }
 
-void PIRContext::DeserializeParams(const std::string& input) {
-  std::stringstream stream;
-  stream << input;
-  parms_.load(stream);
-  context_ = seal::SEALContext::Create(parms_);
-}
+std::shared_ptr<seal::Evaluator>& PIRContext::Evaluator() { return evaluator_; }
 
 seal::EncryptionParameters PIRContext::generateEncryptionParams(
     uint32_t poly_modulus_degree /*= 4096*/,

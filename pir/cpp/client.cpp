@@ -33,19 +33,25 @@ StatusOr<std::unique_ptr<PIRClient>> PIRClient::Create() {
   return absl::WrapUnique(new PIRClient(std::move(context)));
 }
 
-StatusOr<std::string> PIRClient::CreateRequest(uint64_t desiredIndex,
-                                               uint64_t dbSize) const {
+StatusOr<std::unique_ptr<PIRClient>> PIRClient::CreateFromParams(
+    const std::string& params) {
+  auto context = PIRContext::CreateFromParams(params).ValueOrDie();
+  return absl::WrapUnique(new PIRClient(std::move(context)));
+}
+
+StatusOr<std::string> PIRClient::CreateRequest(std::size_t desiredIndex,
+                                               std::size_t dbSize) const {
   if (desiredIndex >= dbSize) {
     return InvalidArgumentError("invalid index");
   }
-  std::vector<uint64_t> request(dbSize, 0);
+  std::vector<std::uint64_t> request(dbSize, 0);
   request[desiredIndex] = 1;
 
   return context_->Encrypt(request);
 }
 
 StatusOr<std::vector<uint64_t>> PIRClient::ProcessResponse(
-    const std::string &response) const {
+    const std::string& response) const {
   return context_->Decrypt(response);
 }
 

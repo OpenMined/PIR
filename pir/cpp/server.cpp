@@ -33,12 +33,21 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create() {
 
 StatusOr<std::string> PIRServer::ProcessRequest(
     const std::string& request) const {
-  return {};
+  auto ct = context_->Deserialize(request).ValueOrDie();
+  context_->Evaluator()->multiply_plain_inplace(ct, db_);
+
+  return context_->Serialize(ct);
 }
 
 StatusOr<int> PIRServer::PopulateDatabase(
-    const std::vector<std::string>& database) {
-  return {};
+    const std::vector<std::uint64_t>& database) {
+  db_ = context_->Encode(database).ValueOrDie();
+
+  return 0;
+}
+
+StatusOr<std::string> PIRServer::Params() {
+  return context_->SerializeParams();
 }
 
 }  // namespace pir

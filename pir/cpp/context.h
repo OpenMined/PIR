@@ -27,13 +27,23 @@ using ::private_join_and_compute::StatusOr;
 class PIRContext {
  public:
   static StatusOr<std::unique_ptr<PIRContext>> Create();
+  static StatusOr<std::unique_ptr<PIRContext>> CreateFromParams(
+      const std::string& params);
 
   std::string SerializeParams() const;
   void DeserializeParams(const std::string& input);
 
+  StatusOr<seal::Plaintext> Encode(const std::vector<uint64_t>& in);
+  StatusOr<std::vector<uint64_t>> Decode(const seal::Plaintext& in);
+
   StatusOr<std::string> Encrypt(const std::vector<uint64_t>&);
   StatusOr<std::vector<uint64_t>> Decrypt(const std::string& in);
+
+  StatusOr<std::string> Serialize(const seal::Ciphertext&);
+  StatusOr<seal::Ciphertext> Deserialize(const std::string& in);
+
   std::string PublicKey();
+  std::shared_ptr<seal::Evaluator>& Evaluator();
 
  private:
   PIRContext(const seal::EncryptionParameters&);
@@ -49,6 +59,7 @@ class PIRContext {
   std::shared_ptr<seal::BatchEncoder> encoder_;
   std::shared_ptr<seal::Encryptor> encryptor_;
   std::shared_ptr<seal::Decryptor> decryptor_;
+  std::shared_ptr<seal::Evaluator> evaluator_;
 };
 
 }  // namespace pir

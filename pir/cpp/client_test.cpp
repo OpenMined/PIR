@@ -32,11 +32,15 @@ class PIRClientTest : public ::testing::Test {
 };
 
 TEST_F(PIRClientTest, TestSanity) {
-  auto payload = client_->CreateRequest(2, 10).ValueOrDie();
+  constexpr std::size_t dbSize = 1000;
+
+  auto desiredIndex = std::rand() % dbSize;
+
+  auto payload = client_->CreateRequest(desiredIndex, dbSize).ValueOrDie();
   auto out = client_->ProcessResponse(payload).ValueOrDie();
 
-  for (size_t idx = 0; idx < 10; idx++) {
-    ASSERT_TRUE(out[idx] == (idx == 2));
+  for (size_t idx = 0; idx < dbSize; idx++) {
+    ASSERT_TRUE(out[idx] == (idx == desiredIndex));
   }
 }
 

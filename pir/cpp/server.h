@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "context.h"
+#include "seal/seal.h"
 #include "util/statusor.h"
 
 namespace pir {
@@ -33,8 +34,9 @@ class PIRServer {
   static StatusOr<std::unique_ptr<PIRServer>> Create();
 
   StatusOr<std::string> ProcessRequest(const std::string& request) const;
+  StatusOr<int> PopulateDatabase(const std::vector<std::uint64_t>& db);
 
-  StatusOr<int> PopulateDatabase(const std::vector<std::string>& db);
+  StatusOr<std::string> Params();
 
   PIRServer() = delete;
 
@@ -42,6 +44,7 @@ class PIRServer {
   PIRServer(std::unique_ptr<PIRContext>);
 
   std::unique_ptr<PIRContext> context_;
+  seal::Plaintext db_;
 };
 
 }  // namespace pir
