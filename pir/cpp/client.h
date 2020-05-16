@@ -56,7 +56,7 @@ class PIRClient {
    * @param[in] response Server output
    * @returns TODO
    **/
-  StatusOr<std::vector<std::uint64_t>> ProcessResponse(
+  StatusOr<std::map<uint64_t, uint64_t>> ProcessResponse(
       const std::string& response) const;
 
   PIRClient() = delete;

@@ -50,9 +50,16 @@ StatusOr<std::string> PIRClient::CreateRequest(std::size_t desiredIndex,
   return context_->Encrypt(request);
 }
 
-StatusOr<std::vector<uint64_t>> PIRClient::ProcessResponse(
+StatusOr<std::map<uint64_t, uint64_t>> PIRClient::ProcessResponse(
     const std::string& response) const {
-  return context_->Decrypt(response);
+  auto decrypted = context_->Decrypt(response).ValueOrDie();
+  std::map<uint64_t, uint64_t> result;
+
+  for (size_t idx = 0; idx < decrypted.size(); ++idx)
+    if (decrypted[idx] != 0) {
+      result[idx] = decrypted[idx];
+    }
+  return result;
 }
 
 }  // namespace pir
