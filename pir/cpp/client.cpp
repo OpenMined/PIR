@@ -29,7 +29,7 @@ PIRClient::PIRClient(std::unique_ptr<PIRContext> context)
     : context_(std::move(context)) {}
 
 StatusOr<std::unique_ptr<PIRClient>> PIRClient::Create() {
-  auto context = PIRContext::Create().ValueOrDie();
+  auto context = PIRContext::Create();
   return absl::WrapUnique(new PIRClient(std::move(context)));
 }
 

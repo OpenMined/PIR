@@ -28,67 +28,65 @@ class PIRContext {
  public:
   /**
    * Creates a new context
-   * @returns TODO
    **/
-  static StatusOr<std::unique_ptr<PIRContext>> Create();
+  static std::unique_ptr<PIRContext> Create();
 
   /**
    * Creates a new context from existing params
    * @param[in] params Serialized PIR parameters
-   * @returns TODO
+   * @returns InvalidArgument if the SEAL parameter deserialization fails
    **/
   static StatusOr<std::unique_ptr<PIRContext>> CreateFromParams(
       const std::string& params);
 
   /**
    * Returns the serialized PIR parameters
-   * @returns TODO
+   * @returns InvalidArgument if the SEAL parameters serialization fails
    **/
-  std::string SerializeParams() const;
+  StatusOr<std::string> SerializeParams() const;
 
   /**
    * Encodes a vector to a Plaintext
    * @param[in] in Array to be encoded
-   * @returns TODO
+   * @returns InvalidArgument if the SEAL encoding fails
    **/
   StatusOr<seal::Plaintext> Encode(const std::vector<uint64_t>& in);
   /**
    * Decodes a plaintext to a vector
    * @param[in] in Plaintext to be decoded
-   * @returns TODO
+   * @returns InvalidArgument if the SEAL decoding fails
    **/
   StatusOr<std::vector<uint64_t>> Decode(const seal::Plaintext& in);
 
   /**
    * Encodes, encrypts and serializes a vector
    * @param[in] in Vector to be encrypted
-   * @returns TODO
+   * @returns InvalidArgument if the SEAL encryption fails
    **/
   StatusOr<std::string> Encrypt(const std::vector<uint64_t>& in);
 
   /**
    * Deserializes, decrypts and decodes a vector
    * @param[in] in Serialized ciphertext
-   * @returns TODO
+   * @returns InvalidArgument if the SEAL decryption fails
    **/
   StatusOr<std::vector<uint64_t>> Decrypt(const std::string& in);
 
   /**
    * Serializes a ciphertext
    * @param[in] in Ciphertext to be serialized
-   * @returns TODO
+   * @returns InvalidArgument if the context serialization fails
    **/
   StatusOr<std::string> Serialize(const seal::Ciphertext&);
   /**
    * Deserializes a ciphertext
    * @param[in] in Serialized ciphertext
-   * @returns TODO
+   * @returns InvalidArgument if the context deserialization fails
    **/
   StatusOr<seal::Ciphertext> Deserialize(const std::string& in);
 
   /**
    * Returns an Evaluator instance
-   * @returns TODO
    **/
   std::shared_ptr<seal::Evaluator>& Evaluator();
 
