@@ -33,8 +33,7 @@ class PIRClientTest : public ::testing::Test {
 
 TEST_F(PIRClientTest, TestSanity) {
   constexpr std::size_t dbSize = 1000;
-
-  auto desiredIndex = std::rand() % dbSize;
+  size_t desiredIndex = 23;
 
   auto payload = client_->CreateRequest(desiredIndex, dbSize).ValueOrDie();
   auto out = client_->ProcessResponse(payload).ValueOrDie();

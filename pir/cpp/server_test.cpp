@@ -50,7 +50,7 @@ TEST_F(PIRServerTest, TestCorrectness) {
 
   for (auto& client_ : {PIRClient::Create().ValueOrDie(),
                         PIRClient::CreateFromParams(params).ValueOrDie()}) {
-    auto desiredIndex = std::rand() % dbSize;
+    size_t desiredIndex = 23;
     auto payload = client_->CreateRequest(desiredIndex, dbSize).ValueOrDie();
     auto response = server_->ProcessRequest(payload).ValueOrDie();
     auto out = client_->ProcessResponse(response).ValueOrDie();
