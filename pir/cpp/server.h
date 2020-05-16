@@ -32,27 +32,27 @@ class PIRServer {
  public:
   /**
    * Creates and returns a new server instance.
-   * @returns TODO
    **/
-  static StatusOr<std::unique_ptr<PIRServer>> Create();
+  static std::unique_ptr<PIRServer> Create();
 
   /**
    * Handles a client request.
    * @param[in] request The encoded client request
-   * @returns TODO
+   * @returns InvalidArgument if the deserialization or encrypted operations
+   *fail
    **/
   StatusOr<std::string> ProcessRequest(const std::string& request) const;
 
   /**
    * Loads a database to a plaintext.
    * @param[in] db Database to load
-   * @returns TODO
+   * @returns InvalidArgument if the database encoding fails
    **/
   StatusOr<int> PopulateDatabase(const std::vector<std::uint64_t>& db);
 
   /**
    * Returns the serialized params.
-   * @returns TODO
+   * @returns InvalidArgument if the parameter serialization fails
    **/
   StatusOr<std::string> Params();
 

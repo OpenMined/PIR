@@ -134,10 +134,14 @@ StatusOr<seal::Ciphertext> PIRContext::Deserialize(const std::string& in) {
 StatusOr<std::string> PIRContext::Encrypt(const std::vector<uint64_t>& in) {
   seal::Ciphertext ciphertext(context_);
 
-  auto plaintext = Encode(in).ValueOrDie();
+  auto plaintext = Encode(in);
+
+  if (!plaintext.ok()) {
+    return plaintext.status();
+  }
 
   try {
-    encryptor_->encrypt(plaintext, ciphertext);
+    encryptor_->encrypt(plaintext.ValueOrDie(), ciphertext);
   } catch (const std::exception& e) {
     return InvalidArgumentError(e.what());
   }
@@ -146,11 +150,14 @@ StatusOr<std::string> PIRContext::Encrypt(const std::vector<uint64_t>& in) {
 }
 
 StatusOr<std::vector<uint64_t>> PIRContext::Decrypt(const std::string& in) {
-  seal::Ciphertext ciphertext = Deserialize(in).ValueOrDie();
+  auto ciphertext = Deserialize(in);
+  if (!ciphertext.ok()) {
+    return ciphertext.status();
+  }
   seal::Plaintext plaintext;
 
   try {
-    decryptor_->decrypt(ciphertext, plaintext);
+    decryptor_->decrypt(ciphertext.ValueOrDie(), plaintext);
   } catch (const std::exception& e) {
     return InvalidArgumentError(e.what());
   }

@@ -30,14 +30,13 @@ class PIRClient {
  public:
   /**
    * Creates and returns a new client instance.
-   * @returns TODO
    **/
-  static StatusOr<std::unique_ptr<PIRClient>> Create();
+  static std::unique_ptr<PIRClient> Create();
 
   /**
    * Creates and returns a new client instance, from existing parameters
    * @param[in] params Serialized PIR parameters
-   * @returns TODO
+   * @returns InvalidArgument if the parameters cannot be loaded
    **/
   static StatusOr<std::unique_ptr<PIRClient>> CreateFromParams(
       const std::string& params);
@@ -46,7 +45,7 @@ class PIRClient {
    * Creates a new payload request
    * @param[in] desiredIndex Expected database value from an index
    * @param[in] dbSize Database size
-   * @returns TODO
+   * @returns InvalidArgument if the index is invalid or if the encryption fails
    **/
   StatusOr<std::string> CreateRequest(std::size_t desiredIndex,
                                       std::size_t dbSize) const;
@@ -54,7 +53,7 @@ class PIRClient {
   /**
    * Extracts server response
    * @param[in] response Server output
-   * @returns TODO
+   * @returns InvalidArgument if the decryption fails
    **/
   StatusOr<std::map<uint64_t, uint64_t>> ProcessResponse(
       const std::string& response) const;

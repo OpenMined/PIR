@@ -28,15 +28,18 @@ using ::private_join_and_compute::StatusOr;
 PIRClient::PIRClient(std::unique_ptr<PIRContext> context)
     : context_(std::move(context)) {}
 
-StatusOr<std::unique_ptr<PIRClient>> PIRClient::Create() {
+std::unique_ptr<PIRClient> PIRClient::Create() {
   auto context = PIRContext::Create();
   return absl::WrapUnique(new PIRClient(std::move(context)));
 }
 
 StatusOr<std::unique_ptr<PIRClient>> PIRClient::CreateFromParams(
     const std::string& params) {
-  auto context = PIRContext::CreateFromParams(params).ValueOrDie();
-  return absl::WrapUnique(new PIRClient(std::move(context)));
+  auto context = PIRContext::CreateFromParams(params);
+  if (!context.ok()) {
+    return context.status();
+  }
+  return absl::WrapUnique(new PIRClient(std::move(context.ValueOrDie())));
 }
 
 StatusOr<std::string> PIRClient::CreateRequest(std::size_t desiredIndex,
@@ -52,7 +55,12 @@ StatusOr<std::string> PIRClient::CreateRequest(std::size_t desiredIndex,
 
 StatusOr<std::map<uint64_t, uint64_t>> PIRClient::ProcessResponse(
     const std::string& response) const {
-  auto decrypted = context_->Decrypt(response).ValueOrDie();
+  auto decryptedRaw = context_->Decrypt(response);
+
+  if (!decryptedRaw.ok()) {
+    return decryptedRaw.status();
+  }
+  auto decrypted = decryptedRaw.ValueOrDie();
   std::map<uint64_t, uint64_t> result;
 
   for (size_t idx = 0; idx < decrypted.size(); ++idx)

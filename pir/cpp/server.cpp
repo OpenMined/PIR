@@ -17,31 +17,47 @@
 
 #include "absl/memory/memory.h"
 #include "seal/seal.h"
+#include "util/canonical_errors.h"
 #include "util/statusor.h"
 
 namespace pir {
 
+using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
 
 PIRServer::PIRServer(std::unique_ptr<PIRContext> context)
     : context_(std::move(context)) {}
 
-StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create() {
+std::unique_ptr<PIRServer> PIRServer::Create() {
   auto context = PIRContext::Create();
   return absl::WrapUnique(new PIRServer(std::move(context)));
 }
 
 StatusOr<std::string> PIRServer::ProcessRequest(
     const std::string& request) const {
-  auto ct = context_->Deserialize(request).ValueOrDie();
-  context_->Evaluator()->multiply_plain_inplace(ct, db_);
+  auto deserialized = context_->Deserialize(request);
 
+  if (!deserialized.ok()) {
+    return deserialized.status();
+  }
+
+  auto ct = deserialized.ValueOrDie();
+  try {
+    context_->Evaluator()->multiply_plain_inplace(ct, db_);
+  } catch (std::exception& e) {
+    return InvalidArgumentError(e.what());
+  }
   return context_->Serialize(ct);
 }
 
 StatusOr<int> PIRServer::PopulateDatabase(
     const std::vector<std::uint64_t>& database) {
-  db_ = context_->Encode(database).ValueOrDie();
+  auto encoded = context_->Encode(database);
+
+  if (!encoded.ok()) {
+    return encoded.status();
+  }
+  db_ = encoded.ValueOrDie();
 
   return 0;
 }

@@ -29,7 +29,7 @@ namespace {
 class PIRServerTest : public ::testing::Test {
  protected:
   void SetUp() {
-    server_ = PIRServer::Create().ValueOrDie();
+    server_ = PIRServer::Create();
     ASSERT_TRUE(server_ != nullptr);
   }
 
@@ -48,7 +48,7 @@ TEST_F(PIRServerTest, TestCorrectness) {
   server_->PopulateDatabase(db);
   auto params = server_->Params().ValueOrDie();
 
-  for (auto& client_ : {PIRClient::Create().ValueOrDie(),
+  for (auto& client_ : {PIRClient::Create(),
                         PIRClient::CreateFromParams(params).ValueOrDie()}) {
     size_t desiredIndex = 23;
     auto payload = client_->CreateRequest(desiredIndex, dbSize).ValueOrDie();

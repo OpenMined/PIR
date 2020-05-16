@@ -24,7 +24,7 @@ namespace {
 class PIRClientTest : public ::testing::Test {
  protected:
   void SetUp() {
-    client_ = PIRClient::Create().ValueOrDie();
+    client_ = PIRClient::Create();
     ASSERT_TRUE(client_ != nullptr);
   }
 
