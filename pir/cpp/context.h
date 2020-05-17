@@ -28,16 +28,18 @@ class PIRContext {
  public:
   /**
    * Creates a new context
+   * @param[in] params Database size
    **/
-  static std::unique_ptr<PIRContext> Create();
+  static std::unique_ptr<PIRContext> Create(size_t /*db_size*/);
 
   /**
    * Creates a new context from existing params
    * @param[in] params Serialized PIR parameters
+   * @param[in] params Database size
    * @returns InvalidArgument if the SEAL parameter deserialization fails
    **/
   static StatusOr<std::unique_ptr<PIRContext>> CreateFromParams(
-      const std::string& params);
+      const std::string& /*params*/, size_t /*db_size*/);
 
   /**
    * Returns the serialized PIR parameters
@@ -90,14 +92,22 @@ class PIRContext {
    **/
   std::shared_ptr<seal::Evaluator>& Evaluator();
 
+  /**
+   * Returns the database size
+   **/
+  size_t DBSize();
+
  private:
-  PIRContext(const seal::EncryptionParameters&);
+  PIRContext(const seal::EncryptionParameters& /*params*/, size_t /*db_size*/);
 
   static seal::EncryptionParameters generateEncryptionParams(
       uint32_t poly_modulus_degree = 4096);
 
-  seal::EncryptionParameters parms_;
+  // Database parameters
+  size_t database_size_;
 
+  // Encryption parameters&helpers
+  seal::EncryptionParameters parms_;
   std::shared_ptr<seal::SEALContext> context_;
   std::shared_ptr<seal::PublicKey> public_key_;
   std::optional<std::shared_ptr<seal::SecretKey>> secret_key_;

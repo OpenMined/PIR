@@ -31,9 +31,12 @@ using ::private_join_and_compute::StatusOr;
 class PIRServer {
  public:
   /**
-   * Creates and returns a new server instance.
+   * Creates and returns a new server instance, holding a database.
+   * @param[in] db Database to load
+   * @returns InvalidArgument if the database encoding fails
    **/
-  static std::unique_ptr<PIRServer> Create();
+  static StatusOr<std::unique_ptr<PIRServer>> Create(
+      const std::vector<std::uint64_t>& /*database*/);
 
   /**
    * Handles a client request.
@@ -44,22 +47,21 @@ class PIRServer {
   StatusOr<std::string> ProcessRequest(const std::string& request) const;
 
   /**
-   * Loads a database to a plaintext.
-   * @param[in] db Database to load
-   * @returns InvalidArgument if the database encoding fails
-   **/
-  StatusOr<int> PopulateDatabase(const std::vector<std::uint64_t>& db);
-
-  /**
    * Returns the serialized params.
    * @returns InvalidArgument if the parameter serialization fails
    **/
   StatusOr<std::string> Params();
 
+  /**
+   * Returns the database size.
+   **/
+  std::size_t DBSize() { return context_->DBSize(); }
+
   PIRServer() = delete;
 
  private:
-  PIRServer(std::unique_ptr<PIRContext>);
+  PIRServer(std::unique_ptr<PIRContext> /*sealctx*/,
+            const seal::Plaintext& /*db*/);
 
   std::unique_ptr<PIRContext> context_;
   seal::Plaintext db_;

@@ -51,8 +51,11 @@ StatusOr<seal::EncryptionParameters> deserializeParams(
   return parms;
 }
 
-PIRContext::PIRContext(const seal::EncryptionParameters& parms)
-    : parms_(parms), context_(seal::SEALContext::Create(parms)) {
+PIRContext::PIRContext(const seal::EncryptionParameters& parms,
+                       std::size_t db_size)
+    : parms_(parms),
+      context_(seal::SEALContext::Create(parms)),
+      database_size_(db_size) {
   seal::KeyGenerator keygen(context_);
   public_key_ = std::make_shared<seal::PublicKey>(keygen.public_key());
   secret_key_ = std::make_shared<seal::SecretKey>(keygen.secret_key());
@@ -65,19 +68,19 @@ PIRContext::PIRContext(const seal::EncryptionParameters& parms)
   evaluator_ = std::make_shared<seal::Evaluator>(context_);
 }
 
-std::unique_ptr<PIRContext> PIRContext::Create() {
+std::unique_ptr<PIRContext> PIRContext::Create(std::size_t db_size) {
   auto parms = generateEncryptionParams();
 
-  return absl::WrapUnique(new PIRContext(parms));
+  return absl::WrapUnique(new PIRContext(parms, db_size));
 }
 
 StatusOr<std::unique_ptr<PIRContext>> PIRContext::CreateFromParams(
-    const std::string& parmsStr) {
+    const std::string& parmsStr, std::size_t db_size) {
   auto params = deserializeParams(parmsStr);
   if (!params.ok()) {
     return params.status();
   }
-  return absl::WrapUnique(new PIRContext(params.ValueOrDie()));
+  return absl::WrapUnique(new PIRContext(params.ValueOrDie(), db_size));
 }
 
 StatusOr<seal::Plaintext> PIRContext::Encode(const std::vector<uint64_t>& in) {
@@ -182,4 +185,6 @@ seal::EncryptionParameters PIRContext::generateEncryptionParams(
 
   return parms;
 }
+
+std::size_t PIRContext::DBSize() { return database_size_; }
 }  // namespace pir

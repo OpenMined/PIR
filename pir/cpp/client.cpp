@@ -28,27 +28,27 @@ using ::private_join_and_compute::StatusOr;
 PIRClient::PIRClient(std::unique_ptr<PIRContext> context)
     : context_(std::move(context)) {}
 
-std::unique_ptr<PIRClient> PIRClient::Create() {
-  auto context = PIRContext::Create();
+std::unique_ptr<PIRClient> PIRClient::Create(std::size_t db_size) {
+  auto context = PIRContext::Create(db_size);
   return absl::WrapUnique(new PIRClient(std::move(context)));
 }
 
 StatusOr<std::unique_ptr<PIRClient>> PIRClient::CreateFromParams(
-    const std::string& params) {
-  auto context = PIRContext::CreateFromParams(params);
+    const std::string& params, std::size_t db_size) {
+  auto context = PIRContext::CreateFromParams(params, db_size);
   if (!context.ok()) {
     return context.status();
   }
   return absl::WrapUnique(new PIRClient(std::move(context.ValueOrDie())));
 }
 
-StatusOr<std::string> PIRClient::CreateRequest(std::size_t desiredIndex,
-                                               std::size_t dbSize) const {
-  if (desiredIndex >= dbSize) {
+StatusOr<std::string> PIRClient::CreateRequest(std::size_t index) const {
+  auto dbsize = context_->DBSize();
+  if (index >= dbsize) {
     return InvalidArgumentError("invalid index");
   }
-  std::vector<std::uint64_t> request(dbSize, 0);
-  request[desiredIndex] = 1;
+  std::vector<std::uint64_t> request(dbsize, 0);
+  request[index] = 1;
 
   return context_->Encrypt(request);
 }

@@ -31,7 +31,7 @@ class PIRClient {
   /**
    * Creates and returns a new client instance.
    **/
-  static std::unique_ptr<PIRClient> Create();
+  static std::unique_ptr<PIRClient> Create(std::size_t /*db_size*/);
 
   /**
    * Creates and returns a new client instance, from existing parameters
@@ -39,7 +39,7 @@ class PIRClient {
    * @returns InvalidArgument if the parameters cannot be loaded
    **/
   static StatusOr<std::unique_ptr<PIRClient>> CreateFromParams(
-      const std::string& params);
+      const std::string& params, std::size_t /*db_size*/);
 
   /**
    * Creates a new payload request
@@ -47,8 +47,7 @@ class PIRClient {
    * @param[in] dbSize Database size
    * @returns InvalidArgument if the index is invalid or if the encryption fails
    **/
-  StatusOr<std::string> CreateRequest(std::size_t desiredIndex,
-                                      std::size_t dbSize) const;
+  StatusOr<std::string> CreateRequest(std::size_t /*index*/) const;
 
   /**
    * Extracts server response
@@ -58,6 +57,10 @@ class PIRClient {
   StatusOr<std::map<uint64_t, uint64_t>> ProcessResponse(
       const std::string& response) const;
 
+  /**
+   * Returns the database size.
+   **/
+  std::size_t DBSize() { return context_->DBSize(); }
   PIRClient() = delete;
 
  private:

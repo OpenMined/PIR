@@ -25,12 +25,20 @@ namespace pir {
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
 
-PIRServer::PIRServer(std::unique_ptr<PIRContext> context)
-    : context_(std::move(context)) {}
+PIRServer::PIRServer(std::unique_ptr<PIRContext> context,
+                     const seal::Plaintext& db)
+    : context_(std::move(context)), db_(std::move(db)) {}
 
-std::unique_ptr<PIRServer> PIRServer::Create() {
-  auto context = PIRContext::Create();
-  return absl::WrapUnique(new PIRServer(std::move(context)));
+StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
+    const std::vector<std::uint64_t>& database) {
+  auto context = PIRContext::Create(database.size());
+  auto encoded = context->Encode(database);
+
+  if (!encoded.ok()) {
+    return encoded.status();
+  }
+  auto db = encoded.ValueOrDie();
+  return absl::WrapUnique(new PIRServer(std::move(context), std::move(db)));
 }
 
 StatusOr<std::string> PIRServer::ProcessRequest(
@@ -48,18 +56,6 @@ StatusOr<std::string> PIRServer::ProcessRequest(
     return InvalidArgumentError(e.what());
   }
   return context_->Serialize(ct);
-}
-
-StatusOr<int> PIRServer::PopulateDatabase(
-    const std::vector<std::uint64_t>& database) {
-  auto encoded = context_->Encode(database);
-
-  if (!encoded.ok()) {
-    return encoded.status();
-  }
-  db_ = encoded.ValueOrDie();
-
-  return 0;
 }
 
 StatusOr<std::string> PIRServer::Params() {

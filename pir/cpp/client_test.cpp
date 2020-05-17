@@ -24,7 +24,8 @@ namespace {
 class PIRClientTest : public ::testing::Test {
  protected:
   void SetUp() {
-    client_ = PIRClient::Create();
+    constexpr std::size_t dbsize = 1000;
+    client_ = PIRClient::Create(dbsize);
     ASSERT_TRUE(client_ != nullptr);
   }
 
@@ -32,14 +33,13 @@ class PIRClientTest : public ::testing::Test {
 };
 
 TEST_F(PIRClientTest, TestSanity) {
-  constexpr std::size_t dbSize = 1000;
-  size_t desiredIndex = 23;
+  size_t index = 23;
 
-  auto payload = client_->CreateRequest(desiredIndex, dbSize).ValueOrDie();
+  auto payload = client_->CreateRequest(index).ValueOrDie();
   auto out = client_->ProcessResponse(payload).ValueOrDie();
 
-  for (size_t idx = 0; idx < dbSize; idx++) {
-    ASSERT_TRUE(out[idx] == (idx == desiredIndex));
+  for (size_t idx = 0; idx < client_->DBSize(); idx++) {
+    ASSERT_TRUE(out[idx] == (idx == index));
   }
 }
 
