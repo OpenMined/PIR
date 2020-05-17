@@ -94,7 +94,7 @@ class PIRContext {
   PIRContext(const seal::EncryptionParameters&);
 
   static seal::EncryptionParameters generateEncryptionParams(
-      uint32_t poly_modulus_degree = 4096, uint32_t plain_modulus = 1032193);
+      uint32_t poly_modulus_degree = 4096);
 
   seal::EncryptionParameters parms_;
 

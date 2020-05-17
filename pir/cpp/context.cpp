@@ -172,8 +172,8 @@ StatusOr<std::string> PIRContext::SerializeParams() const {
 std::shared_ptr<seal::Evaluator>& PIRContext::Evaluator() { return evaluator_; }
 
 seal::EncryptionParameters PIRContext::generateEncryptionParams(
-    uint32_t poly_modulus_degree /*= 4096*/,
-    uint32_t plain_modulus /*= 1032193*/) {
+    uint32_t poly_modulus_degree /*= 4096*/) {
+  auto plain_modulus = seal::PlainModulus::Batching(poly_modulus_degree, 20);
   seal::EncryptionParameters parms(seal::scheme_type::BFV);
   parms.set_poly_modulus_degree(poly_modulus_degree);
   parms.set_plain_modulus(plain_modulus);
