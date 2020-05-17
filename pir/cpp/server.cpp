@@ -26,24 +26,25 @@ using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
 
 PIRServer::PIRServer(std::unique_ptr<PIRContext> context,
-                     const seal::Plaintext& db)
+                     std::unique_ptr<PIRDatabase> db)
     : context_(std::move(context)), db_(std::move(db)) {}
 
 StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
     const std::vector<std::uint64_t>& database) {
   auto params = PIRParameters(database.size());
+
   auto rawctx = PIRContext::Create(params, /*is_public=*/true);
   if (!rawctx.ok()) {
     return rawctx.status();
   }
-
   auto context = std::move(rawctx.ValueOrDie());
-  auto encoded = context->Encode(database);
 
-  if (!encoded.ok()) {
-    return encoded.status();
+  auto rawdb = PIRDatabase::Create(context, database);
+  if (!rawdb.ok()) {
+    return rawdb.status();
   }
-  auto db = encoded.ValueOrDie();
+  auto db = std::move(rawdb.ValueOrDie());
+
   return absl::WrapUnique(new PIRServer(std::move(context), std::move(db)));
 }
 
@@ -56,12 +57,12 @@ StatusOr<std::string> PIRServer::ProcessRequest(
   }
 
   auto ct = deserialized.ValueOrDie();
-  try {
-    context_->Evaluator()->multiply_plain_inplace(ct, db_);
-  } catch (std::exception& e) {
-    return InvalidArgumentError(e.what());
+
+  auto out = db_->multiply(context_->Evaluator(), ct);
+  if (!out.ok()) {
+    return out.status();
   }
-  return context_->Serialize(ct);
+  return context_->Serialize(out.ValueOrDie());
 }
 
 }  // namespace pir

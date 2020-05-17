@@ -24,6 +24,7 @@ cc_library(
     name = "pir",
     srcs = ["client.cpp", "server.cpp", 
             "context.cpp", "context.h",
+            "database.cpp", "database.h",
             "utils.cpp", "utils.h",
             ],
     hdrs = ["client.h", "server.h"],
