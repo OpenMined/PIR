@@ -19,68 +19,33 @@
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
 #include "util/statusor.h"
+#include "utils.h"
 
 namespace pir {
 
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
 
-StatusOr<std::string> serializeParams(const seal::EncryptionParameters& parms) {
-  std::stringstream stream;
-
-  try {
-    parms.save(stream);
-  } catch (const std::exception& e) {
-    return InvalidArgumentError(e.what());
-  }
-  return stream.str();
-}
-
-StatusOr<seal::EncryptionParameters> deserializeParams(
-    const std::string& input) {
-  seal::EncryptionParameters parms;
-
-  std::stringstream stream;
-  stream << input;
-
-  try {
-    parms.load(stream);
-  } catch (const std::exception& e) {
-    return InvalidArgumentError(e.what());
-  }
-  return parms;
-}
-
-PIRContext::PIRContext(const seal::EncryptionParameters& parms,
-                       std::size_t db_size)
-    : parms_(parms),
-      context_(seal::SEALContext::Create(parms)),
-      database_size_(db_size) {
+PIRContext::PIRContext(const PIRParameters& params, bool is_public)
+    : parameters_(params),
+      context_(seal::SEALContext::Create(params.UnsafeGetEncryptionParams())) {
   seal::KeyGenerator keygen(context_);
-  public_key_ = std::make_shared<seal::PublicKey>(keygen.public_key());
-  secret_key_ = std::make_shared<seal::SecretKey>(keygen.secret_key());
   encoder_ = std::make_shared<seal::BatchEncoder>(context_);
 
-  encryptor_ = std::make_shared<seal::Encryptor>(context_, *public_key_);
-  decryptor_ =
-      std::make_shared<seal::Decryptor>(context_, *secret_key_.value());
-
+  encryptor_ = std::make_shared<seal::Encryptor>(context_, keygen.public_key());
   evaluator_ = std::make_shared<seal::Evaluator>(context_);
+
+  if (is_public) return;
+
+  decryptor_ = std::make_shared<seal::Decryptor>(context_, keygen.secret_key());
 }
 
-std::unique_ptr<PIRContext> PIRContext::Create(std::size_t db_size) {
-  auto parms = generateEncryptionParams();
-
-  return absl::WrapUnique(new PIRContext(parms, db_size));
-}
-
-StatusOr<std::unique_ptr<PIRContext>> PIRContext::CreateFromParams(
-    const std::string& parmsStr, std::size_t db_size) {
-  auto params = deserializeParams(parmsStr);
-  if (!params.ok()) {
-    return params.status();
+StatusOr<std::unique_ptr<PIRContext>> PIRContext::Create(PIRParameters param,
+                                                         bool is_public) {
+  if (!param.HasEncryptionParams()) {
+    param.GetEncryptionParams() = generateEncryptionParams();
   }
-  return absl::WrapUnique(new PIRContext(params.ValueOrDie(), db_size));
+  return absl::WrapUnique(new PIRContext(param, is_public));
 }
 
 StatusOr<seal::Plaintext> PIRContext::Encode(const std::vector<uint64_t>& in) {
@@ -153,6 +118,9 @@ StatusOr<std::string> PIRContext::Encrypt(const std::vector<uint64_t>& in) {
 }
 
 StatusOr<std::vector<uint64_t>> PIRContext::Decrypt(const std::string& in) {
+  if (!decryptor_.has_value()) {
+    return InvalidArgumentError("public context");
+  }
   auto ciphertext = Deserialize(in);
   if (!ciphertext.ok()) {
     return ciphertext.status();
@@ -160,7 +128,7 @@ StatusOr<std::vector<uint64_t>> PIRContext::Decrypt(const std::string& in) {
   seal::Plaintext plaintext;
 
   try {
-    decryptor_->decrypt(ciphertext.ValueOrDie(), plaintext);
+    decryptor_.value()->decrypt(ciphertext.ValueOrDie(), plaintext);
   } catch (const std::exception& e) {
     return InvalidArgumentError(e.what());
   }
@@ -168,23 +136,5 @@ StatusOr<std::vector<uint64_t>> PIRContext::Decrypt(const std::string& in) {
   return Decode(plaintext);
 }
 
-StatusOr<std::string> PIRContext::SerializeParams() const {
-  return serializeParams(parms_);
-}
-
 std::shared_ptr<seal::Evaluator>& PIRContext::Evaluator() { return evaluator_; }
-
-seal::EncryptionParameters PIRContext::generateEncryptionParams(
-    uint32_t poly_modulus_degree /*= 4096*/) {
-  auto plain_modulus = seal::PlainModulus::Batching(poly_modulus_degree, 20);
-  seal::EncryptionParameters parms(seal::scheme_type::BFV);
-  parms.set_poly_modulus_degree(poly_modulus_degree);
-  parms.set_plain_modulus(plain_modulus);
-  auto coeff = seal::CoeffModulus::BFVDefault(poly_modulus_degree);
-  parms.set_coeff_modulus(coeff);
-
-  return parms;
-}
-
-std::size_t PIRContext::DBSize() { return database_size_; }
 }  // namespace pir

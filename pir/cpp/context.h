@@ -24,28 +24,40 @@ namespace pir {
 
 using ::private_join_and_compute::StatusOr;
 
+class PIRParameters {
+ public:
+  PIRParameters(std::size_t dbsize,
+                std::optional<seal::EncryptionParameters> parms = {})
+      : database_size_(dbsize), parms_(parms) {}
+
+  std::size_t GetDatabaseSize() const { return database_size_; }
+
+  bool HasEncryptionParams() const { return parms_.has_value(); }
+  std::optional<seal::EncryptionParameters>& GetEncryptionParams() {
+    return parms_;
+  }
+
+  seal::EncryptionParameters UnsafeGetEncryptionParams() const {
+    return parms_.value();
+  }
+
+ private:
+  // Database parameters
+  std::size_t database_size_;
+
+  // Encryption parameters&helpers
+  std::optional<seal::EncryptionParameters> parms_;
+};
+
 class PIRContext {
  public:
   /**
    * Creates a new context
-   * @param[in] params Database size
-   **/
-  static std::unique_ptr<PIRContext> Create(size_t /*db_size*/);
-
-  /**
-   * Creates a new context from existing params
-   * @param[in] params Serialized PIR parameters
-   * @param[in] params Database size
+   * @param[in] params PIR parameters
    * @returns InvalidArgument if the SEAL parameter deserialization fails
    **/
-  static StatusOr<std::unique_ptr<PIRContext>> CreateFromParams(
-      const std::string& /*params*/, size_t /*db_size*/);
-
-  /**
-   * Returns the serialized PIR parameters
-   * @returns InvalidArgument if the SEAL parameters serialization fails
-   **/
-  StatusOr<std::string> SerializeParams() const;
+  static StatusOr<std::unique_ptr<PIRContext>> Create(PIRParameters /*params*/,
+                                                      bool /*is_public*/);
 
   /**
    * Encodes a vector to a Plaintext
@@ -93,28 +105,21 @@ class PIRContext {
   std::shared_ptr<seal::Evaluator>& Evaluator();
 
   /**
-   * Returns the database size
+   * Returns the PIR parameters
    **/
-  size_t DBSize();
+  const PIRParameters& Parameters() const { return parameters_; }
 
  private:
-  PIRContext(const seal::EncryptionParameters& /*params*/, size_t /*db_size*/);
+  PIRContext(const PIRParameters& /*params*/, bool /*is_public*/);
 
-  static seal::EncryptionParameters generateEncryptionParams(
-      uint32_t poly_modulus_degree = 4096);
+  PIRParameters parameters_;
 
-  // Database parameters
-  size_t database_size_;
-
-  // Encryption parameters&helpers
-  seal::EncryptionParameters parms_;
   std::shared_ptr<seal::SEALContext> context_;
-  std::shared_ptr<seal::PublicKey> public_key_;
-  std::optional<std::shared_ptr<seal::SecretKey>> secret_key_;
   std::shared_ptr<seal::BatchEncoder> encoder_;
   std::shared_ptr<seal::Encryptor> encryptor_;
-  std::shared_ptr<seal::Decryptor> decryptor_;
   std::shared_ptr<seal::Evaluator> evaluator_;
+
+  std::optional<std::shared_ptr<seal::Decryptor>> decryptor_ = {};
 };
 
 }  // namespace pir

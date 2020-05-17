@@ -22,7 +22,10 @@ PIR_DEFAULT_COPTS =  ["-std=c++17"]
 
 cc_library(
     name = "pir",
-    srcs = ["client.cpp", "server.cpp", "context.cpp", "context.h"],
+    srcs = ["client.cpp", "server.cpp", 
+            "context.cpp", "context.h",
+            "utils.cpp", "utils.h",
+            ],
     hdrs = ["client.h", "server.h"],
     includes = PIR_DEFAULT_INCLUDES,
     deps = [

@@ -55,7 +55,7 @@ class PIRServer {
   /**
    * Returns the database size.
    **/
-  std::size_t DBSize() { return context_->DBSize(); }
+  std::size_t DBSize() { return context_->Parameters().GetDatabaseSize(); }
 
   PIRServer() = delete;
 

@@ -42,11 +42,8 @@ TEST_F(PIRServerTest, TestCorrectness) {
   auto server_ = PIRServer::Create(db).ValueOrDie();
   ASSERT_TRUE(server_ != nullptr);
 
-  auto params = server_->Params().ValueOrDie();
-
   for (auto& client_ :
-       {PIRClient::Create(server_->DBSize()),
-        PIRClient::CreateFromParams(params, dbsize).ValueOrDie()}) {
+       {PIRClient::Create(PIRParameters(dbsize)).ValueOrDie()}) {
     size_t desiredIndex = 23;
     auto payload = client_->CreateRequest(desiredIndex).ValueOrDie();
     auto response = server_->ProcessRequest(payload).ValueOrDie();

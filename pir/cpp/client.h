@@ -29,18 +29,12 @@ using ::private_join_and_compute::StatusOr;
 class PIRClient {
  public:
   /**
-   * Creates and returns a new client instance.
-   **/
-  static std::unique_ptr<PIRClient> Create(std::size_t /*db_size*/);
-
-  /**
    * Creates and returns a new client instance, from existing parameters
-   * @param[in] params Serialized PIR parameters
+   * @param[in] params PIR parameters
    * @returns InvalidArgument if the parameters cannot be loaded
    **/
-  static StatusOr<std::unique_ptr<PIRClient>> CreateFromParams(
-      const std::string& params, std::size_t /*db_size*/);
-
+  static StatusOr<std::unique_ptr<PIRClient>> Create(
+      const PIRParameters& params);
   /**
    * Creates a new payload request
    * @param[in] desiredIndex Expected database value from an index
@@ -60,7 +54,9 @@ class PIRClient {
   /**
    * Returns the database size.
    **/
-  std::size_t DBSize() { return context_->DBSize(); }
+  std::size_t DBSize() const {
+    return context_->Parameters().GetDatabaseSize();
+  }
   PIRClient() = delete;
 
  private:

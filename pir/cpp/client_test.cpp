@@ -25,7 +25,7 @@ class PIRClientTest : public ::testing::Test {
  protected:
   void SetUp() {
     constexpr std::size_t dbsize = 1000;
-    client_ = PIRClient::Create(dbsize);
+    client_ = PIRClient::Create(PIRParameters(dbsize)).ValueOrDie();
     ASSERT_TRUE(client_ != nullptr);
   }
 

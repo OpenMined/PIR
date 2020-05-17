@@ -31,7 +31,13 @@ PIRServer::PIRServer(std::unique_ptr<PIRContext> context,
 
 StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
     const std::vector<std::uint64_t>& database) {
-  auto context = PIRContext::Create(database.size());
+  auto params = PIRParameters(database.size());
+  auto rawctx = PIRContext::Create(params, /*is_public=*/true);
+  if (!rawctx.ok()) {
+    return rawctx.status();
+  }
+
+  auto context = std::move(rawctx.ValueOrDie());
   auto encoded = context->Encode(database);
 
   if (!encoded.ok()) {
@@ -56,10 +62,6 @@ StatusOr<std::string> PIRServer::ProcessRequest(
     return InvalidArgumentError(e.what());
   }
   return context_->Serialize(ct);
-}
-
-StatusOr<std::string> PIRServer::Params() {
-  return context_->SerializeParams();
 }
 
 }  // namespace pir
