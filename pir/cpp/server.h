@@ -88,6 +88,37 @@ class PIRServer {
   void multiply_power_of_x(const seal::Ciphertext& encrypted, int k,
                            seal::Ciphertext& destination);
 
+  /**
+   * Performans an oblivious expansion on an input ciphertext to a vector of
+   * ciphertexts. If the input ciphertext is the encryption of a plaintext
+   * polynomial of the form a0 + a1*x + a2*x^2 + ... + an*x^n, where n is the
+   * num_items below, then the output is a series of ciphertexts, where each is
+   * the encryption of each term as the constant coefficient. In other words,
+   * the output will be a vector of: [enc(a0), enc(a1), ..., enc(an)], where
+   * enc(ai) is the encryption of a polynomial that only has ai in the constant
+   * coefficient (all other terms are zero).
+   *
+   * The most common example of this is to expand a selection vector in PIR to
+   * individual ciphertexts. The selection vector is just 0 in all slots except
+   * for 1 in the desired slot. If there are 4 items, and the third item is the
+   * one desired, the selection vector is [0, 0, 1, 0]. The client represents
+   * this as a single polynomial of the form 1*x^2. The server uses this
+   * expansion function to expand this to 4 ciphertexts: [enc(0), enc(0),
+   * enc(1), enc(0)], which it then uses to produce the response.
+   *
+   * NB: Due to an optimization in PIR, this is left as (expanded_vector) * m,
+   * where m is the smallest power of 2 greater than num_items. It is assumed
+   * that the plaintext modulus will be changed to make this irrelevant.
+   *
+   * @param[in] ct The input ciphertext to expand.
+   * @param[in] num_items The number of items to extract.
+   * @param[in] gal_keys Galois keys supplied by the client.
+   * @returns A vector of ciphertexts that are the expansion as described above.
+   */
+  std::vector<seal::Ciphertext> oblivious_expansion(
+      const seal::Ciphertext& ct, const size_t num_items,
+      const seal::GaloisKeys gal_keys);
+
   // Just for testing: get the context
   PIRContext* Context() { return context_.get(); }
 
