@@ -15,6 +15,8 @@
 //
 #include "database.h"
 
+#include <iostream>
+
 #include "absl/memory/memory.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
@@ -28,23 +30,34 @@ using ::private_join_and_compute::StatusOr;
 StatusOr<std::unique_ptr<PIRDatabase>> PIRDatabase::Create(
     const std::unique_ptr<PIRContext>& context,
     const std::vector<std::int64_t>& database) {
-  auto encoded = context->Encoder()->encode<seal::BatchEncoder>(database);
+  db_type db(database.size());
 
-  if (!encoded.ok()) {
-    return encoded.status();
+  for (size_t idx = 0; idx < database.size(); ++idx) {
+    auto statusor =
+        context->Encoder()->encode<seal::IntegerEncoder>(database[idx]);
+    if (!statusor.ok()) {
+      return statusor.status();
+    }
+    db[idx] = statusor.ValueOrDie();
   }
-  auto db = encoded.ValueOrDie();
-  return absl::WrapUnique(new PIRDatabase(db, database.size()));
+
+  return absl::WrapUnique(
+      new PIRDatabase(context->Evaluator(), db, database.size()));
 }
 
-StatusOr<seal::Ciphertext> PIRDatabase::multiply(
-    const std::shared_ptr<seal::Evaluator>& eval, const seal::Ciphertext& in) {
-  seal::Ciphertext out;
-  try {
-    eval->multiply_plain(in, db_, out);
-  } catch (std::exception& e) {
-    return InvalidArgumentError(e.what());
+StatusOr<std::vector<seal::Ciphertext>> PIRDatabase::multiply(
+    const std::vector<seal::Ciphertext>& in) {
+  std::vector<seal::Ciphertext> result(in.size());
+
+  for (size_t idx = 0; idx < in.size(); ++idx) {
+    seal::Ciphertext ct;
+    try {
+      evaluator_->multiply_plain(in[idx], db_[idx], ct);
+    } catch (std::exception& e) {
+      return InvalidArgumentError(e.what());
+    }
+    result[idx] = ct;
   }
-  return out;
+  return result;
 }
 }  // namespace pir

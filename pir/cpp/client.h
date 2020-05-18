@@ -20,6 +20,7 @@
 #include <string>
 
 #include "context.h"
+#include "payload.h"
 #include "util/statusor.h"
 
 namespace pir {
@@ -60,8 +61,6 @@ class PIRClient {
  private:
   StatusOr<std::vector<int64_t>> decrypt(const std::string& in) const;
   StatusOr<std::string> encrypt(const std::vector<int64_t>& in) const;
-  StatusOr<std::string> serialize(const seal::Ciphertext& ciphertext) const;
-  StatusOr<seal::Ciphertext> deserialize(const std::string& in) const;
 
   PIRClient(std::unique_ptr<PIRContext>);
 

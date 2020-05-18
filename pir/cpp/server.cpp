@@ -16,6 +16,7 @@
 #include "server.h"
 
 #include "absl/memory/memory.h"
+#include "payload.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
 #include "util/statusor.h"
@@ -50,46 +51,18 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
 
 StatusOr<std::string> PIRServer::ProcessRequest(
     const std::string& request) const {
-  auto deserialized = this->deserialize(request);
+  auto deserialized = PIRPayload::Load(context_->SEALContext(), request);
 
   if (!deserialized.ok()) {
     return deserialized.status();
   }
+  auto payload = deserialized.ValueOrDie();
 
-  auto ct = deserialized.ValueOrDie();
-
-  auto out = db_->multiply(context_->Evaluator(), ct);
+  auto out = db_->multiply(payload.Get());
   if (!out.ok()) {
     return out.status();
   }
-  return this->serialize(out.ValueOrDie());
-}
-
-StatusOr<std::string> PIRServer::serialize(
-    const seal::Ciphertext& ciphertext) const {
-  std::stringstream stream;
-
-  try {
-    ciphertext.save(stream);
-  } catch (const std::exception& e) {
-    return InvalidArgumentError(e.what());
-  }
-
-  return stream.str();
-}
-
-StatusOr<seal::Ciphertext> PIRServer::deserialize(const std::string& in) const {
-  auto sealctx = context_->SEALContext();
-  seal::Ciphertext ciphertext(sealctx);
-
-  try {
-    std::stringstream stream;
-    stream << in;
-    ciphertext.load(sealctx, stream);
-  } catch (const std::exception& e) {
-    return InvalidArgumentError(e.what());
-  }
-  return ciphertext;
+  return PIRPayload::Load(out.ValueOrDie()).Save();
 }
 
 }  // namespace pir

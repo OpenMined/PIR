@@ -59,8 +59,8 @@ class EncoderFactory {
   Template encoding functions to choose between the use of
   Integer/BatchEncoder or CKKSEncoder.
   */
-  template <class T>
-  StatusOr<Plaintext> encode(const vector<std::int64_t>& in) {
+  template <class T, class R>
+  StatusOr<Plaintext> encode(const R& in) {
     auto encoderor = this->get<T>();
     if (!encoderor.ok()) return encoderor.status();
     auto encoder = encoderor.ValueOrDie();
@@ -101,6 +101,20 @@ class EncoderFactory {
     auto encoder = encoderor.ValueOrDie();
     try {
       encoder->decode(pt, result);
+    } catch (const std::exception& e) {
+      return InvalidArgumentError(e.what());
+    }
+
+    return result;
+  }
+  template <class IntegerEncoder>
+  StatusOr<std::int64_t> decode(const Plaintext& pt) {
+    std::int64_t result;
+    auto encoderor = this->get<IntegerEncoder>();
+    if (!encoderor.ok()) return encoderor.status();
+    auto encoder = encoderor.ValueOrDie();
+    try {
+      result = encoder->decode_int64(pt);
     } catch (const std::exception& e) {
       return InvalidArgumentError(e.what());
     }

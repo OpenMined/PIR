@@ -26,6 +26,7 @@ cc_library(
             "context.cpp", "context.h", 
             "parameters.h", "parameters.cpp",
             "encoder.h",
+            "payload.h", "payload.cpp",
             "database.cpp", "database.h",
             "utils.cpp", "utils.h",
             ],
@@ -35,6 +36,7 @@ cc_library(
         ":com_microsoft_seal",
         "@com_google_absl//absl/memory",
         "@private_join_and_compute//util:status",
+        "@com_tencent_rapidjson//:rapidjson",
     ],
    copts = PIR_DEFAULT_COPTS,
 )

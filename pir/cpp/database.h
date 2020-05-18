@@ -28,6 +28,8 @@ namespace pir {
 
 using ::private_join_and_compute::StatusOr;
 
+using db_type = std::vector<seal::Plaintext>;
+
 class PIRDatabase {
  public:
   /**
@@ -44,13 +46,17 @@ class PIRDatabase {
    * @param[in] Ciphertext
    * @returns InvalidArgument if the multiplication fails
    **/
-  StatusOr<seal::Ciphertext> multiply(
-      const std::shared_ptr<seal::Evaluator>& eval, const seal::Ciphertext& op);
+  StatusOr<std::vector<seal::Ciphertext>> multiply(
+      const std::vector<seal::Ciphertext>& op);
 
  private:
-  PIRDatabase(seal::Plaintext& db, std::size_t size) : db_(db), size_(size) {}
-  seal::Plaintext db_;
+  PIRDatabase(std::shared_ptr<seal::Evaluator> eval, db_type db,
+              std::size_t size)
+      : db_(db), size_(size), evaluator_(eval) {}
+  db_type db_;
   std::size_t size_;
+
+  std::shared_ptr<seal::Evaluator> evaluator_;
 };
 
 }  // namespace pir
