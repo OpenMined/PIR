@@ -27,4 +27,12 @@ StatusOr<seal::EncryptionParameters> deserializeParams(
 
 seal::EncryptionParameters generateEncryptionParams(
     uint32_t poly_modulus_degree = 4096);
+
+/**
+ * Helper function to generate the Galois elements needed for PIR.
+ * @param[in] N max number of items stored in a ciphertext.
+ * @returns vector of galois elements to be used for generating keys.
+ */
+std::vector<uint32_t> generate_galois_elts(uint64_t N);
+
 }  // namespace pir

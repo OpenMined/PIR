@@ -63,4 +63,14 @@ seal::EncryptionParameters generateEncryptionParams(
   return parms;
 }
 
+std::vector<uint32_t> generate_galois_elts(uint64_t N) {
+  const size_t logN = ceil(log2(N));
+  std::vector<uint32_t> galois_elts(logN);
+  for (size_t i = 0; i < logN; ++i) {
+    uint64_t two_exp_i = ((uint64_t)1) << i;
+    galois_elts[i] = (N / two_exp_i) + 1;
+  }
+  return galois_elts;
+}
+
 }  // namespace pir

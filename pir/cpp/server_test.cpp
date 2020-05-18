@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "client.h"
+#include "utils.h"
 #include "gtest/gtest.h"
 
 namespace pir {
@@ -187,18 +188,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 class ObliviousExpansionTest
     : public OperatorTestBase,
-      public testing::WithParamInterface<tuple<string, vector<string>>> {
- protected:
-  vector<uint32_t> generate_galois_elts(uint64_t N) {
-    const size_t logN = ceil(log2(N));
-    vector<uint32_t> galois_elts(logN);
-    for (size_t i = 0; i < logN; ++i) {
-      uint64_t two_exp_i = ((uint64_t)1) << i;
-      galois_elts[i] = (N / two_exp_i) + 1;
-    }
-    return galois_elts;
-  }
-};
+      public testing::WithParamInterface<tuple<string, vector<string>>> {};
 
 TEST_P(ObliviousExpansionTest, ObliviousExpansionExamples) {
   Plaintext input_pt(get<0>(GetParam()));
