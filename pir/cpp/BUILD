@@ -38,7 +38,7 @@ cc_library(
         "@private_join_and_compute//util:status",
         "@com_tencent_rapidjson//:rapidjson",
     ],
-   copts = PIR_DEFAULT_COPTS,
+    copts = PIR_DEFAULT_COPTS,
 )
 
 cc_test(
@@ -51,8 +51,20 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     
     ],
-   copts = PIR_DEFAULT_COPTS,
-   linkstatic = True,
+    copts = PIR_DEFAULT_COPTS,
+    linkstatic = True,
+)
+
+cc_binary(
+    name = "benchmark",
+    srcs = ["benchmark.cpp"],
+    deps = [
+        ":pir",
+        "@com_google_benchmark//:benchmark_main",
+    ],
+    includes = PIR_DEFAULT_INCLUDES,
+    copts = PIR_DEFAULT_COPTS,
+    linkstatic = True,
 )
 
 cmake_external(
@@ -71,3 +83,4 @@ cmake_external(
    static_libraries = ["libseal-3.5.a"],
    visibility = ["//visibility:public"],
 )
+
