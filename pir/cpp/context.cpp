@@ -17,78 +17,84 @@
 
 #include "absl/memory/memory.h"
 #include "seal/seal.h"
+#include "util/canonical_errors.h"
 #include "util/statusor.h"
+#include "utils.h"
 
 namespace pir {
 
+using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
 
-std::string serializeParams(const seal::EncryptionParameters& parms) {
-  std::stringstream stream;
-  parms.save(stream);
-  return stream.str();
-}
-
-seal::EncryptionParameters deserializeParams(const std::string& input) {
-  seal::EncryptionParameters parms;
-
-  std::stringstream stream;
-  stream << input;
-  parms.load(stream);
-
-  return parms;
-}
-
-PIRContext::PIRContext(const seal::EncryptionParameters& parms)
-    : parms_(parms), context_(seal::SEALContext::Create(parms)) {
+PIRContext::PIRContext(const PIRParameters& params, bool is_public)
+    : parameters_(params),
+      context_(seal::SEALContext::Create(params.UnsafeGetEncryptionParams())) {
   seal::KeyGenerator keygen(context_);
-  public_key_ = std::make_shared<seal::PublicKey>(keygen.public_key());
-  secret_key_ = std::make_shared<seal::SecretKey>(keygen.secret_key());
   encoder_ = std::make_shared<seal::BatchEncoder>(context_);
 
-  encryptor_ = std::make_shared<seal::Encryptor>(context_, *public_key_);
-  decryptor_ =
-      std::make_shared<seal::Decryptor>(context_, *secret_key_.value());
-
+  encryptor_ = std::make_shared<seal::Encryptor>(context_, keygen.public_key());
   evaluator_ = std::make_shared<seal::Evaluator>(context_);
+
+  if (is_public) return;
+
+  decryptor_ = std::make_shared<seal::Decryptor>(context_, keygen.secret_key());
 }
 
-StatusOr<std::unique_ptr<PIRContext>> PIRContext::Create() {
-  auto parms = generateEncryptionParams();
-
-  return absl::WrapUnique(new PIRContext(parms));
-}
-
-StatusOr<std::unique_ptr<PIRContext>> PIRContext::CreateFromParams(
-    const std::string& parmsStr) {
-  return absl::WrapUnique(new PIRContext(deserializeParams(parmsStr)));
+StatusOr<std::unique_ptr<PIRContext>> PIRContext::Create(PIRParameters param,
+                                                         bool is_public) {
+  if (!param.HasEncryptionParams()) {
+    param.GetEncryptionParams() = generateEncryptionParams();
+  }
+  return absl::WrapUnique(new PIRContext(param, is_public));
 }
 
 StatusOr<seal::Plaintext> PIRContext::Encode(const std::vector<uint64_t>& in) {
   seal::Plaintext plaintext;
-  encoder_->encode(in, plaintext);
+
+  try {
+    encoder_->encode(in, plaintext);
+  } catch (const std::exception& e) {
+    return InvalidArgumentError(e.what());
+  }
+
   return plaintext;
 }
 
 StatusOr<std::vector<uint64_t>> PIRContext::Decode(const seal::Plaintext& in) {
   std::vector<uint64_t> result;
-  encoder_->decode(in, result);
+
+  try {
+    encoder_->decode(in, result);
+  } catch (const std::exception& e) {
+    return InvalidArgumentError(e.what());
+  }
+
   return result;
 }
 
 StatusOr<std::string> PIRContext::Serialize(
     const seal::Ciphertext& ciphertext) {
   std::stringstream stream;
-  ciphertext.save(stream);
+
+  try {
+    ciphertext.save(stream);
+  } catch (const std::exception& e) {
+    return InvalidArgumentError(e.what());
+  }
+
   return stream.str();
 }
 
 StatusOr<seal::Ciphertext> PIRContext::Deserialize(const std::string& in) {
   seal::Ciphertext ciphertext(context_);
 
-  std::stringstream stream;
-  stream << in;
-  ciphertext.load(context_, stream);
+  try {
+    std::stringstream stream;
+    stream << in;
+    ciphertext.load(context_, stream);
+  } catch (const std::exception& e) {
+    return InvalidArgumentError(e.what());
+  }
 
   return ciphertext;
 }
@@ -96,37 +102,39 @@ StatusOr<seal::Ciphertext> PIRContext::Deserialize(const std::string& in) {
 StatusOr<std::string> PIRContext::Encrypt(const std::vector<uint64_t>& in) {
   seal::Ciphertext ciphertext(context_);
 
-  auto plaintext = Encode(in).ValueOrDie();
+  auto plaintext = Encode(in);
 
-  encryptor_->encrypt(plaintext, ciphertext);
+  if (!plaintext.ok()) {
+    return plaintext.status();
+  }
+
+  try {
+    encryptor_->encrypt(plaintext.ValueOrDie(), ciphertext);
+  } catch (const std::exception& e) {
+    return InvalidArgumentError(e.what());
+  }
 
   return Serialize(ciphertext);
 }
 
 StatusOr<std::vector<uint64_t>> PIRContext::Decrypt(const std::string& in) {
-  seal::Ciphertext ciphertext = Deserialize(in).ValueOrDie();
+  if (!decryptor_.has_value()) {
+    return InvalidArgumentError("public context");
+  }
+  auto ciphertext = Deserialize(in);
+  if (!ciphertext.ok()) {
+    return ciphertext.status();
+  }
   seal::Plaintext plaintext;
 
-  decryptor_->decrypt(ciphertext, plaintext);
+  try {
+    decryptor_.value()->decrypt(ciphertext.ValueOrDie(), plaintext);
+  } catch (const std::exception& e) {
+    return InvalidArgumentError(e.what());
+  }
 
   return Decode(plaintext);
 }
 
-std::string PIRContext::SerializeParams() const {
-  return serializeParams(parms_);
-}
-
 std::shared_ptr<seal::Evaluator>& PIRContext::Evaluator() { return evaluator_; }
-
-seal::EncryptionParameters PIRContext::generateEncryptionParams(
-    uint32_t poly_modulus_degree /*= 4096*/,
-    uint32_t plain_modulus /*= 1032193*/) {
-  seal::EncryptionParameters parms(seal::scheme_type::BFV);
-  parms.set_poly_modulus_degree(poly_modulus_degree);
-  parms.set_plain_modulus(plain_modulus);
-  auto coeff = seal::CoeffModulus::BFVDefault(poly_modulus_degree);
-  parms.set_coeff_modulus(coeff);
-
-  return parms;
-}
 }  // namespace pir

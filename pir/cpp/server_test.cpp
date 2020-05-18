@@ -28,34 +28,28 @@ namespace {
 
 class PIRServerTest : public ::testing::Test {
  protected:
-  void SetUp() {
-    server_ = PIRServer::Create().ValueOrDie();
-    ASSERT_TRUE(server_ != nullptr);
-  }
-
-  std::unique_ptr<PIRServer> server_;
 };
 
 TEST_F(PIRServerTest, TestCorrectness) {
-  constexpr std::size_t dbSize = 1000;
-  std::vector<std::uint64_t> db(dbSize, 0);
+  constexpr std::size_t dbsize = 1000;
+  std::vector<std::uint64_t> db(dbsize, 0);
 
   std::generate(db.begin(), db.end(), [n = 0]() mutable {
     ++n;
     return 4 * n;
   });
 
-  server_->PopulateDatabase(db);
-  auto params = server_->Params().ValueOrDie();
+  auto server_ = PIRServer::Create(db).ValueOrDie();
+  ASSERT_TRUE(server_ != nullptr);
 
-  for (auto& client_ : {PIRClient::Create().ValueOrDie(),
-                        PIRClient::CreateFromParams(params).ValueOrDie()}) {
-    auto desiredIndex = std::rand() % dbSize;
-    auto payload = client_->CreateRequest(desiredIndex, dbSize).ValueOrDie();
+  for (auto& client_ :
+       {PIRClient::Create(PIRParameters(dbsize)).ValueOrDie()}) {
+    size_t desiredIndex = 23;
+    auto payload = client_->CreateRequest(desiredIndex).ValueOrDie();
     auto response = server_->ProcessRequest(payload).ValueOrDie();
     auto out = client_->ProcessResponse(response).ValueOrDie();
 
-    for (size_t idx = 0; idx < dbSize; idx++) {
+    for (size_t idx = 0; idx < dbsize; idx++) {
       if (idx != desiredIndex) {
         ASSERT_TRUE(out[idx] == 0);
         continue;

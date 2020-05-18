@@ -17,37 +17,52 @@
 
 #include "absl/memory/memory.h"
 #include "seal/seal.h"
+#include "util/canonical_errors.h"
 #include "util/statusor.h"
 
 namespace pir {
 
+using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
 
-PIRServer::PIRServer(std::unique_ptr<PIRContext> context)
-    : context_(std::move(context)) {}
+PIRServer::PIRServer(std::unique_ptr<PIRContext> context,
+                     std::unique_ptr<PIRDatabase> db)
+    : context_(std::move(context)), db_(std::move(db)) {}
 
-StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create() {
-  auto context = PIRContext::Create().ValueOrDie();
-  return absl::WrapUnique(new PIRServer(std::move(context)));
+StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
+    const std::vector<std::uint64_t>& database) {
+  auto params = PIRParameters(database.size());
+
+  auto rawctx = PIRContext::Create(params, /*is_public=*/true);
+  if (!rawctx.ok()) {
+    return rawctx.status();
+  }
+  auto context = std::move(rawctx.ValueOrDie());
+
+  auto rawdb = PIRDatabase::Create(context, database);
+  if (!rawdb.ok()) {
+    return rawdb.status();
+  }
+  auto db = std::move(rawdb.ValueOrDie());
+
+  return absl::WrapUnique(new PIRServer(std::move(context), std::move(db)));
 }
 
 StatusOr<std::string> PIRServer::ProcessRequest(
     const std::string& request) const {
-  auto ct = context_->Deserialize(request).ValueOrDie();
-  context_->Evaluator()->multiply_plain_inplace(ct, db_);
+  auto deserialized = context_->Deserialize(request);
 
-  return context_->Serialize(ct);
-}
+  if (!deserialized.ok()) {
+    return deserialized.status();
+  }
 
-StatusOr<int> PIRServer::PopulateDatabase(
-    const std::vector<std::uint64_t>& database) {
-  db_ = context_->Encode(database).ValueOrDie();
+  auto ct = deserialized.ValueOrDie();
 
-  return 0;
-}
-
-StatusOr<std::string> PIRServer::Params() {
-  return context_->SerializeParams();
+  auto out = db_->multiply(context_->Evaluator(), ct);
+  if (!out.ok()) {
+    return out.status();
+  }
+  return context_->Serialize(out.ValueOrDie());
 }
 
 }  // namespace pir

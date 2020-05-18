@@ -14,14 +14,13 @@
 // limitations under the License.
 //
 
-#ifndef PIR_SERVER_H_
-#define PIR_SERVER_H_
+#ifndef PIR_DATABASE_H_
+#define PIR_DATABASE_H_
 
 #include <string>
 #include <vector>
 
 #include "context.h"
-#include "database.h"
 #include "seal/seal.h"
 #include "util/statusor.h"
 
@@ -29,45 +28,31 @@ namespace pir {
 
 using ::private_join_and_compute::StatusOr;
 
-class PIRServer {
+class PIRDatabase {
  public:
   /**
-   * Creates and returns a new server instance, holding a database.
+   * Creates and returns a new database instance.
    * @param[in] db Database to load
    * @returns InvalidArgument if the database encoding fails
    **/
-  static StatusOr<std::unique_ptr<PIRServer>> Create(
+  static StatusOr<std::unique_ptr<PIRDatabase>> Create(
+      const std::unique_ptr<PIRContext>& context,
       const std::vector<std::uint64_t>& /*database*/);
 
   /**
-   * Handles a client request.
-   * @param[in] request The encoded client request
-   * @returns InvalidArgument if the deserialization or encrypted operations
-   *fail
+   * Multiplies the database with a ciphertext and returns a new ciphertext.
+   * @param[in] Ciphertext
+   * @returns InvalidArgument if the multiplication fails
    **/
-  StatusOr<std::string> ProcessRequest(const std::string& request) const;
-
-  /**
-   * Returns the serialized params.
-   * @returns InvalidArgument if the parameter serialization fails
-   **/
-  StatusOr<std::string> Params();
-
-  /**
-   * Returns the database size.
-   **/
-  std::size_t DBSize() { return context_->Parameters().GetDatabaseSize(); }
-
-  PIRServer() = delete;
+  StatusOr<seal::Ciphertext> multiply(
+      const std::shared_ptr<seal::Evaluator>& eval, const seal::Ciphertext& op);
 
  private:
-  PIRServer(std::unique_ptr<PIRContext> /*sealctx*/,
-            std::unique_ptr<PIRDatabase> /*db*/);
-
-  std::unique_ptr<PIRContext> context_;
-  std::unique_ptr<PIRDatabase> db_;
+  PIRDatabase(seal::Plaintext& db, std::size_t size) : db_(db), size_(size) {}
+  seal::Plaintext db_;
+  std::size_t size_;
 };
 
 }  // namespace pir
 
-#endif  // PIR_SERVER_H_
+#endif  // PIR_DATABASE_H_

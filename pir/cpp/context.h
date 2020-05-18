@@ -24,89 +24,102 @@ namespace pir {
 
 using ::private_join_and_compute::StatusOr;
 
+class PIRParameters {
+ public:
+  PIRParameters(std::size_t dbsize,
+                std::optional<seal::EncryptionParameters> parms = {})
+      : database_size_(dbsize), parms_(parms) {}
+
+  std::size_t GetDatabaseSize() const { return database_size_; }
+
+  bool HasEncryptionParams() const { return parms_.has_value(); }
+  std::optional<seal::EncryptionParameters>& GetEncryptionParams() {
+    return parms_;
+  }
+
+  seal::EncryptionParameters UnsafeGetEncryptionParams() const {
+    return parms_.value();
+  }
+
+ private:
+  // Database parameters
+  std::size_t database_size_;
+
+  // Encryption parameters&helpers
+  std::optional<seal::EncryptionParameters> parms_;
+};
+
 class PIRContext {
  public:
   /**
    * Creates a new context
-   * @returns TODO
+   * @param[in] params PIR parameters
+   * @returns InvalidArgument if the SEAL parameter deserialization fails
    **/
-  static StatusOr<std::unique_ptr<PIRContext>> Create();
-
-  /**
-   * Creates a new context from existing params
-   * @param[in] params Serialized PIR parameters
-   * @returns TODO
-   **/
-  static StatusOr<std::unique_ptr<PIRContext>> CreateFromParams(
-      const std::string& params);
-
-  /**
-   * Returns the serialized PIR parameters
-   * @returns TODO
-   **/
-  std::string SerializeParams() const;
+  static StatusOr<std::unique_ptr<PIRContext>> Create(PIRParameters /*params*/,
+                                                      bool /*is_public*/);
 
   /**
    * Encodes a vector to a Plaintext
    * @param[in] in Array to be encoded
-   * @returns TODO
+   * @returns InvalidArgument if the SEAL encoding fails
    **/
   StatusOr<seal::Plaintext> Encode(const std::vector<uint64_t>& in);
   /**
    * Decodes a plaintext to a vector
    * @param[in] in Plaintext to be decoded
-   * @returns TODO
+   * @returns InvalidArgument if the SEAL decoding fails
    **/
   StatusOr<std::vector<uint64_t>> Decode(const seal::Plaintext& in);
 
   /**
    * Encodes, encrypts and serializes a vector
    * @param[in] in Vector to be encrypted
-   * @returns TODO
+   * @returns InvalidArgument if the SEAL encryption fails
    **/
   StatusOr<std::string> Encrypt(const std::vector<uint64_t>& in);
 
   /**
    * Deserializes, decrypts and decodes a vector
    * @param[in] in Serialized ciphertext
-   * @returns TODO
+   * @returns InvalidArgument if the SEAL decryption fails
    **/
   StatusOr<std::vector<uint64_t>> Decrypt(const std::string& in);
 
   /**
    * Serializes a ciphertext
    * @param[in] in Ciphertext to be serialized
-   * @returns TODO
+   * @returns InvalidArgument if the context serialization fails
    **/
   StatusOr<std::string> Serialize(const seal::Ciphertext&);
   /**
    * Deserializes a ciphertext
    * @param[in] in Serialized ciphertext
-   * @returns TODO
+   * @returns InvalidArgument if the context deserialization fails
    **/
   StatusOr<seal::Ciphertext> Deserialize(const std::string& in);
 
   /**
    * Returns an Evaluator instance
-   * @returns TODO
    **/
   std::shared_ptr<seal::Evaluator>& Evaluator();
 
+  /**
+   * Returns the PIR parameters
+   **/
+  const PIRParameters& Parameters() const { return parameters_; }
+
  private:
-  PIRContext(const seal::EncryptionParameters&);
+  PIRContext(const PIRParameters& /*params*/, bool /*is_public*/);
 
-  static seal::EncryptionParameters generateEncryptionParams(
-      uint32_t poly_modulus_degree = 4096, uint32_t plain_modulus = 1032193);
-
-  seal::EncryptionParameters parms_;
+  PIRParameters parameters_;
 
   std::shared_ptr<seal::SEALContext> context_;
-  std::shared_ptr<seal::PublicKey> public_key_;
-  std::optional<std::shared_ptr<seal::SecretKey>> secret_key_;
   std::shared_ptr<seal::BatchEncoder> encoder_;
   std::shared_ptr<seal::Encryptor> encryptor_;
-  std::shared_ptr<seal::Decryptor> decryptor_;
   std::shared_ptr<seal::Evaluator> evaluator_;
+
+  std::optional<std::shared_ptr<seal::Decryptor>> decryptor_ = {};
 };
 
 }  // namespace pir

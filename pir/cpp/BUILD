@@ -21,9 +21,13 @@ PIR_DEFAULT_INCLUDES = [".", "com_microsoft_seal/include/SEAL-3.5/"]
 PIR_DEFAULT_COPTS =  ["-std=c++17"]
 
 cc_library(
-    name = "pir_context",
-    srcs = ["context.cpp"],
-    hdrs = ["context.h"],
+    name = "pir",
+    srcs = ["client.cpp", "server.cpp", 
+            "context.cpp", "context.h",
+            "database.cpp", "database.h",
+            "utils.cpp", "utils.h",
+            ],
+    hdrs = ["client.h", "server.h"],
     includes = PIR_DEFAULT_INCLUDES,
     deps = [
         ":com_microsoft_seal",
@@ -33,26 +37,12 @@ cc_library(
    copts = PIR_DEFAULT_COPTS,
 )
 
-cc_library(
-    name = "pir_client",
-    srcs = ["client.cpp"],
-    hdrs = ["client.h"],
-    includes = PIR_DEFAULT_INCLUDES,
-    deps = [
-        ":pir_context",
-        "@com_google_absl//absl/memory",
-        "@private_join_and_compute//util:status",
-    ],
-   copts = PIR_DEFAULT_COPTS,
-)
-
 cc_test(
-    name = "pir_client_test",
-    srcs = ["client_test.cpp"],
+    name = "pir_test",
+    srcs = ["client_test.cpp", "server_test.cpp"],
     includes = PIR_DEFAULT_INCLUDES,
     deps = [
-        ":pir_client",
-        ":pir_context",
+        ":pir",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
     
@@ -60,36 +50,6 @@ cc_test(
    copts = PIR_DEFAULT_COPTS,
    linkstatic = True,
 )
-
-cc_library(
-    name = "pir_server",
-    srcs = ["server.cpp"],
-    hdrs = ["server.h"],
-    includes = PIR_DEFAULT_INCLUDES,
-    deps = [
-        ":pir_context",
-        "@com_google_absl//absl/memory",
-        "@private_join_and_compute//util:status",
-    ],
-   copts = PIR_DEFAULT_COPTS,
-)
-
-cc_test(
-    name = "pir_server_test",
-    srcs = ["server_test.cpp"],
-    includes = PIR_DEFAULT_INCLUDES,
-    deps = [
-        ":pir_server",
-        ":pir_client",
-        ":pir_context",
-        "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gtest_main",
-    
-    ],
-   copts = PIR_DEFAULT_COPTS,
-   linkstatic = True,
-)
-
 
 cc_test(
     name = "seal_test",
