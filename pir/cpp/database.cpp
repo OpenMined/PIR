@@ -27,8 +27,8 @@ using ::private_join_and_compute::StatusOr;
 
 StatusOr<std::unique_ptr<PIRDatabase>> PIRDatabase::Create(
     const std::unique_ptr<PIRContext>& context,
-    const std::vector<std::uint64_t>& database) {
-  auto encoded = context->Encode(database);
+    const std::vector<std::int64_t>& database) {
+  auto encoded = context->Encoder()->encode<seal::BatchEncoder>(database);
 
   if (!encoded.ok()) {
     return encoded.status();

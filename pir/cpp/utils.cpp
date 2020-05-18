@@ -50,17 +50,4 @@ StatusOr<seal::EncryptionParameters> deserializeParams(
 
   return parms;
 }
-
-seal::EncryptionParameters generateEncryptionParams(
-    uint32_t poly_modulus_degree /*= 4096*/) {
-  auto plain_modulus = seal::PlainModulus::Batching(poly_modulus_degree, 20);
-  seal::EncryptionParameters parms(seal::scheme_type::BFV);
-  parms.set_poly_modulus_degree(poly_modulus_degree);
-  parms.set_plain_modulus(plain_modulus);
-  auto coeff = seal::CoeffModulus::BFVDefault(poly_modulus_degree);
-  parms.set_coeff_modulus(coeff);
-
-  return parms;
-}
-
 }  // namespace pir

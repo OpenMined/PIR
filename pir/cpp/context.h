@@ -17,6 +17,8 @@
 #ifndef PIR_CONTEXT_H_
 #define PIR_CONTEXT_H_
 
+#include "encoder.h"
+#include "parameters.h"
 #include "seal/seal.h"
 #include "util/statusor.h"
 
@@ -24,30 +26,10 @@ namespace pir {
 
 using ::private_join_and_compute::StatusOr;
 
-class PIRParameters {
- public:
-  PIRParameters(std::size_t dbsize,
-                std::optional<seal::EncryptionParameters> parms = {})
-      : database_size_(dbsize), parms_(parms) {}
-
-  std::size_t GetDatabaseSize() const { return database_size_; }
-
-  bool HasEncryptionParams() const { return parms_.has_value(); }
-  std::optional<seal::EncryptionParameters>& GetEncryptionParams() {
-    return parms_;
-  }
-
-  seal::EncryptionParameters UnsafeGetEncryptionParams() const {
-    return parms_.value();
-  }
-
- private:
-  // Database parameters
-  std::size_t database_size_;
-
-  // Encryption parameters&helpers
-  std::optional<seal::EncryptionParameters> parms_;
-};
+using ::std::optional;
+using ::std::shared_ptr;
+using ::std::string;
+using ::std::vector;
 
 class PIRContext {
  public:
@@ -56,70 +38,68 @@ class PIRContext {
    * @param[in] params PIR parameters
    * @returns InvalidArgument if the SEAL parameter deserialization fails
    **/
-  static StatusOr<std::unique_ptr<PIRContext>> Create(PIRParameters /*params*/,
-                                                      bool /*is_public*/);
-
-  /**
-   * Encodes a vector to a Plaintext
-   * @param[in] in Array to be encoded
-   * @returns InvalidArgument if the SEAL encoding fails
-   **/
-  StatusOr<seal::Plaintext> Encode(const std::vector<uint64_t>& in);
-  /**
-   * Decodes a plaintext to a vector
-   * @param[in] in Plaintext to be decoded
-   * @returns InvalidArgument if the SEAL decoding fails
-   **/
-  StatusOr<std::vector<uint64_t>> Decode(const seal::Plaintext& in);
+  static StatusOr<std::unique_ptr<PIRContext>> Create(
+      std::shared_ptr<PIRParameters> /*params*/);
 
   /**
    * Encodes, encrypts and serializes a vector
    * @param[in] in Vector to be encrypted
    * @returns InvalidArgument if the SEAL encryption fails
    **/
-  StatusOr<std::string> Encrypt(const std::vector<uint64_t>& in);
+  StatusOr<string> Encrypt(const vector<int64_t>& in);
 
   /**
    * Deserializes, decrypts and decodes a vector
    * @param[in] in Serialized ciphertext
    * @returns InvalidArgument if the SEAL decryption fails
    **/
-  StatusOr<std::vector<uint64_t>> Decrypt(const std::string& in);
+  StatusOr<vector<int64_t>> Decrypt(const string& in);
 
   /**
    * Serializes a ciphertext
    * @param[in] in Ciphertext to be serialized
    * @returns InvalidArgument if the context serialization fails
    **/
-  StatusOr<std::string> Serialize(const seal::Ciphertext&);
+  StatusOr<string> Serialize(const seal::Ciphertext&);
   /**
    * Deserializes a ciphertext
    * @param[in] in Serialized ciphertext
    * @returns InvalidArgument if the context deserialization fails
    **/
-  StatusOr<seal::Ciphertext> Deserialize(const std::string& in);
+  StatusOr<seal::Ciphertext> Deserialize(const string& in);
 
   /**
    * Returns an Evaluator instance
    **/
-  std::shared_ptr<seal::Evaluator>& Evaluator();
+  std::shared_ptr<seal::Evaluator>& Evaluator() { return evaluator_; }
 
   /**
    * Returns the PIR parameters
    **/
-  const PIRParameters& Parameters() const { return parameters_; }
+  std::shared_ptr<PIRParameters>& Parameters() { return parameters_; }
+
+  /**
+   * Returns the database size
+   **/
+  size_t DBSize() { return parameters_->DBSize(); }
+
+  /**
+   * Returns the SEAL context
+   **/
+  std::shared_ptr<seal::SEALContext>& SEALContext() { return context_; }
+
+  /**
+   * Returns the encoder
+   **/
+  std::shared_ptr<EncoderFactory>& Encoder() { return encoder_; }
 
  private:
-  PIRContext(const PIRParameters& /*params*/, bool /*is_public*/);
+  PIRContext(std::shared_ptr<PIRParameters> /*params*/);
 
-  PIRParameters parameters_;
-
-  std::shared_ptr<seal::SEALContext> context_;
-  std::shared_ptr<seal::BatchEncoder> encoder_;
-  std::shared_ptr<seal::Encryptor> encryptor_;
-  std::shared_ptr<seal::Evaluator> evaluator_;
-
-  std::optional<std::shared_ptr<seal::Decryptor>> decryptor_ = {};
+  shared_ptr<PIRParameters> parameters_;
+  shared_ptr<seal::SEALContext> context_;
+  shared_ptr<seal::Evaluator> evaluator_;
+  shared_ptr<EncoderFactory> encoder_;
 };
 
 }  // namespace pir

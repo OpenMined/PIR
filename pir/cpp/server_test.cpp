@@ -32,7 +32,7 @@ class PIRServerTest : public ::testing::Test {
 
 TEST_F(PIRServerTest, TestCorrectness) {
   constexpr std::size_t dbsize = 1000;
-  std::vector<std::uint64_t> db(dbsize, 0);
+  std::vector<std::int64_t> db(dbsize, 0);
 
   std::generate(db.begin(), db.end(), [n = 0]() mutable {
     ++n;
@@ -43,7 +43,7 @@ TEST_F(PIRServerTest, TestCorrectness) {
   ASSERT_TRUE(server_ != nullptr);
 
   for (auto& client_ :
-       {PIRClient::Create(PIRParameters(dbsize)).ValueOrDie()}) {
+       {PIRClient::Create(PIRParameters::Create(dbsize)).ValueOrDie()}) {
     size_t desiredIndex = 23;
     auto payload = client_->CreateRequest(desiredIndex).ValueOrDie();
     auto response = server_->ProcessRequest(payload).ValueOrDie();

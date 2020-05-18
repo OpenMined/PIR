@@ -23,7 +23,9 @@ PIR_DEFAULT_COPTS =  ["-std=c++17"]
 cc_library(
     name = "pir",
     srcs = ["client.cpp", "server.cpp", 
-            "context.cpp", "context.h",
+            "context.cpp", "context.h", 
+            "parameters.h", "parameters.cpp",
+            "encoder.h",
             "database.cpp", "database.h",
             "utils.cpp", "utils.h",
             ],

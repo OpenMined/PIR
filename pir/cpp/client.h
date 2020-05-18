@@ -34,7 +34,7 @@ class PIRClient {
    * @returns InvalidArgument if the parameters cannot be loaded
    **/
   static StatusOr<std::unique_ptr<PIRClient>> Create(
-      const PIRParameters& params);
+      std::shared_ptr<PIRParameters> params);
   /**
    * Creates a new payload request
    * @param[in] desiredIndex Expected database value from an index
@@ -48,15 +48,13 @@ class PIRClient {
    * @param[in] response Server output
    * @returns InvalidArgument if the decryption fails
    **/
-  StatusOr<std::map<uint64_t, uint64_t>> ProcessResponse(
+  StatusOr<std::map<uint64_t, int64_t>> ProcessResponse(
       const std::string& response) const;
 
   /**
    * Returns the database size.
    **/
-  std::size_t DBSize() const {
-    return context_->Parameters().GetDatabaseSize();
-  }
+  std::size_t DBSize() const { return context_->DBSize(); }
   PIRClient() = delete;
 
  private:

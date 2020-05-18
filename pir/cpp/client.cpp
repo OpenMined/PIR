@@ -29,8 +29,8 @@ PIRClient::PIRClient(std::unique_ptr<PIRContext> context)
     : context_(std::move(context)) {}
 
 StatusOr<std::unique_ptr<PIRClient>> PIRClient::Create(
-    const PIRParameters& params) {
-  auto context = PIRContext::Create(params, /*is_public=*/false);
+    std::shared_ptr<PIRParameters> params) {
+  auto context = PIRContext::Create(params);
   if (!context.ok()) {
     return context.status();
   }
@@ -41,13 +41,13 @@ StatusOr<std::string> PIRClient::CreateRequest(std::size_t index) const {
   if (index >= this->DBSize()) {
     return InvalidArgumentError("invalid index");
   }
-  std::vector<std::uint64_t> request(DBSize(), 0);
+  std::vector<std::int64_t> request(DBSize(), 0);
   request[index] = 1;
 
   return context_->Encrypt(request);
 }
 
-StatusOr<std::map<uint64_t, uint64_t>> PIRClient::ProcessResponse(
+StatusOr<std::map<uint64_t, int64_t>> PIRClient::ProcessResponse(
     const std::string& response) const {
   auto decryptedRaw = context_->Decrypt(response);
 
@@ -55,7 +55,7 @@ StatusOr<std::map<uint64_t, uint64_t>> PIRClient::ProcessResponse(
     return decryptedRaw.status();
   }
   auto decrypted = decryptedRaw.ValueOrDie();
-  std::map<uint64_t, uint64_t> result;
+  std::map<uint64_t, int64_t> result;
 
   for (size_t idx = 0; idx < decrypted.size(); ++idx)
     if (decrypted[idx] != 0) {

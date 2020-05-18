@@ -30,10 +30,10 @@ PIRServer::PIRServer(std::unique_ptr<PIRContext> context,
     : context_(std::move(context)), db_(std::move(db)) {}
 
 StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
-    const std::vector<std::uint64_t>& database) {
-  auto params = PIRParameters(database.size());
+    const std::vector<std::int64_t>& database) {
+  auto params = PIRParameters::Create(database.size());
 
-  auto rawctx = PIRContext::Create(params, /*is_public=*/true);
+  auto rawctx = PIRContext::Create(params);
   if (!rawctx.ok()) {
     return rawctx.status();
   }

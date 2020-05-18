@@ -13,16 +13,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+#include "parameters.h"
+
 #include "seal/seal.h"
-#include "util/statusor.h"
 
 namespace pir {
 
-using ::private_join_and_compute::StatusOr;
+seal::EncryptionParameters generateEncryptionParams(
+    uint32_t poly_modulus_degree /*= 4096*/) {
+  auto plain_modulus = seal::PlainModulus::Batching(poly_modulus_degree, 20);
+  seal::EncryptionParameters parms(seal::scheme_type::BFV);
+  parms.set_poly_modulus_degree(poly_modulus_degree);
+  parms.set_plain_modulus(plain_modulus);
+  auto coeff = seal::CoeffModulus::BFVDefault(poly_modulus_degree);
+  parms.set_coeff_modulus(coeff);
 
-StatusOr<std::string> serializeParams(const seal::EncryptionParameters& parms);
-
-StatusOr<seal::EncryptionParameters> deserializeParams(
-    const std::string& input);
+  return parms;
+}
 
 }  // namespace pir

@@ -37,7 +37,7 @@ class PIRDatabase {
    **/
   static StatusOr<std::unique_ptr<PIRDatabase>> Create(
       const std::unique_ptr<PIRContext>& context,
-      const std::vector<std::uint64_t>& /*database*/);
+      const std::vector<std::int64_t>& /*database*/);
 
   /**
    * Multiplies the database with a ciphertext and returns a new ciphertext.

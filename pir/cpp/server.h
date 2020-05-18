@@ -37,7 +37,7 @@ class PIRServer {
    * @returns InvalidArgument if the database encoding fails
    **/
   static StatusOr<std::unique_ptr<PIRServer>> Create(
-      const std::vector<std::uint64_t>& /*database*/);
+      const std::vector<std::int64_t>& /*database*/);
 
   /**
    * Handles a client request.
@@ -50,7 +50,7 @@ class PIRServer {
   /**
    * Returns the database size.
    **/
-  std::size_t DBSize() { return context_->Parameters().GetDatabaseSize(); }
+  std::size_t DBSize() { return context_->DBSize(); }
 
   PIRServer() = delete;
 
