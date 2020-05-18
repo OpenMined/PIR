@@ -16,6 +16,8 @@
 
 #include "server.h"
 
+#include <gmock/gmock.h>
+
 #include <algorithm>
 #include <iostream>
 #include <vector>
@@ -25,6 +27,23 @@
 
 namespace pir {
 namespace {
+
+using std::cout;
+using std::endl;
+using std::get;
+using std::make_tuple;
+using std::make_unique;
+using std::shared_ptr;
+using std::string;
+using std::tuple;
+using std::unique_ptr;
+using std::vector;
+
+using seal::Ciphertext;
+using seal::GaloisKeys;
+using seal::Plaintext;
+
+using namespace ::testing;
 
 class PIRServerTest : public ::testing::Test {
  protected:
@@ -58,5 +77,111 @@ TEST_F(PIRServerTest, TestCorrectness) {
     }
   }
 }
+
+using namespace seal;
+
+class OperatorTestBase : public ::testing::Test {
+ protected:
+  void SetUp() {
+    std::vector<std::uint64_t> db(1, 42);
+    server_ = PIRServer::Create(db).ValueOrDie();
+    ASSERT_THAT(server_, NotNull());
+
+    auto pir_context = server_->Context();
+    auto context = seal::SEALContext::Create(
+        pir_context->Parameters().UnsafeGetEncryptionParams());
+    if (!context->parameters_set()) {
+      FAIL() << "Error setting encryption parameters: "
+             << context->parameter_error_message();
+    }
+    keygen_ = make_unique<KeyGenerator>(context);
+    encryptor_ = make_unique<Encryptor>(context, keygen_->public_key());
+    evaluator_ = make_unique<Evaluator>(context);
+    decryptor_ = make_unique<Decryptor>(context, keygen_->secret_key());
+  }
+
+  void TearDown() {}
+
+  unique_ptr<PIRServer> server_;
+  unique_ptr<KeyGenerator> keygen_;
+  unique_ptr<Encryptor> encryptor_;
+  unique_ptr<Evaluator> evaluator_;
+  unique_ptr<Decryptor> decryptor_;
+};
+
+class SubstituteOperatorTest
+    : public OperatorTestBase,
+      public testing::WithParamInterface<tuple<string, uint32_t, string>> {};
+
+TEST_P(SubstituteOperatorTest, SubstituteExamples) {
+  Plaintext input_pt(get<0>(GetParam()));
+  cout << "Input PT: " << input_pt.to_string() << endl;
+
+  Ciphertext ct;
+  encryptor_->encrypt(input_pt, ct);
+
+  auto k = get<1>(GetParam());
+  GaloisKeys gal_keys = keygen_->galois_keys_local(vector<uint32_t>({k}));
+  server_->substitute_power_x_inplace(ct, k, gal_keys);
+
+  Plaintext result_pt;
+  decryptor_->decrypt(ct, result_pt);
+  cout << "Result PT: " << result_pt.to_string() << endl;
+
+  Plaintext expected_pt(get<2>(GetParam()));
+  cout << "Expected PT: " << expected_pt.to_string() << endl;
+  ASSERT_THAT(result_pt, Eq(expected_pt));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Substitutions, SubstituteOperatorTest,
+    testing::Values(
+        make_tuple("42", 3, "42"), make_tuple("1x^1", 5, "1x^5"),
+        make_tuple("6x^2", 3, "6x^6"),
+        make_tuple("1x^1", DEFAULT_POLY_MODULUS_DEGREE + 1, "FC000x^1"),
+        make_tuple("1x^4", DEFAULT_POLY_MODULUS_DEGREE + 1, "1x^4"),
+        make_tuple("1x^8", DEFAULT_POLY_MODULUS_DEGREE / 2 + 1, "1x^8"),
+        make_tuple("1x^8", DEFAULT_POLY_MODULUS_DEGREE / 4 + 1, "1x^8"),
+        make_tuple("1x^8", DEFAULT_POLY_MODULUS_DEGREE / 8 + 1, "FC000x^8"),
+        make_tuple("77x^4095", 3, "77x^4093"),
+        make_tuple("1x^4095", DEFAULT_POLY_MODULUS_DEGREE + 1, "FC000x^4095"),
+        make_tuple("4x^4 + 33x^3 + 222x^2 + 19x^1 + 42",
+                   DEFAULT_POLY_MODULUS_DEGREE + 1,
+                   "4x^4 + FBFCEx^3 + 222x^2 + FBFE8x^1 + 42")));
+
+class MultiplyPowerXTest
+    : public OperatorTestBase,
+      public testing::WithParamInterface<tuple<string, uint32_t, string>> {};
+
+TEST_P(MultiplyPowerXTest, MultiplyPowerXExamples) {
+  Plaintext input_pt(get<0>(GetParam()));
+  cout << "Input PT: " << input_pt.to_string() << endl;
+
+  Ciphertext ct;
+  encryptor_->encrypt(input_pt, ct);
+
+  auto k = get<1>(GetParam());
+  Ciphertext result_ct;
+  server_->multiply_power_of_X(ct, k, result_ct);
+
+  Plaintext result_pt;
+  decryptor_->decrypt(result_ct, result_pt);
+  cout << "Result PT: " << result_pt.to_string() << endl;
+
+  Plaintext expected_pt(get<2>(GetParam()));
+  cout << "Expected PT: " << expected_pt.to_string() << endl;
+  ASSERT_THAT(result_pt, Eq(expected_pt));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    PowersOfX, MultiplyPowerXTest,
+    testing::Values(make_tuple("42", 1, "42x^1"),
+                    make_tuple("42x^1", 41, "42x^42"),
+                    make_tuple("1x^4 + 1x^3 + 1x^1", 3, "1x^7 + 1x^6 + 1x^4"),
+                    make_tuple("77x^1", -1, "77"),
+                    make_tuple("1x^4 + 1x^3 + 1x^1", -1, "1x^3 + 1x^2 + 1"),
+                    make_tuple("1x^16 + 1x^12 + 1x^8", -4,
+                               "1x^12 + 1x^8 + 1x^4")));
+
 }  // namespace
 }  // namespace pir

@@ -24,6 +24,8 @@ namespace pir {
 
 using ::private_join_and_compute::StatusOr;
 
+constexpr uint32_t DEFAULT_POLY_MODULUS_DEGREE = 4096;
+
 class PIRParameters {
  public:
   PIRParameters(std::size_t dbsize,
