@@ -18,6 +18,7 @@
 #include "absl/memory/memory.h"
 #include "payload.h"
 #include "seal/seal.h"
+#include "seal/util/polyarithsmallmod.h"
 #include "util/canonical_errors.h"
 #include "util/status_macros.h"
 #include "util/statusor.h"
@@ -52,4 +53,31 @@ StatusOr<PIRPayload> PIRServer::ProcessRequest(
   return PIRPayload::Load(result);
 }
 
+void PIRServer::substitute_power_x_inplace(seal::Ciphertext& ct, uint32_t power,
+                                           const seal::GaloisKeys& gal_keys) {
+  context_->Evaluator()->apply_galois_inplace(ct, power, gal_keys);
+}
+
+void PIRServer::multiply_power_of_x(const seal::Ciphertext& encrypted, int k,
+                                    seal::Ciphertext& destination) {
+  const auto& params = context_->Parameters()->GetEncryptionParams();
+  const auto poly_modulus_degree = params.poly_modulus_degree();
+  const auto coeff_mod_count = params.coeff_modulus().size();
+
+  // handle negative values of k properly
+  uint32_t index = (k >= 0) ? k : (poly_modulus_degree * 2 + k);
+
+  // have to make a copy here
+  destination = encrypted;
+
+  // Loop over polynomials in ciphertext
+  for (int i = 0; i < encrypted.size(); i++) {
+    // loop over each coefficient in polynomial
+    for (int j = 0; j < coeff_mod_count; j++) {
+      seal::util::negacyclic_shift_poly_coeffmod(
+          encrypted.data(i) + (j * poly_modulus_degree), poly_modulus_degree, index,
+          params.coeff_modulus()[j], destination.data(i) + (j * poly_modulus_degree));
+    }
+  }
+}
 }  // namespace pir

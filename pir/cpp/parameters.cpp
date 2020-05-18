@@ -56,7 +56,7 @@ seal::EncryptionParameters generateEncryptionParams(
     std::optional<uint32_t> poly_mod_opt, std::optional<Modulus> plain_mod_opt,
     std::optional<std::vector<Modulus>> coeff_opt,
     std::optional<seal::scheme_type> scheme_opt) {
-  auto poly_modulus_degree = poly_mod_opt.value_or(4096);
+  auto poly_modulus_degree = poly_mod_opt.value_or(DEFAULT_POLY_MODULUS_DEGREE);
   auto plain_modulus = plain_mod_opt.value_or(
       seal::PlainModulus::Batching(poly_modulus_degree, 20));
   auto coeff =
