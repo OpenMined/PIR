@@ -58,6 +58,7 @@ cc_test(
     
     ],
    copts = PIR_DEFAULT_COPTS,
+   linkstatic = True,
 )
 
 cc_library(
@@ -86,6 +87,7 @@ cc_test(
     
     ],
    copts = PIR_DEFAULT_COPTS,
+   linkstatic = True,
 )
 
 
