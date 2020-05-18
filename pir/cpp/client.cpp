@@ -26,7 +26,14 @@ using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
 
 PIRClient::PIRClient(std::unique_ptr<PIRContext> context)
-    : context_(std::move(context)) {}
+    : context_(std::move(context)) {
+  auto sealctx = context_->SEALContext();
+  seal::KeyGenerator keygen(sealctx);
+  encryptor_ = std::make_shared<seal::Encryptor>(sealctx, keygen.public_key());
+  decryptor_ = std::make_shared<seal::Decryptor>(sealctx, keygen.secret_key());
+
+  encoder_ = context_->Encoder();
+}
 
 StatusOr<std::unique_ptr<PIRClient>> PIRClient::Create(
     std::shared_ptr<PIRParameters> params) {
@@ -44,12 +51,12 @@ StatusOr<std::string> PIRClient::CreateRequest(std::size_t index) const {
   std::vector<std::int64_t> request(DBSize(), 0);
   request[index] = 1;
 
-  return context_->Encrypt(request);
+  return this->encrypt(request);
 }
 
 StatusOr<std::map<uint64_t, int64_t>> PIRClient::ProcessResponse(
     const std::string& response) const {
-  auto decryptedRaw = context_->Decrypt(response);
+  auto decryptedRaw = this->decrypt(response);
 
   if (!decryptedRaw.ok()) {
     return decryptedRaw.status();
@@ -62,6 +69,68 @@ StatusOr<std::map<uint64_t, int64_t>> PIRClient::ProcessResponse(
       result[idx] = decrypted[idx];
     }
   return result;
+}
+
+StatusOr<std::string> PIRClient::serialize(
+    const seal::Ciphertext& ciphertext) const {
+  std::stringstream stream;
+
+  try {
+    ciphertext.save(stream);
+  } catch (const std::exception& e) {
+    return InvalidArgumentError(e.what());
+  }
+
+  return stream.str();
+}
+
+StatusOr<seal::Ciphertext> PIRClient::deserialize(const std::string& in) const {
+  auto sealctx = context_->SEALContext();
+  seal::Ciphertext ciphertext(sealctx);
+
+  try {
+    std::stringstream stream;
+    stream << in;
+    ciphertext.load(sealctx, stream);
+  } catch (const std::exception& e) {
+    return InvalidArgumentError(e.what());
+  }
+
+  return ciphertext;
+}
+
+StatusOr<std::string> PIRClient::encrypt(const std::vector<int64_t>& in) const {
+  seal::Ciphertext ciphertext(context_->SEALContext());
+
+  auto plaintext = encoder_->encode<seal::BatchEncoder>(in);
+
+  if (!plaintext.ok()) {
+    return plaintext.status();
+  }
+
+  try {
+    encryptor_->encrypt(plaintext.ValueOrDie(), ciphertext);
+  } catch (const std::exception& e) {
+    return InvalidArgumentError(e.what());
+  }
+
+  return this->serialize(ciphertext);
+}
+
+StatusOr<std::vector<int64_t>> PIRClient::decrypt(const std::string& in) const {
+  auto ciphertext = this->deserialize(in);
+  if (!ciphertext.ok()) {
+    return ciphertext.status();
+  }
+  seal::Plaintext plaintext;
+
+  try {
+    decryptor_->decrypt(ciphertext.ValueOrDie(), plaintext);
+  } catch (const std::exception& e) {
+    return InvalidArgumentError(e.what());
+  }
+
+  return encoder_->decode<seal::BatchEncoder, std::vector<int64_t>>(plaintext);
 }
 
 }  // namespace pir

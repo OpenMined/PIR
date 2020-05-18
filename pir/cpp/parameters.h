@@ -39,6 +39,8 @@ class PIRParameters {
   size_t DBSize() const { return database_size_; }
   const EncryptionParameters& GetEncryptionParams() const { return parms_; }
 
+  PIRParameters() = delete;
+
  private:
   PIRParameters(size_t dbsize)
       : database_size_(dbsize), parms_(generateEncryptionParams()) {}

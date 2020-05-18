@@ -57,6 +57,8 @@ class PIRServer {
  private:
   PIRServer(std::unique_ptr<PIRContext> /*sealctx*/,
             std::unique_ptr<PIRDatabase> /*db*/);
+  StatusOr<seal::Ciphertext> deserialize(const std::string& in) const;
+  StatusOr<std::string> serialize(const seal::Ciphertext& ciphertext) const;
 
   std::unique_ptr<PIRContext> context_;
   std::unique_ptr<PIRDatabase> db_;

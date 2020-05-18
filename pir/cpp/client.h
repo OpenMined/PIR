@@ -58,9 +58,18 @@ class PIRClient {
   PIRClient() = delete;
 
  private:
+  StatusOr<std::vector<int64_t>> decrypt(const std::string& in) const;
+  StatusOr<std::string> encrypt(const std::vector<int64_t>& in) const;
+  StatusOr<std::string> serialize(const seal::Ciphertext& ciphertext) const;
+  StatusOr<seal::Ciphertext> deserialize(const std::string& in) const;
+
   PIRClient(std::unique_ptr<PIRContext>);
 
   std::unique_ptr<PIRContext> context_;
+  shared_ptr<EncoderFactory> encoder_;
+
+  std::shared_ptr<seal::Encryptor> encryptor_;
+  std::shared_ptr<seal::Decryptor> decryptor_;
 };
 
 }  // namespace pir

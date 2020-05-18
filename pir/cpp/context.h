@@ -40,34 +40,6 @@ class PIRContext {
    **/
   static StatusOr<std::unique_ptr<PIRContext>> Create(
       std::shared_ptr<PIRParameters> /*params*/);
-
-  /**
-   * Encodes, encrypts and serializes a vector
-   * @param[in] in Vector to be encrypted
-   * @returns InvalidArgument if the SEAL encryption fails
-   **/
-  StatusOr<string> Encrypt(const vector<int64_t>& in);
-
-  /**
-   * Deserializes, decrypts and decodes a vector
-   * @param[in] in Serialized ciphertext
-   * @returns InvalidArgument if the SEAL decryption fails
-   **/
-  StatusOr<vector<int64_t>> Decrypt(const string& in);
-
-  /**
-   * Serializes a ciphertext
-   * @param[in] in Ciphertext to be serialized
-   * @returns InvalidArgument if the context serialization fails
-   **/
-  StatusOr<string> Serialize(const seal::Ciphertext&);
-  /**
-   * Deserializes a ciphertext
-   * @param[in] in Serialized ciphertext
-   * @returns InvalidArgument if the context deserialization fails
-   **/
-  StatusOr<seal::Ciphertext> Deserialize(const string& in);
-
   /**
    * Returns an Evaluator instance
    **/

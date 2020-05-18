@@ -50,7 +50,7 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
 
 StatusOr<std::string> PIRServer::ProcessRequest(
     const std::string& request) const {
-  auto deserialized = context_->Deserialize(request);
+  auto deserialized = this->deserialize(request);
 
   if (!deserialized.ok()) {
     return deserialized.status();
@@ -62,7 +62,34 @@ StatusOr<std::string> PIRServer::ProcessRequest(
   if (!out.ok()) {
     return out.status();
   }
-  return context_->Serialize(out.ValueOrDie());
+  return this->serialize(out.ValueOrDie());
+}
+
+StatusOr<std::string> PIRServer::serialize(
+    const seal::Ciphertext& ciphertext) const {
+  std::stringstream stream;
+
+  try {
+    ciphertext.save(stream);
+  } catch (const std::exception& e) {
+    return InvalidArgumentError(e.what());
+  }
+
+  return stream.str();
+}
+
+StatusOr<seal::Ciphertext> PIRServer::deserialize(const std::string& in) const {
+  auto sealctx = context_->SEALContext();
+  seal::Ciphertext ciphertext(sealctx);
+
+  try {
+    std::stringstream stream;
+    stream << in;
+    ciphertext.load(sealctx, stream);
+  } catch (const std::exception& e) {
+    return InvalidArgumentError(e.what());
+  }
+  return ciphertext;
 }
 
 }  // namespace pir
