@@ -53,19 +53,6 @@ cc_test(
    linkstatic = True,
 )
 
-cc_test(
-    name = "seal_test",
-    srcs = ["seal_test.cpp"],
-    includes = PIR_DEFAULT_INCLUDES,
-    deps = [
-        "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gtest_main",
-        ":com_microsoft_seal",
-    ],
-   copts = PIR_DEFAULT_COPTS,
-)
-
-
 cmake_external(
    name = "com_microsoft_seal",
    cmake_options = [
