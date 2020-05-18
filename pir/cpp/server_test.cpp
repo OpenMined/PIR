@@ -17,6 +17,7 @@
 #include "server.h"
 
 #include <gmock/gmock.h>
+#include <seal/util/polyarithsmallmod.h>
 
 #include <algorithm>
 #include <iostream>
@@ -88,20 +89,21 @@ class OperatorTestBase : public ::testing::Test {
     ASSERT_THAT(server_, NotNull());
 
     auto pir_context = server_->Context();
-    auto context = seal::SEALContext::Create(
+    context_ = seal::SEALContext::Create(
         pir_context->Parameters().UnsafeGetEncryptionParams());
-    if (!context->parameters_set()) {
+    if (!context_->parameters_set()) {
       FAIL() << "Error setting encryption parameters: "
-             << context->parameter_error_message();
+             << context_->parameter_error_message();
     }
-    keygen_ = make_unique<KeyGenerator>(context);
-    encryptor_ = make_unique<Encryptor>(context, keygen_->public_key());
-    evaluator_ = make_unique<Evaluator>(context);
-    decryptor_ = make_unique<Decryptor>(context, keygen_->secret_key());
+    keygen_ = make_unique<KeyGenerator>(context_);
+    encryptor_ = make_unique<Encryptor>(context_, keygen_->public_key());
+    evaluator_ = make_unique<Evaluator>(context_);
+    decryptor_ = make_unique<Decryptor>(context_, keygen_->secret_key());
   }
 
   void TearDown() {}
 
+  shared_ptr<SEALContext> context_;
   unique_ptr<PIRServer> server_;
   unique_ptr<KeyGenerator> keygen_;
   unique_ptr<Encryptor> encryptor_;
@@ -182,6 +184,58 @@ INSTANTIATE_TEST_SUITE_P(
                     make_tuple("1x^4 + 1x^3 + 1x^1", -1, "1x^3 + 1x^2 + 1"),
                     make_tuple("1x^16 + 1x^12 + 1x^8", -4,
                                "1x^12 + 1x^8 + 1x^4")));
+
+class ObliviousExpansionTest
+    : public OperatorTestBase,
+      public testing::WithParamInterface<tuple<string, vector<string>>> {
+ protected:
+  vector<uint32_t> generate_galois_elts(uint64_t N) {
+    const size_t logN = ceil(log2(N));
+    vector<uint32_t> galois_elts(logN);
+    for (size_t i = 0; i < logN; ++i) {
+      uint64_t two_exp_i = ((uint64_t)1) << i;
+      galois_elts[i] = (N / two_exp_i) + 1;
+    }
+    return galois_elts;
+  }
+};
+
+TEST_P(ObliviousExpansionTest, ObliviousExpansionExamples) {
+  Plaintext input_pt(get<0>(GetParam()));
+  cout << "Input PT: " << input_pt.to_string() << endl;
+
+  Ciphertext ct;
+  encryptor_->encrypt(input_pt, ct);
+
+  auto expected = get<1>(GetParam());
+  auto results = server_->oblivious_expansion(
+      ct, expected.size(),
+      keygen_->galois_keys_local(
+          generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE)));
+
+  vector<Plaintext> results_pt(results.size());
+  for (size_t i = 0; i < results.size(); ++i) {
+    decryptor_->decrypt(results[i], results_pt[i]);
+    cout << "Result PT[" << i << "]: " << results_pt[i].to_string() << endl;
+  }
+
+  vector<Plaintext> expected_pt(expected.size());
+  for (size_t i = 0; i < expected_pt.size(); ++i) {
+    expected_pt[i] = Plaintext(expected[i]);
+    cout << "Expected PT[" << i << "]: " << expected_pt[i].to_string() << endl;
+  }
+
+  ASSERT_THAT(results_pt, ContainerEq(expected_pt));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ObliviousExpansion, ObliviousExpansionTest,
+    testing::Values(make_tuple("1", vector<string>({"2", "0"})),
+                    make_tuple("1x^1", vector<string>({"0", "2"})),
+                    make_tuple("3x^3 + 2x^2 + 1x^1 + 42",
+                               vector<string>({"108", "4", "8", "C"})),
+                    make_tuple("1x^5", vector<string>({"0", "0", "0", "0", "0",
+                                                       "8"}))));
 
 }  // namespace
 }  // namespace pir

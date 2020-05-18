@@ -35,6 +35,7 @@ class PIRParameters {
   std::size_t GetDatabaseSize() const { return database_size_; }
 
   bool HasEncryptionParams() const { return parms_.has_value(); }
+
   std::optional<seal::EncryptionParameters>& GetEncryptionParams() {
     return parms_;
   }
@@ -110,6 +111,8 @@ class PIRContext {
    * Returns the PIR parameters
    **/
   const PIRParameters& Parameters() const { return parameters_; }
+
+  std::shared_ptr<seal::SEALContext> SealContext() { return context_; }
 
  private:
   PIRContext(const PIRParameters& /*params*/, bool /*is_public*/);

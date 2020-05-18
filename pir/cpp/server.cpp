@@ -73,8 +73,11 @@ void PIRServer::substitute_power_x_inplace(seal::Ciphertext& ct, uint32_t power,
 
 void PIRServer::multiply_power_of_X(const seal::Ciphertext& encrypted, int k,
                                     seal::Ciphertext& destination) {
-  const auto& params = context_->Parameters().UnsafeGetEncryptionParams();
+  // This has to get the actual params from the SEALContext. Using just the
+  // params from PIR doesn't work.
+  const auto& params = context_->SealContext()->first_context_data()->parms();
   auto poly_modulus_degree = params.poly_modulus_degree();
+
   auto coeff_mod_count = params.coeff_modulus().size();
   auto coeff_count = poly_modulus_degree;
   auto encrypted_count = encrypted.size();
@@ -94,4 +97,36 @@ void PIRServer::multiply_power_of_X(const seal::Ciphertext& encrypted, int k,
     }
   }
 }
+
+std::vector<seal::Ciphertext> PIRServer::oblivious_expansion(
+    const seal::Ciphertext& ct, const size_t num_items,
+    const seal::GaloisKeys gal_keys) {
+  auto poly_modulus_degree =
+      context_->Parameters().UnsafeGetEncryptionParams().poly_modulus_degree();
+  size_t logm = ceil(log2(num_items));
+  std::vector<seal::Ciphertext> results(1 << logm);
+  results[0] = ct;
+
+  for (size_t j = 0; j < logm; ++j) {
+    const size_t two_power_j = (1 << j);
+    for (size_t k = 0; k < two_power_j; ++k) {
+      auto c0 = results[k];
+      seal::Ciphertext c1;
+      // TODO: not sure which is faster: substitution operator, or multiply by
+      // factor of x? We can do one of them only once depending on order.
+      multiply_power_of_X(c0, -two_power_j, c1);
+
+      results[k] = c0;
+      substitute_power_x_inplace(c0, (poly_modulus_degree >> j) + 1, gal_keys);
+      context_->Evaluator()->add_inplace(results[k], c0);
+
+      results[k + two_power_j] = c1;
+      substitute_power_x_inplace(c1, (poly_modulus_degree >> j) + 1, gal_keys);
+      context_->Evaluator()->add_inplace(results[k + two_power_j], c1);
+    }
+  }
+  results.resize(num_items);
+  return results;
+}
+
 }  // namespace pir
