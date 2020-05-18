@@ -48,12 +48,6 @@ class PIRServer {
   StatusOr<std::string> ProcessRequest(const std::string& request) const;
 
   /**
-   * Returns the serialized params.
-   * @returns InvalidArgument if the parameter serialization fails
-   **/
-  StatusOr<std::string> Params();
-
-  /**
    * Returns the database size.
    **/
   std::size_t DBSize() { return context_->Parameters().GetDatabaseSize(); }
