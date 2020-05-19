@@ -19,6 +19,7 @@
 
 #include "absl/memory/memory.h"
 #include "seal/seal.h"
+#include "util/canonical_errors.h"
 #include "util/statusor.h"
 
 namespace pir {
@@ -28,6 +29,14 @@ using ::std::size_t;
 
 using ::seal::EncryptionParameters;
 using ::seal::Modulus;
+
+using ::private_join_and_compute::InvalidArgumentError;
+using ::private_join_and_compute::StatusOr;
+
+StatusOr<std::string> serializeEncryptionParams(
+    const seal::EncryptionParameters& parms);
+StatusOr<seal::EncryptionParameters> deserializeEncryptionParams(
+    const std::string& input);
 
 seal::EncryptionParameters generateEncryptionParams(
     std::optional<uint32_t> poly_mod_opt = {},
