@@ -17,11 +17,11 @@
 #ifndef PIR_SERVER_H_
 #define PIR_SERVER_H_
 
-#include <string>
 #include <vector>
 
 #include "context.h"
 #include "database.h"
+#include "payload.h"
 #include "seal/seal.h"
 #include "util/statusor.h"
 
@@ -45,7 +45,7 @@ class PIRServer {
    * @returns InvalidArgument if the deserialization or encrypted operations
    *fail
    **/
-  StatusOr<std::string> ProcessRequest(const std::string& request) const;
+  StatusOr<PIRPayload> ProcessRequest(const PIRPayload& request) const;
 
   /**
    * Returns the database size.
@@ -57,8 +57,6 @@ class PIRServer {
  private:
   PIRServer(std::unique_ptr<PIRContext> /*sealctx*/,
             std::unique_ptr<PIRDatabase> /*db*/);
-  StatusOr<seal::Ciphertext> deserialize(const std::string& in) const;
-  StatusOr<std::string> serialize(const seal::Ciphertext& ciphertext) const;
 
   std::unique_ptr<PIRContext> context_;
   std::unique_ptr<PIRDatabase> db_;

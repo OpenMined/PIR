@@ -17,8 +17,6 @@
 #ifndef PIR_CLIENT_H_
 #define PIR_CLIENT_H_
 
-#include <string>
-
 #include "context.h"
 #include "payload.h"
 #include "util/statusor.h"
@@ -42,14 +40,14 @@ class PIRClient {
    * @param[in] dbSize Database size
    * @returns InvalidArgument if the index is invalid or if the encryption fails
    **/
-  StatusOr<std::string> CreateRequest(std::size_t /*index*/) const;
+  StatusOr<PIRPayload> CreateRequest(std::size_t /*index*/) const;
 
   /**
    * Extracts server response
    * @param[in] response Server output
    * @returns InvalidArgument if the decryption fails
    **/
-  StatusOr<int64_t> ProcessResponse(const std::string& response) const;
+  StatusOr<int64_t> ProcessResponse(const PIRPayload& response) const;
 
   /**
    * Returns the database size.
@@ -59,8 +57,8 @@ class PIRClient {
 
  private:
   StatusOr<std::vector<int64_t>> decryptResponseBuffer(
-      const std::string& in) const;
-  StatusOr<std::string> encryptRequestBuffer(
+      const PIRPayload& in) const;
+  StatusOr<PIRPayload> encryptRequestBuffer(
       const std::vector<int64_t>& in) const;
 
   PIRClient(std::unique_ptr<PIRContext>);

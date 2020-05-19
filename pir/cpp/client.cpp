@@ -40,7 +40,7 @@ StatusOr<std::unique_ptr<PIRClient>> PIRClient::Create(
   return absl::WrapUnique(new PIRClient(std::move(context)));
 }
 
-StatusOr<std::string> PIRClient::CreateRequest(std::size_t index) const {
+StatusOr<PIRPayload> PIRClient::CreateRequest(std::size_t index) const {
   if (index >= this->DBSize()) {
     return InvalidArgumentError("invalid index");
   }
@@ -50,8 +50,7 @@ StatusOr<std::string> PIRClient::CreateRequest(std::size_t index) const {
   return this->encryptRequestBuffer(request);
 }
 
-StatusOr<int64_t> PIRClient::ProcessResponse(
-    const std::string& response) const {
+StatusOr<int64_t> PIRClient::ProcessResponse(const PIRPayload& response) const {
   ASSIGN_OR_RETURN(auto decrypted, this->decryptResponseBuffer(response));
   std::map<uint64_t, int64_t> result;
 
@@ -63,7 +62,7 @@ StatusOr<int64_t> PIRClient::ProcessResponse(
   return InvalidArgumentError("invalid server response");
 }
 
-StatusOr<std::string> PIRClient::encryptRequestBuffer(
+StatusOr<PIRPayload> PIRClient::encryptRequestBuffer(
     const std::vector<int64_t>& in) const {
   std::vector<seal::Ciphertext> ciphertexts(in.size());
 
@@ -86,12 +85,11 @@ StatusOr<std::string> PIRClient::encryptRequestBuffer(
     ciphertexts[idx] = ciphertext;
   }
 
-  return PIRPayload::Load(ciphertexts).Save();
+  return PIRPayload::Load(ciphertexts);
 }
 
 StatusOr<std::vector<int64_t>> PIRClient::decryptResponseBuffer(
-    const std::string& in) const {
-  ASSIGN_OR_RETURN(auto payload, PIRPayload::Load(context_->SEALContext(), in));
+    const PIRPayload& payload) const {
   auto ciphertexts = payload.Get();
   std::vector<int64_t> result(ciphertexts.size());
 

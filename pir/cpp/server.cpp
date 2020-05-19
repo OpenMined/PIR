@@ -40,13 +40,11 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
   return absl::WrapUnique(new PIRServer(std::move(context), std::move(db)));
 }
 
-StatusOr<std::string> PIRServer::ProcessRequest(
-    const std::string& request) const {
-  ASSIGN_OR_RETURN(auto payload,
-                   PIRPayload::Load(context_->SEALContext(), request));
+StatusOr<PIRPayload> PIRServer::ProcessRequest(
+    const PIRPayload& payload) const {
   ASSIGN_OR_RETURN(auto result, db_->multiply(payload.Get()));
 
-  return PIRPayload::Load(result).Save();
+  return PIRPayload::Load(result);
 }
 
 }  // namespace pir
