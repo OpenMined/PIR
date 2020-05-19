@@ -49,8 +49,7 @@ class PIRClient {
    * @param[in] response Server output
    * @returns InvalidArgument if the decryption fails
    **/
-  StatusOr<std::map<uint64_t, int64_t>> ProcessResponse(
-      const std::string& response) const;
+  StatusOr<int64_t> ProcessResponse(const std::string& response) const;
 
   /**
    * Returns the database size.

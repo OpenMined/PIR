@@ -50,16 +50,17 @@ StatusOr<std::string> PIRClient::CreateRequest(std::size_t index) const {
   return this->encrypt(request);
 }
 
-StatusOr<std::map<uint64_t, int64_t>> PIRClient::ProcessResponse(
+StatusOr<int64_t> PIRClient::ProcessResponse(
     const std::string& response) const {
   ASSIGN_OR_RETURN(auto decrypted, this->decrypt(response));
   std::map<uint64_t, int64_t> result;
 
-  for (size_t idx = 0; idx < decrypted.size(); ++idx)
+  for (size_t idx = 0; idx < decrypted.size(); ++idx) {
     if (decrypted[idx] != 0) {
-      result[idx] = decrypted[idx];
+      return decrypted[idx];
     }
-  return result;
+  }
+  return InvalidArgumentError("invalid server response");
 }
 
 StatusOr<std::string> PIRClient::encrypt(const std::vector<int64_t>& in) const {

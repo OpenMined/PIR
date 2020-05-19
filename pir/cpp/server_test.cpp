@@ -49,13 +49,7 @@ TEST_F(PIRServerTest, TestCorrectness) {
     auto response = server_->ProcessRequest(payload).ValueOrDie();
     auto out = client_->ProcessResponse(response).ValueOrDie();
 
-    for (size_t idx = 0; idx < dbsize; idx++) {
-      if (idx != desiredIndex) {
-        ASSERT_TRUE(out[idx] == 0);
-        continue;
-      }
-      ASSERT_TRUE(out[idx] == db[idx]);
-    }
+    ASSERT_TRUE(out == db[desiredIndex]);
   }
 }
 }  // namespace

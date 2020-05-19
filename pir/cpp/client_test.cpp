@@ -33,14 +33,12 @@ class PIRClientTest : public ::testing::Test {
 };
 
 TEST_F(PIRClientTest, TestSanity) {
-  size_t index = 5;
+  int64_t index = 5;
 
   auto payload = client_->CreateRequest(index).ValueOrDie();
   auto out = client_->ProcessResponse(payload).ValueOrDie();
 
-  for (size_t idx = 0; idx < client_->DBSize(); idx++) {
-    ASSERT_TRUE(out[idx] == (idx == index));
-  }
+  ASSERT_TRUE(out == 1);
 }
 
 }  // namespace
