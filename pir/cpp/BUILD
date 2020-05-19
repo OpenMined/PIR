@@ -17,16 +17,40 @@
 package(default_visibility = ["//visibility:public"])
 load("@rules_foreign_cc//tools/build_defs:cmake.bzl", "cmake_external")
 
-cc_test(
-    name = "seal_test",
-    srcs = ["seal_test.cpp"],
-    includes = [".", "com_microsoft_seal/include/SEAL-3.5/"],
+PIR_DEFAULT_INCLUDES = [".", "com_microsoft_seal/include/SEAL-3.5/"]
+PIR_DEFAULT_COPTS =  ["-std=c++17"]
+
+cc_library(
+    name = "pir",
+    srcs = ["client.cpp", "server.cpp", 
+            "context.cpp", "context.h", 
+            "parameters.h", "parameters.cpp",
+            "payload.h", "payload.cpp",
+            "database.cpp", "database.h",
+            ],
+    hdrs = ["client.h", "server.h"],
+    includes = PIR_DEFAULT_INCLUDES,
     deps = [
+        ":com_microsoft_seal",
+        "@com_google_absl//absl/memory",
+        "@private_join_and_compute//util:status",
+        "@com_tencent_rapidjson//:rapidjson",
+    ],
+   copts = PIR_DEFAULT_COPTS,
+)
+
+cc_test(
+    name = "pir_test",
+    srcs = ["client_test.cpp", "server_test.cpp"],
+    includes = PIR_DEFAULT_INCLUDES,
+    deps = [
+        ":pir",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
-        ":com_microsoft_seal",
+    
     ],
-   copts = ["-pthread", "-std=c++17", "-D_GLIBCXX_USE_CXX11_ABI=1", "-fPIC"],
+   copts = PIR_DEFAULT_COPTS,
+   linkstatic = True,
 )
 
 cmake_external(
@@ -34,6 +58,7 @@ cmake_external(
    cmake_options = [
         "-DSEAL_USE_MSGSL=OFF",
         "-DSEAL_USE_ZLIB=OFF",
+        "-DCMAKE_CXX_STANDARD=17",
    ],
    cache_entries = {
         "MAKE_INSTALL_PREFIX": "$EXT_BUILD_DEPS/seal",
