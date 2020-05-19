@@ -30,26 +30,22 @@ using ::seal::EncryptionParameters;
 using ::seal::Modulus;
 
 seal::EncryptionParameters generateEncryptionParams(
-    std::optional<uint32_t> poly_mod_opt, std::optional<Modulus> plain_mod_opt,
-    std::optional<std::vector<Modulus>> coeff_opt,
-    seal::scheme_type scheme = seal::scheme_type::BFV);
+    std::optional<uint32_t> poly_mod_opt = {},
+    std::optional<Modulus> plain_mod_opt = {},
+    std::optional<std::vector<Modulus>> coeff_opt = {},
+    std::optional<seal::scheme_type> scheme = {});
 
 class PIRParameters {
  public:
   /**
    * Creates a new PIR Parameters container.
    * @param[in] Database size
-   * @param[in] Polynomial modulus degree
+   * @param[in] SEAL Paramenters
    **/
   static std::shared_ptr<PIRParameters> Create(
-      size_t dbsize, std::optional<uint32_t> poly_mod_opt = {},
-      std::optional<Modulus> plain_mod_opt = {},
-      std::optional<std::vector<Modulus>> coeff_opt = {},
-      seal::scheme_type scheme = seal::scheme_type::BFV
-
-  ) {
-    return absl::WrapUnique(new PIRParameters(
-        dbsize, poly_mod_opt, plain_mod_opt, coeff_opt, scheme));
+      size_t dbsize,
+      seal::EncryptionParameters sealParams = generateEncryptionParams()) {
+    return absl::WrapUnique(new PIRParameters(dbsize, sealParams));
   }
   /**
    * Returns the database size.
@@ -64,13 +60,8 @@ class PIRParameters {
   PIRParameters() = delete;
 
  private:
-  PIRParameters(size_t dbsize, std::optional<uint32_t> poly_mod_opt,
-                std::optional<Modulus> plain_mod_opt,
-                std::optional<std::vector<Modulus>> coeff_opt,
-                seal::scheme_type scheme)
-      : database_size_(dbsize),
-        parms_(generateEncryptionParams(poly_mod_opt, plain_mod_opt, coeff_opt,
-                                        scheme)) {}
+  PIRParameters(size_t dbsize, seal::EncryptionParameters sealParams)
+      : database_size_(dbsize), parms_(sealParams) {}
 
   // Database parameters
   size_t database_size_;
