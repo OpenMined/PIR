@@ -36,8 +36,10 @@ class PIRDatabase {
   /**
    * Creates and returns a new PIR database instance.
    * @param[in] db Database to load
+   * @param[in] PIR parameters
    **/
-  static std::unique_ptr<PIRDatabase> Create(const db_type& /*database*/);
+  static StatusOr<std::shared_ptr<PIRDatabase>> Create(
+      const raw_db_type& /*database*/, std::shared_ptr<PIRParameters> params);
 
   /**
    * Multiplies the database with a ciphertext and returns a new ciphertext.
@@ -46,7 +48,6 @@ class PIRDatabase {
    * @returns InvalidArgument if the multiplication fails
    **/
   StatusOr<std::vector<seal::Ciphertext>> multiply(
-      std::shared_ptr<seal::Evaluator> evaluator,
       const std::vector<seal::Ciphertext>& op);
 
   /**
@@ -54,37 +55,14 @@ class PIRDatabase {
    **/
   std::size_t size() const { return db_.size(); }
 
+  PIRDatabase(db_type db, std::unique_ptr<PIRContext> context)
+      : db_(db), context_(std::move(context)) {}
+
  private:
-  PIRDatabase(db_type db) : db_(db) {}
   db_type db_;
+  std::unique_ptr<PIRContext> context_;
 };
 
-class RawDatabase {
- public:
-  /**
-   * Creates and returns a new raw database instance.
-   * @param[in] db Database to load
-   **/
-  static std::unique_ptr<RawDatabase> Create(const raw_db_type& /*database*/);
-
-  /**
-   * Encodes the current database to plaintext.
-   * @param[in] PIRContext instance
-   * @returns InvalidArgument if the encoding fails
-   **/
-  StatusOr<std::unique_ptr<PIRDatabase>> Encode(
-      const std::unique_ptr<PIRContext>& context) const;
-
-  /**
-   * Database size.
-   **/
-  std::size_t size() const { return db_.size(); }
-
- private:
-  RawDatabase(raw_db_type db) : db_(db) {}
-
-  raw_db_type db_;
-};
 }  // namespace pir
 
 #endif  // PIR_DATABASE_H_

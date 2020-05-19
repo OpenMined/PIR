@@ -28,31 +28,26 @@ using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
 
 PIRServer::PIRServer(std::unique_ptr<PIRContext> context,
-                     std::unique_ptr<PIRDatabase> db)
-    : context_(std::move(context)), db_(std::move(db)) {}
+                     std::shared_ptr<PIRDatabase> db)
+    : context_(std::move(context)), db_(db) {}
 
 StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
-    const std::unique_ptr<RawDatabase>& rawdb,
-    std::shared_ptr<PIRParameters> params) {
-  if (params->DBSize() != rawdb->size()) {
+    std::shared_ptr<PIRDatabase> db, std::shared_ptr<PIRParameters> params) {
+  if (params->DBSize() != db->size()) {
     return InvalidArgumentError("database size mismatch");
   }
-
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
-  ASSIGN_OR_RETURN(auto db, rawdb->Encode(context));
-
-  return absl::WrapUnique(new PIRServer(std::move(context), std::move(db)));
+  return absl::WrapUnique(new PIRServer(std::move(context), db));
 }
 
 StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
-    const std::unique_ptr<RawDatabase>& rawdb) {
-  return PIRServer::Create(rawdb, PIRParameters::Create(rawdb->size()));
+    std::shared_ptr<PIRDatabase> db) {
+  return PIRServer::Create(db, PIRParameters::Create(db->size()));
 }
 
 StatusOr<PIRPayload> PIRServer::ProcessRequest(
     const PIRPayload& payload) const {
-  ASSIGN_OR_RETURN(auto result,
-                   db_->multiply(context_->Evaluator(), payload.Get()));
+  ASSIGN_OR_RETURN(auto result, db_->multiply(payload.Get()));
 
   return PIRPayload::Load(result);
 }

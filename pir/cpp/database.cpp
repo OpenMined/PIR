@@ -20,6 +20,7 @@
 #include "absl/memory/memory.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
+#include "util/status_macros.h"
 #include "util/statusor.h"
 
 namespace pir {
@@ -27,38 +28,29 @@ namespace pir {
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
 
-std::unique_ptr<RawDatabase> RawDatabase::Create(const raw_db_type& db) {
-  return absl::WrapUnique(new RawDatabase(db));
-}
+StatusOr<std::shared_ptr<PIRDatabase>> PIRDatabase::Create(
+    const raw_db_type& rawdb, std::shared_ptr<PIRParameters> params) {
+  db_type db(rawdb.size());
+  ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
 
-StatusOr<std::unique_ptr<PIRDatabase>> RawDatabase::Encode(
-    const std::unique_ptr<PIRContext>& context) const {
-  db_type db(db_.size());
-
-  for (size_t idx = 0; idx < db_.size(); ++idx) {
+  for (size_t idx = 0; idx < rawdb.size(); ++idx) {
     try {
-      context->Encoder()->encode(db_[idx], db[idx]);
+      context->Encoder()->encode(rawdb[idx], db[idx]);
     } catch (std::exception& e) {
       return InvalidArgumentError(e.what());
     }
   }
-
-  return PIRDatabase::Create(db);
-}
-
-std::unique_ptr<PIRDatabase> PIRDatabase::Create(const db_type& db) {
-  return absl::WrapUnique(new PIRDatabase(db));
+  return std::make_shared<PIRDatabase>(db, std::move(context));
 }
 
 StatusOr<std::vector<seal::Ciphertext>> PIRDatabase::multiply(
-    std::shared_ptr<seal::Evaluator> evaluator,
     const std::vector<seal::Ciphertext>& in) {
   std::vector<seal::Ciphertext> result(in.size());
 
   for (size_t idx = 0; idx < in.size(); ++idx) {
     seal::Ciphertext ct;
     try {
-      evaluator->multiply_plain(in[idx], db_[idx], ct);
+      context_->Evaluator()->multiply_plain(in[idx], db_[idx], ct);
     } catch (std::exception& e) {
       return InvalidArgumentError(e.what());
     }

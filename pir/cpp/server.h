@@ -33,20 +33,20 @@ class PIRServer {
  public:
   /**
    * Creates and returns a new server instance, holding a database.
-   * @param[in] db RawDatabase to load
+   * @param[in] db PIRDatabase to load
    * @param[in] params PIR Paramerters
    * @returns InvalidArgument if the database encoding fails
    **/
   static StatusOr<std::unique_ptr<PIRServer>> Create(
-      const std::unique_ptr<RawDatabase>& database,
+      std::shared_ptr<PIRDatabase> database,
       std::shared_ptr<PIRParameters> params);
   /**
    * Creates and returns a new server instance, holding a database.
-   * @param[in] db RawDatabase to load
+   * @param[in] db PIRDatabase to load
    * @returns InvalidArgument if the database encoding fails
    **/
   static StatusOr<std::unique_ptr<PIRServer>> Create(
-      const std::unique_ptr<RawDatabase>& database);
+      std::shared_ptr<PIRDatabase> database);
 
   /**
    * Handles a client request.
@@ -65,10 +65,10 @@ class PIRServer {
 
  private:
   PIRServer(std::unique_ptr<PIRContext> /*sealctx*/,
-            std::unique_ptr<PIRDatabase> /*db*/);
+            std::shared_ptr<PIRDatabase> /*db*/);
 
   std::unique_ptr<PIRContext> context_;
-  std::unique_ptr<PIRDatabase> db_;
+  std::shared_ptr<PIRDatabase> db_;
 };
 
 }  // namespace pir
