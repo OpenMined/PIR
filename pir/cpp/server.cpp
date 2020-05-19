@@ -32,8 +32,9 @@ PIRServer::PIRServer(std::unique_ptr<PIRContext> context,
     : context_(std::move(context)), db_(std::move(db)) {}
 
 StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
-    const std::vector<std::int64_t>& database) {
-  auto params = PIRParameters::Create(database.size());
+    const std::vector<std::int64_t>& database,
+    std::optional<std::shared_ptr<PIRParameters>> optparams) {
+  auto params = optparams.value_or(PIRParameters::Create(database.size()));
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
   ASSIGN_OR_RETURN(auto db, PIRDatabase::Create(context, database));
 

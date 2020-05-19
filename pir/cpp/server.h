@@ -37,7 +37,8 @@ class PIRServer {
    * @returns InvalidArgument if the database encoding fails
    **/
   static StatusOr<std::unique_ptr<PIRServer>> Create(
-      const std::vector<std::int64_t>& /*database*/);
+      const std::vector<std::int64_t>& /*database*/,
+      std::optional<std::shared_ptr<PIRParameters>> params = {});
 
   /**
    * Handles a client request.
