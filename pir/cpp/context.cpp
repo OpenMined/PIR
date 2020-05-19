@@ -19,7 +19,6 @@
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
 #include "util/statusor.h"
-#include "utils.h"
 
 namespace pir {
 
