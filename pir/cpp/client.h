@@ -58,8 +58,10 @@ class PIRClient {
   PIRClient() = delete;
 
  private:
-  StatusOr<std::vector<int64_t>> decrypt(const std::string& in) const;
-  StatusOr<std::string> encrypt(const std::vector<int64_t>& in) const;
+  StatusOr<std::vector<int64_t>> decryptResponseBuffer(
+      const std::string& in) const;
+  StatusOr<std::string> encryptRequestBuffer(
+      const std::vector<int64_t>& in) const;
 
   PIRClient(std::unique_ptr<PIRContext>);
 
