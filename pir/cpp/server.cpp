@@ -35,6 +35,11 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
     const std::vector<std::int64_t>& database,
     std::optional<std::shared_ptr<PIRParameters>> optparams) {
   auto params = optparams.value_or(PIRParameters::Create(database.size()));
+
+  if (params->DBSize() != database.size()) {
+    return InvalidArgumentError("database size mismatch");
+  }
+
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
   ASSIGN_OR_RETURN(auto db, PIRDatabase::Create(context, database));
 
