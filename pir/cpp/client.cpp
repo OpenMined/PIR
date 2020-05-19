@@ -31,8 +31,6 @@ PIRClient::PIRClient(std::unique_ptr<PIRContext> context)
   seal::KeyGenerator keygen(sealctx);
   encryptor_ = std::make_shared<seal::Encryptor>(sealctx, keygen.public_key());
   decryptor_ = std::make_shared<seal::Decryptor>(sealctx, keygen.secret_key());
-
-  encoder_ = context_->Encoder();
 }
 
 StatusOr<std::unique_ptr<PIRClient>> PIRClient::Create(
@@ -76,14 +74,17 @@ StatusOr<std::string> PIRClient::encrypt(const std::vector<int64_t>& in) const {
 
   for (size_t idx = 0; idx < in.size(); ++idx) {
     seal::Ciphertext ciphertext(context_->SEALContext());
-    auto plaintext = encoder_->encode<seal::IntegerEncoder>(in[idx]);
 
-    if (!plaintext.ok()) {
-      return plaintext.status();
+    seal::Plaintext plaintext;
+
+    try {
+      context_->Encoder()->encode(in[idx], plaintext);
+    } catch (const std::exception& e) {
+      return InvalidArgumentError(e.what());
     }
 
     try {
-      encryptor_->encrypt(plaintext.ValueOrDie(), ciphertext);
+      encryptor_->encrypt(plaintext, ciphertext);
     } catch (const std::exception& e) {
       return InvalidArgumentError(e.what());
     }
@@ -107,15 +108,10 @@ StatusOr<std::vector<int64_t>> PIRClient::decrypt(const std::string& in) const {
 
     try {
       decryptor_->decrypt(ciphertexts[idx], plaintext);
+      result[idx] = context_->Encoder()->decode_int64(plaintext);
     } catch (const std::exception& e) {
       return InvalidArgumentError(e.what());
     }
-
-    auto intor = encoder_->decode<seal::IntegerEncoder>(plaintext);
-    if (!intor.ok()) {
-      return intor.status();
-    }
-    result[idx] = intor.ValueOrDie();
   }
   return result;
 }

@@ -17,7 +17,6 @@
 #ifndef PIR_CONTEXT_H_
 #define PIR_CONTEXT_H_
 
-#include "encoder.h"
 #include "parameters.h"
 #include "seal/seal.h"
 #include "util/statusor.h"
@@ -63,7 +62,7 @@ class PIRContext {
   /**
    * Returns the encoder
    **/
-  std::shared_ptr<EncoderFactory>& Encoder() { return encoder_; }
+  std::shared_ptr<seal::IntegerEncoder>& Encoder() { return encoder_; }
 
  private:
   PIRContext(std::shared_ptr<PIRParameters> /*params*/);
@@ -71,7 +70,7 @@ class PIRContext {
   shared_ptr<PIRParameters> parameters_;
   shared_ptr<seal::SEALContext> context_;
   shared_ptr<seal::Evaluator> evaluator_;
-  shared_ptr<EncoderFactory> encoder_;
+  shared_ptr<seal::IntegerEncoder> encoder_;
 };
 
 }  // namespace pir

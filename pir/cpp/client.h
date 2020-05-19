@@ -65,7 +65,6 @@ class PIRClient {
   PIRClient(std::unique_ptr<PIRContext>);
 
   std::unique_ptr<PIRContext> context_;
-  shared_ptr<EncoderFactory> encoder_;
 
   std::shared_ptr<seal::Encryptor> encryptor_;
   std::shared_ptr<seal::Decryptor> decryptor_;

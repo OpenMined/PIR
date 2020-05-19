@@ -33,12 +33,11 @@ StatusOr<std::unique_ptr<PIRDatabase>> PIRDatabase::Create(
   db_type db(database.size());
 
   for (size_t idx = 0; idx < database.size(); ++idx) {
-    auto statusor =
-        context->Encoder()->encode<seal::IntegerEncoder>(database[idx]);
-    if (!statusor.ok()) {
-      return statusor.status();
+    try {
+      context->Encoder()->encode(database[idx], db[idx]);
+    } catch (std::exception& e) {
+      return InvalidArgumentError(e.what());
     }
-    db[idx] = statusor.ValueOrDie();
   }
 
   return absl::WrapUnique(

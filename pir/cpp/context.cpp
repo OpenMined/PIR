@@ -29,7 +29,7 @@ using ::private_join_and_compute::StatusOr;
 PIRContext::PIRContext(std::shared_ptr<PIRParameters> params)
     : parameters_(params),
       context_(seal::SEALContext::Create(params->GetEncryptionParams())) {
-  encoder_ = std::make_shared<EncoderFactory>(context_);
+  encoder_ = std::make_shared<seal::IntegerEncoder>(this->context_);
   evaluator_ = std::make_shared<seal::Evaluator>(context_);
 }
 

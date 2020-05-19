@@ -25,7 +25,6 @@ cc_library(
     srcs = ["client.cpp", "server.cpp", 
             "context.cpp", "context.h", 
             "parameters.h", "parameters.cpp",
-            "encoder.h",
             "payload.h", "payload.cpp",
             "database.cpp", "database.h",
             "utils.cpp", "utils.h",
