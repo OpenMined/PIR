@@ -28,37 +28,63 @@ namespace pir {
 
 using ::private_join_and_compute::StatusOr;
 
+using raw_db_type = std::vector<std::int64_t>;
 using db_type = std::vector<seal::Plaintext>;
 
 class PIRDatabase {
  public:
   /**
-   * Creates and returns a new database instance.
+   * Creates and returns a new PIR database instance.
    * @param[in] db Database to load
-   * @returns InvalidArgument if the database encoding fails
    **/
-  static StatusOr<std::unique_ptr<PIRDatabase>> Create(
-      const std::unique_ptr<PIRContext>& context,
-      const std::vector<std::int64_t>& /*database*/);
+  static std::unique_ptr<PIRDatabase> Create(const db_type& /*database*/);
 
   /**
    * Multiplies the database with a ciphertext and returns a new ciphertext.
-   * @param[in] Ciphertext
+   * @param[in] Evaluator instance
+   * @param[in] vector of Ciphertexts
    * @returns InvalidArgument if the multiplication fails
    **/
   StatusOr<std::vector<seal::Ciphertext>> multiply(
+      std::shared_ptr<seal::Evaluator> evaluator,
       const std::vector<seal::Ciphertext>& op);
 
- private:
-  PIRDatabase(std::shared_ptr<seal::Evaluator> eval, db_type db,
-              std::size_t size)
-      : db_(db), size_(size), evaluator_(eval) {}
-  db_type db_;
-  std::size_t size_;
+  /**
+   * Database size.
+   **/
+  std::size_t size() const { return db_.size(); }
 
-  std::shared_ptr<seal::Evaluator> evaluator_;
+ private:
+  PIRDatabase(db_type db) : db_(db) {}
+  db_type db_;
 };
 
+class RawDatabase {
+ public:
+  /**
+   * Creates and returns a new raw database instance.
+   * @param[in] db Database to load
+   **/
+  static std::unique_ptr<RawDatabase> Create(const raw_db_type& /*database*/);
+
+  /**
+   * Encodes the current database to plaintext.
+   * @param[in] PIRContext instance
+   * @returns InvalidArgument if the encoding fails
+   **/
+  StatusOr<std::unique_ptr<PIRDatabase>> Encode(
+      const std::unique_ptr<PIRContext>& context) const;
+
+  /**
+   * Database size.
+   **/
+  std::size_t size() const { return db_.size(); }
+
+ private:
+  RawDatabase(raw_db_type db) : db_(db) {}
+
+  raw_db_type db_;
+};
 }  // namespace pir
 
 #endif  // PIR_DATABASE_H_

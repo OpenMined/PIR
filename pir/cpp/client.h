@@ -37,7 +37,6 @@ class PIRClient {
   /**
    * Creates a new payload request
    * @param[in] desiredIndex Expected database value from an index
-   * @param[in] dbSize Database size
    * @returns InvalidArgument if the index is invalid or if the encryption fails
    **/
   StatusOr<PIRPayload> CreateRequest(std::size_t /*index*/) const;

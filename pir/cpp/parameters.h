@@ -33,11 +33,23 @@ seal::EncryptionParameters generateEncryptionParams(
 
 class PIRParameters {
  public:
+  /**
+   * Creates a new PIR Parameters container.
+   * @param[in] Database size
+   * @param[in] Polynomial modulus degree
+   **/
   static std::shared_ptr<PIRParameters> Create(
       size_t dbsize, uint32_t poly_modulus_degree = 4096) {
     return absl::WrapUnique(new PIRParameters(dbsize, poly_modulus_degree));
   }
+  /**
+   * Returns the database size.
+   **/
   size_t DBSize() const { return database_size_; }
+
+  /**
+   * Returns the encryption parameters.
+   **/
   const EncryptionParameters& GetEncryptionParams() const { return parms_; }
 
   PIRParameters() = delete;

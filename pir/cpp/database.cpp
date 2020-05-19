@@ -27,31 +27,38 @@ namespace pir {
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
 
-StatusOr<std::unique_ptr<PIRDatabase>> PIRDatabase::Create(
-    const std::unique_ptr<PIRContext>& context,
-    const std::vector<std::int64_t>& database) {
-  db_type db(database.size());
+std::unique_ptr<RawDatabase> RawDatabase::Create(const raw_db_type& db) {
+  return absl::WrapUnique(new RawDatabase(db));
+}
 
-  for (size_t idx = 0; idx < database.size(); ++idx) {
+StatusOr<std::unique_ptr<PIRDatabase>> RawDatabase::Encode(
+    const std::unique_ptr<PIRContext>& context) const {
+  db_type db(db_.size());
+
+  for (size_t idx = 0; idx < db_.size(); ++idx) {
     try {
-      context->Encoder()->encode(database[idx], db[idx]);
+      context->Encoder()->encode(db_[idx], db[idx]);
     } catch (std::exception& e) {
       return InvalidArgumentError(e.what());
     }
   }
 
-  return absl::WrapUnique(
-      new PIRDatabase(context->Evaluator(), db, database.size()));
+  return PIRDatabase::Create(db);
+}
+
+std::unique_ptr<PIRDatabase> PIRDatabase::Create(const db_type& db) {
+  return absl::WrapUnique(new PIRDatabase(db));
 }
 
 StatusOr<std::vector<seal::Ciphertext>> PIRDatabase::multiply(
+    std::shared_ptr<seal::Evaluator> evaluator,
     const std::vector<seal::Ciphertext>& in) {
   std::vector<seal::Ciphertext> result(in.size());
 
   for (size_t idx = 0; idx < in.size(); ++idx) {
     seal::Ciphertext ct;
     try {
-      evaluator_->multiply_plain(in[idx], db_[idx], ct);
+      evaluator->multiply_plain(in[idx], db_[idx], ct);
     } catch (std::exception& e) {
       return InvalidArgumentError(e.what());
     }

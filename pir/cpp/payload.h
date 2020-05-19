@@ -29,12 +29,25 @@ using buff_type = std::vector<seal::Ciphertext>;
 
 class PIRPayload {
  public:
+  /**
+   * Loads a PIR Payload.
+   **/
   static PIRPayload Load(buff_type plain);
+  /**
+   * Decodes and loads a PIR Payload.
+   * @returns InvalidArgument if the decoding fails
+   **/
   static StatusOr<PIRPayload> Load(
       const std::shared_ptr<seal::SEALContext>& ctx,
       const std::string& encoded);
-
+  /**
+   * Saves the PIR Payload to a string.
+   * @returns InvalidArgument if the encoding fails
+   **/
   StatusOr<std::string> Save();
+  /**
+   * Returns a reference to the internal buffer.
+   **/
   const buff_type& Get() const;
   PIRPayload() = delete;
 

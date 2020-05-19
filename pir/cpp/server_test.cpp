@@ -39,7 +39,8 @@ TEST_F(PIRServerTest, TestCorrectness) {
     return 4 * n;
   });
 
-  auto server_ = PIRServer::Create(db).ValueOrDie();
+  auto rawdb = RawDatabase::Create(db);
+  auto server_ = PIRServer::Create(rawdb).ValueOrDie();
   ASSERT_TRUE(server_ != nullptr);
 
   for (auto& client_ :
