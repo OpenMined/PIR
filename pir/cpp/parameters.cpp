@@ -53,14 +53,18 @@ StatusOr<seal::EncryptionParameters> deserializeEncryptionParams(
 }
 
 seal::EncryptionParameters generateEncryptionParams(
-    uint32_t poly_modulus_degree /*= 4096*/) {
-  auto plain_modulus = seal::PlainModulus::Batching(poly_modulus_degree, 20);
-  seal::EncryptionParameters parms(seal::scheme_type::BFV);
+    std::optional<uint32_t> poly_mod_opt, std::optional<Modulus> plain_mod_opt,
+    std::optional<std::vector<Modulus>> coeff_opt, seal::scheme_type scheme) {
+  auto poly_modulus_degree = poly_mod_opt.value_or(4096);
+  auto plain_modulus = plain_mod_opt.value_or(
+      seal::PlainModulus::Batching(poly_modulus_degree, 20));
+  auto coeff =
+      coeff_opt.value_or(seal::CoeffModulus::BFVDefault(poly_modulus_degree));
+
+  seal::EncryptionParameters parms(scheme);
   parms.set_poly_modulus_degree(poly_modulus_degree);
   parms.set_plain_modulus(plain_modulus);
-  auto coeff = seal::CoeffModulus::BFVDefault(poly_modulus_degree);
   parms.set_coeff_modulus(coeff);
-
   return parms;
 }
 
