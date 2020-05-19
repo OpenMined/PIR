@@ -39,7 +39,14 @@ class PIRServer {
    **/
   static StatusOr<std::unique_ptr<PIRServer>> Create(
       const std::unique_ptr<RawDatabase>& database,
-      std::optional<std::shared_ptr<PIRParameters>> params = {});
+      std::shared_ptr<PIRParameters> params);
+  /**
+   * Creates and returns a new server instance, holding a database.
+   * @param[in] db RawDatabase to load
+   * @returns InvalidArgument if the database encoding fails
+   **/
+  static StatusOr<std::unique_ptr<PIRServer>> Create(
+      const std::unique_ptr<RawDatabase>& database);
 
   /**
    * Handles a client request.
