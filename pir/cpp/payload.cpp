@@ -21,6 +21,7 @@
 #include "rapidjson/writer.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
+#include "util/status_macros.h"
 #include "util/statusor.h"
 
 namespace pir {
@@ -84,10 +85,7 @@ StatusOr<PIRPayload> PIRPayload::Load(
     std::string encoded(request[idx].GetString(),
                         request[idx].GetStringLength());
 
-    auto statusor = deserializeCT(sealctx, encoded);
-    if (!statusor.ok()) return statusor.status();
-
-    buff[idx] = statusor.ValueOrDie();
+    ASSIGN_OR_RETURN(buff[idx], deserializeCT(sealctx, encoded));
   }
 
   return PIRPayload(buff);
@@ -97,11 +95,7 @@ StatusOr<std::string> PIRPayload::Save() {
   std::vector<std::string> interm(buff_.size());
 
   for (size_t idx = 0; idx < buff_.size(); ++idx) {
-    auto statusor = serializeCT(buff_[idx]);
-    if (!statusor.ok()) {
-      return statusor.status();
-    }
-    interm[idx] = statusor.ValueOrDie();
+    ASSIGN_OR_RETURN(interm[idx], serializeCT(buff_[idx]));
   }
 
   rapidjson::Document output;

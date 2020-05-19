@@ -19,6 +19,7 @@
 #include "payload.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
+#include "util/status_macros.h"
 #include "util/statusor.h"
 
 namespace pir {
@@ -33,36 +34,19 @@ PIRServer::PIRServer(std::unique_ptr<PIRContext> context,
 StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
     const std::vector<std::int64_t>& database) {
   auto params = PIRParameters::Create(database.size());
-
-  auto rawctx = PIRContext::Create(params);
-  if (!rawctx.ok()) {
-    return rawctx.status();
-  }
-  auto context = std::move(rawctx.ValueOrDie());
-
-  auto rawdb = PIRDatabase::Create(context, database);
-  if (!rawdb.ok()) {
-    return rawdb.status();
-  }
-  auto db = std::move(rawdb.ValueOrDie());
+  ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
+  ASSIGN_OR_RETURN(auto db, PIRDatabase::Create(context, database));
 
   return absl::WrapUnique(new PIRServer(std::move(context), std::move(db)));
 }
 
 StatusOr<std::string> PIRServer::ProcessRequest(
     const std::string& request) const {
-  auto deserialized = PIRPayload::Load(context_->SEALContext(), request);
+  ASSIGN_OR_RETURN(auto payload,
+                   PIRPayload::Load(context_->SEALContext(), request));
+  ASSIGN_OR_RETURN(auto result, db_->multiply(payload.Get()));
 
-  if (!deserialized.ok()) {
-    return deserialized.status();
-  }
-  auto payload = deserialized.ValueOrDie();
-
-  auto out = db_->multiply(payload.Get());
-  if (!out.ok()) {
-    return out.status();
-  }
-  return PIRPayload::Load(out.ValueOrDie()).Save();
+  return PIRPayload::Load(result).Save();
 }
 
 }  // namespace pir

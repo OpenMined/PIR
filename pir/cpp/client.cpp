@@ -18,6 +18,7 @@
 #include "absl/memory/memory.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
+#include "util/status_macros.h"
 #include "util/statusor.h"
 
 namespace pir {
@@ -35,11 +36,8 @@ PIRClient::PIRClient(std::unique_ptr<PIRContext> context)
 
 StatusOr<std::unique_ptr<PIRClient>> PIRClient::Create(
     std::shared_ptr<PIRParameters> params) {
-  auto context = PIRContext::Create(params);
-  if (!context.ok()) {
-    return context.status();
-  }
-  return absl::WrapUnique(new PIRClient(std::move(context.ValueOrDie())));
+  ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
+  return absl::WrapUnique(new PIRClient(std::move(context)));
 }
 
 StatusOr<std::string> PIRClient::CreateRequest(std::size_t index) const {
@@ -54,12 +52,7 @@ StatusOr<std::string> PIRClient::CreateRequest(std::size_t index) const {
 
 StatusOr<std::map<uint64_t, int64_t>> PIRClient::ProcessResponse(
     const std::string& response) const {
-  auto decryptedRaw = this->decrypt(response);
-
-  if (!decryptedRaw.ok()) {
-    return decryptedRaw.status();
-  }
-  auto decrypted = decryptedRaw.ValueOrDie();
+  ASSIGN_OR_RETURN(auto decrypted, this->decrypt(response));
   std::map<uint64_t, int64_t> result;
 
   for (size_t idx = 0; idx < decrypted.size(); ++idx)
@@ -95,12 +88,8 @@ StatusOr<std::string> PIRClient::encrypt(const std::vector<int64_t>& in) const {
 }
 
 StatusOr<std::vector<int64_t>> PIRClient::decrypt(const std::string& in) const {
-  auto payloador = PIRPayload::Load(context_->SEALContext(), in);
-  if (!payloador.ok()) {
-    return payloador.status();
-  }
-
-  auto ciphertexts = payloador.ValueOrDie().Get();
+  ASSIGN_OR_RETURN(auto payload, PIRPayload::Load(context_->SEALContext(), in));
+  auto ciphertexts = payload.Get();
   std::vector<int64_t> result(ciphertexts.size());
 
   for (size_t idx = 0; idx < ciphertexts.size(); ++idx) {
