@@ -52,3 +52,14 @@ cc_test(
    copts = PIR_DEFAULT_COPTS,
    linkstatic = True,
 )
+cc_binary(
+    name = "benchmark",
+    srcs = ["benchmark.cpp"],
+    deps = [
+        ":pir",
+        "@com_google_benchmark//:benchmark_main",
+    ],
+    includes = PIR_DEFAULT_INCLUDES,
+    copts = PIR_DEFAULT_COPTS,
+    linkstatic = True,
+)

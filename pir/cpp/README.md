@@ -19,3 +19,9 @@ Build and run tests
 ```
 bazel test //pir/cpp/...
 ```
+
+Build and run benchmarks
+
+```
+bazel run -c opt //pir/cpp:benchmark
+`
