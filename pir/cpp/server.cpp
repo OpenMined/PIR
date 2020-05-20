@@ -48,18 +48,32 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
 
 StatusOr<PIRPayload> PIRServer::ProcessRequest(
     const PIRPayload& payload) const {
-  ASSIGN_OR_RETURN(auto result, db_->multiply(payload.Get()));
+  if (payload.Get().size() != 1) {
+    return InvalidArgumentError("Number of ciphertexts in request must be 1");
+  }
+  if (!payload.GetKeys()) {
+    return InvalidArgumentError("Must have Galois Keys in request");
+  }
 
-  return PIRPayload::Load(result);
+  auto selection_vector =
+      oblivious_expansion(payload.Get()[0], DBSize(), *payload.GetKeys());
+
+  ASSIGN_OR_RETURN(auto mult_results, db_->multiply(selection_vector));
+
+  seal::Ciphertext result;
+  context_->Evaluator()->add_many(mult_results, result);
+
+  return PIRPayload::Load(vector<seal::Ciphertext>{result});
 }
 
-void PIRServer::substitute_power_x_inplace(seal::Ciphertext& ct, uint32_t power,
-                                           const seal::GaloisKeys& gal_keys) {
+void PIRServer::substitute_power_x_inplace(
+    seal::Ciphertext& ct, uint32_t power,
+    const seal::GaloisKeys& gal_keys) const {
   context_->Evaluator()->apply_galois_inplace(ct, power, gal_keys);
 }
 
 void PIRServer::multiply_power_of_x(const seal::Ciphertext& encrypted, int k,
-                                    seal::Ciphertext& destination) {
+                                    seal::Ciphertext& destination) const {
   // This has to get the actual params from the SEALContext. Using just the
   // params from PIR doesn't work.
   const auto& params = context_->SEALContext()->first_context_data()->parms();
@@ -86,8 +100,8 @@ void PIRServer::multiply_power_of_x(const seal::Ciphertext& encrypted, int k,
 
 std::vector<seal::Ciphertext> PIRServer::oblivious_expansion(
     const seal::Ciphertext& ct, const size_t num_items,
-    const seal::GaloisKeys gal_keys) {
-  auto poly_modulus_degree =
+    const seal::GaloisKeys gal_keys) const {
+  const auto poly_modulus_degree =
       context_->Parameters()->GetEncryptionParams().poly_modulus_degree();
   size_t logm = ceil(log2(num_items));
   std::vector<seal::Ciphertext> results(1 << logm);

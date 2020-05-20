@@ -64,9 +64,13 @@ class PIRClient {
 
   std::unique_ptr<PIRContext> context_;
 
+  std::unique_ptr<seal::KeyGenerator> keygen_;
   std::shared_ptr<seal::Encryptor> encryptor_;
   std::shared_ptr<seal::Decryptor> decryptor_;
 };
+
+// Utility function to generate Galois elements
+vector<uint32_t> generate_galois_elts(uint64_t N);
 
 }  // namespace pir
 

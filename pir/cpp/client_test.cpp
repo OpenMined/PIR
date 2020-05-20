@@ -36,9 +36,9 @@ TEST_F(PIRClientTest, TestSanity) {
   int64_t index = 5;
 
   auto payload = client_->CreateRequest(index).ValueOrDie();
-  auto out = client_->ProcessResponse(payload).ValueOrDie();
+  auto result = client_->ProcessResponse(payload).ValueOrDie();
 
-  ASSERT_TRUE(out == 1);
+  ASSERT_EQ(result, (1 << index) / 16);
 }
 
 }  // namespace

@@ -59,7 +59,7 @@ class PIRServer {
   /**
    * Returns the database size.
    **/
-  std::size_t DBSize() { return context_->DBSize(); }
+  std::size_t DBSize() const { return context_->DBSize(); }
 
   PIRServer() = delete;
 
@@ -74,7 +74,7 @@ class PIRServer {
    *   being asked for.
    */
   void substitute_power_x_inplace(seal::Ciphertext& ct, std::uint32_t power,
-                                  const seal::GaloisKeys& gal_keys);
+                                  const seal::GaloisKeys& gal_keys) const;
 
   /**
    * Helper function to multiply a ciphertext by a given power of x. As a result
@@ -86,7 +86,7 @@ class PIRServer {
    * @param[out] destination Output ciphertext after multiplying by power of x.
    */
   void multiply_power_of_x(const seal::Ciphertext& encrypted, int k,
-                           seal::Ciphertext& destination);
+                           seal::Ciphertext& destination) const;
 
   /**
    * Performans an oblivious expansion on an input ciphertext to a vector of
@@ -117,7 +117,7 @@ class PIRServer {
    */
   std::vector<seal::Ciphertext> oblivious_expansion(
       const seal::Ciphertext& ct, const size_t num_items,
-      const seal::GaloisKeys gal_keys);
+      const seal::GaloisKeys gal_keys) const;
 
   // Just for testing: get the context
   PIRContext* Context() { return context_.get(); }

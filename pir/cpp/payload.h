@@ -17,6 +17,7 @@
 #ifndef PIR_PAYLOAD_H_
 #define PIR_PAYLOAD_H_
 
+#include <optional>
 #include <string>
 
 #include "seal/seal.h"
@@ -25,6 +26,8 @@
 namespace pir {
 
 using ::private_join_and_compute::StatusOr;
+using seal::GaloisKeys;
+using std::optional;
 using buff_type = std::vector<seal::Ciphertext>;
 
 class PIRPayload {
@@ -32,7 +35,8 @@ class PIRPayload {
   /**
    * Loads a PIR Payload.
    **/
-  static PIRPayload Load(buff_type plain);
+  static PIRPayload Load(const buff_type& plain,
+                         const optional<GaloisKeys>& keys = {});
   /**
    * Decodes and loads a PIR Payload.
    * @returns InvalidArgument if the decoding fails
@@ -51,9 +55,15 @@ class PIRPayload {
   const buff_type& Get() const;
   PIRPayload() = delete;
 
+  const optional<GaloisKeys>& GetKeys() const { return keys_; }
+
  private:
-  PIRPayload(std::vector<seal::Ciphertext> buff) : buff_(buff){};
+  PIRPayload(const std::vector<seal::Ciphertext>& buff,
+             const optional<GaloisKeys>& keys = {})
+      : buff_(buff), keys_(keys){};
+
   buff_type buff_;
+  optional<GaloisKeys> keys_;
 };
 
 }  // namespace pir
