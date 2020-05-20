@@ -4,12 +4,11 @@
 #include "server.h"
 
 namespace pir {
-namespace {
 
 std::vector<std::int64_t> generateDB(std::size_t dbsize) {
   std::vector<std::int64_t> db(dbsize, 0);
 
-  std::generate(db.begin(), db.end(), [n = 0]() mutable {
+  std::generate(db.begin(), db.end(), [n = 100]() mutable {
     ++n;
     return 4 * n;
   });
@@ -17,24 +16,22 @@ std::vector<std::int64_t> generateDB(std::size_t dbsize) {
   return db;
 }
 
-void BM_ServerLoad(benchmark::State& state) {
+void BM_DatabaseLoad(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
   auto db = generateDB(dbsize);
   int64_t elements_processed = 0;
-
   auto params = PIRParameters::Create(db.size());
-  auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
 
   for (auto _ : state) {
-    auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
-    ::benchmark::DoNotOptimize(server_);
+    auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
+    ::benchmark::DoNotOptimize(pirdb);
     elements_processed += dbsize;
   }
   state.counters["ElementsProcessed"] = benchmark::Counter(
       static_cast<double>(elements_processed), benchmark::Counter::kIsRate);
-}  // namespace
+}
 // Range is for the dbsize.
-BENCHMARK(BM_ServerLoad)->RangeMultiplier(10)->Range(10, 10000);
+BENCHMARK(BM_DatabaseLoad)->RangeMultiplier(10)->Range(10, 10000);
 
 void BM_ClientCreateRequest(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
@@ -56,7 +53,7 @@ void BM_ClientCreateRequest(benchmark::State& state) {
   }
   state.counters["ElementsProcessed"] = benchmark::Counter(
       static_cast<double>(elements_processed), benchmark::Counter::kIsRate);
-}  // namespace
+}
 // Range is for the dbsize.
 BENCHMARK(BM_ClientCreateRequest)->RangeMultiplier(10)->Range(10, 10000);
 
@@ -81,7 +78,7 @@ void BM_ServerProcessRequest(benchmark::State& state) {
   }
   state.counters["ElementsProcessed"] = benchmark::Counter(
       static_cast<double>(elements_processed), benchmark::Counter::kIsRate);
-}  // namespace
+}
 // Range is for the dbsize.
 BENCHMARK(BM_ServerProcessRequest)->RangeMultiplier(10)->Range(10, 1000);
 
@@ -107,9 +104,8 @@ void BM_ClientProcessResponse(benchmark::State& state) {
   }
   state.counters["ElementsProcessed"] = benchmark::Counter(
       static_cast<double>(elements_processed), benchmark::Counter::kIsRate);
-}  // namespace
+}
 // Range is for the dbsize.
 BENCHMARK(BM_ClientProcessResponse)->RangeMultiplier(10)->Range(10, 1000);
 
-}  // namespace
 }  // namespace pir
