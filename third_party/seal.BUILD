@@ -6,14 +6,8 @@ filegroup(
     visibility = ["//visibility:public"]
 )
 
-filegroup(
-    name = "headers", 
-    srcs = glob(["native/**"]), 
-    visibility = ["//visibility:public"]
-)
-
 cmake_external(
-   name = "seal_lib",
+   name = "seal",
    cmake_options = [
         "-DSEAL_USE_MSGSL=OFF",
         "-DSEAL_USE_ZLIB=OFF",
@@ -25,16 +19,7 @@ cmake_external(
    },
    lib_source = ":src",
    install_prefix = "native/src",
+   out_include_dir = "include/SEAL-3.5",
    static_libraries = ["libseal-3.5.a"],
    visibility = ["//visibility:public"],
-)
-
-cc_library(
-    name = "seal",
-    hdrs = [":headers"],
-    includes = [":headers"],
-    visibility = ["//visibility:public"],
-    deps = [
-         ":seal_lib"
-    ]
 )

@@ -16,7 +16,7 @@
 
 package(default_visibility = ["//visibility:public"])
 
-PIR_DEFAULT_INCLUDES = [".", "com_microsoft_seal/seal/include/SEAL-3.5"]
+PIR_DEFAULT_INCLUDES = ["."]
 
 PIR_DEFAULT_COPTS =  ["-std=c++17"]
 
