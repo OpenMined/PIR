@@ -17,7 +17,7 @@
 package(default_visibility = ["//visibility:public"])
 load("@rules_foreign_cc//tools/build_defs:cmake.bzl", "cmake_external")
 
-PIR_DEFAULT_INCLUDES = [".", "com_microsoft_seal/include/SEAL-3.5/"]
+PIR_DEFAULT_INCLUDES = [".", "seal/include/SEAL-3.5/"]
 PIR_DEFAULT_COPTS =  ["-std=c++17"]
 
 cc_library(
@@ -31,7 +31,7 @@ cc_library(
     hdrs = ["client.h", "server.h"],
     includes = PIR_DEFAULT_INCLUDES,
     deps = [
-        ":com_microsoft_seal",
+        ":seal",
         "@com_google_absl//absl/memory",
         "@private_join_and_compute//util:status",
         "@com_tencent_rapidjson//:rapidjson",
@@ -54,7 +54,7 @@ cc_test(
 )
 
 cmake_external(
-   name = "com_microsoft_seal",
+   name = "seal",
    cmake_options = [
         "-DSEAL_USE_MSGSL=OFF",
         "-DSEAL_USE_ZLIB=OFF",
