@@ -15,9 +15,9 @@
 #
 
 package(default_visibility = ["//visibility:public"])
-load("@rules_foreign_cc//tools/build_defs:cmake.bzl", "cmake_external")
 
-PIR_DEFAULT_INCLUDES = [".", "com_microsoft_seal/include/SEAL-3.5/"]
+PIR_DEFAULT_INCLUDES = ["."]
+
 PIR_DEFAULT_COPTS =  ["-std=c++17"]
 
 cc_library(
@@ -31,7 +31,7 @@ cc_library(
     hdrs = ["client.h", "server.h"],
     includes = PIR_DEFAULT_INCLUDES,
     deps = [
-        ":com_microsoft_seal",
+        "@com_microsoft_seal//:seal",
         "@com_google_absl//absl/memory",
         "@private_join_and_compute//util:status",
         "@com_tencent_rapidjson//:rapidjson",
@@ -52,20 +52,14 @@ cc_test(
    copts = PIR_DEFAULT_COPTS,
    linkstatic = True,
 )
-
-cmake_external(
-   name = "com_microsoft_seal",
-   cmake_options = [
-        "-DSEAL_USE_MSGSL=OFF",
-        "-DSEAL_USE_ZLIB=OFF",
-        "-DCMAKE_CXX_STANDARD=17",
-   ],
-   cache_entries = {
-        "MAKE_INSTALL_PREFIX": "$EXT_BUILD_DEPS/seal",
-        "SEAL_LIB_BUILD_TYPE": "Static_PIC",
-   },
-   lib_source = "@com_microsoft_seal//:src",
-   install_prefix = "native/src",
-   static_libraries = ["libseal-3.5.a"],
-   visibility = ["//visibility:public"],
+cc_binary(
+    name = "benchmark",
+    srcs = ["benchmark.cpp"],
+    deps = [
+        ":pir",
+        "@com_google_benchmark//:benchmark_main",
+    ],
+    includes = PIR_DEFAULT_INCLUDES,
+    copts = PIR_DEFAULT_COPTS,
+    linkstatic = True,
 )
