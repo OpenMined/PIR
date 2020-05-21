@@ -17,7 +17,6 @@
 #include "server.h"
 
 #include <gmock/gmock.h>
-#include <seal/util/polyarithsmallmod.h>
 
 #include <algorithm>
 #include <iostream>

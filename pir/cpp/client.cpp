@@ -61,13 +61,14 @@ StatusOr<PIRPayload> PIRClient::CreateRequest(std::size_t index) const {
   std::cout << "Query PT: " << pt.to_string() << std::endl;
 
   vector<Ciphertext> query(1);
+  GaloisKeys gal_keys;
   try {
     encryptor_->encrypt(pt, query[0]);
+    gal_keys =
+      keygen_->galois_keys_local(generate_galois_elts(poly_modulus_degree));
   } catch (const std::exception& e) {
     return InternalError(e.what());
   }
-  auto gal_keys =
-      keygen_->galois_keys_local(generate_galois_elts(poly_modulus_degree));
   return PIRPayload::Load(query, gal_keys);
 }
 
@@ -90,10 +91,10 @@ StatusOr<int64_t> PIRClient::ProcessResponse(const PIRPayload& response) const {
 }
 
 vector<uint32_t> generate_galois_elts(uint64_t N) {
-  const size_t logN = ceil(log2(N));
+  const size_t logN = ceil_log2(N);
   vector<uint32_t> galois_elts(logN);
   for (size_t i = 0; i < logN; ++i) {
-    uint64_t two_exp_i = ((uint64_t)1) << i;
+    uint64_t two_exp_i = static_cast<uint64_t>(1) << i;
     galois_elts[i] = (N / two_exp_i) + 1;
   }
   return galois_elts;
