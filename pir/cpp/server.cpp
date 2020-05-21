@@ -100,7 +100,7 @@ void PIRServer::multiply_power_of_x(const seal::Ciphertext& encrypted, int k,
 
 std::vector<seal::Ciphertext> PIRServer::oblivious_expansion(
     const seal::Ciphertext& ct, const size_t num_items,
-    const seal::GaloisKeys@ gal_keys) const {
+    const seal::GaloisKeys& gal_keys) const {
   const auto poly_modulus_degree =
       context_->Parameters()->GetEncryptionParams().poly_modulus_degree();
   size_t logm = ceil_log2(num_items);

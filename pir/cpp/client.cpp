@@ -65,7 +65,7 @@ StatusOr<PIRPayload> PIRClient::CreateRequest(std::size_t index) const {
   try {
     encryptor_->encrypt(pt, query[0]);
     gal_keys =
-      keygen_->galois_keys_local(generate_galois_elts(poly_modulus_degree));
+        keygen_->galois_keys_local(generate_galois_elts(poly_modulus_degree));
   } catch (const std::exception& e) {
     return InternalError(e.what());
   }

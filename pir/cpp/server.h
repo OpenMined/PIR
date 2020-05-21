@@ -117,7 +117,7 @@ class PIRServer {
    */
   std::vector<seal::Ciphertext> oblivious_expansion(
       const seal::Ciphertext& ct, const size_t num_items,
-      const seal::GaloisKeys gal_keys) const;
+      const seal::GaloisKeys& gal_keys) const;
 
   // Just for testing: get the context
   PIRContext* Context() { return context_.get(); }
