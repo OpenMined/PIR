@@ -73,6 +73,20 @@ class PIRContext {
   shared_ptr<seal::IntegerEncoder> encoder_;
 };
 
+// Utility function to find the next highest power of 2 of a given number.
+template <typename t>
+t next_power_two(t n) {
+  if (n == 0) return 1;
+  --n;
+  for (int i = 1; i < sizeof(n) * 8; i = i << 1) {
+    n |= n >> i;
+  }
+  return n + 1;
+}
+
+// Utility function to find the log base 2 of v rounded up.
+uint32_t ceil_log2(uint32_t v);
+
 }  // namespace pir
 
 #endif  // PIR_CONTEXT_H_

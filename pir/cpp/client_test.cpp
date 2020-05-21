@@ -41,5 +41,31 @@ TEST_F(PIRClientTest, TestSanity) {
   ASSERT_EQ(result, (1 << index) / 16);
 }
 
+TEST(NextPowerTwoTest, NextPowerTwo) {
+  EXPECT_EQ(next_power_two(0), 1);
+  EXPECT_EQ(next_power_two(1), 1);
+  EXPECT_EQ(next_power_two(2), 2);
+  EXPECT_EQ(next_power_two(3), 4);
+  EXPECT_EQ(next_power_two(8), 8);
+  EXPECT_EQ(next_power_two(9), 16);
+  EXPECT_EQ(next_power_two(1 << 16), 65536);
+  EXPECT_EQ(next_power_two((1 << 16) + 1), 131072);
+  EXPECT_EQ(next_power_two((1UL << 30) + 1), 2147483648);
+}
+
+TEST(CeilLog2Test, CeilLog2) {
+  EXPECT_EQ(ceil_log2(1), 0);
+  EXPECT_EQ(ceil_log2(2), 1);
+  EXPECT_EQ(ceil_log2(3), 2);
+  EXPECT_EQ(ceil_log2(8), 3);
+  EXPECT_EQ(ceil_log2(15), 4);
+  EXPECT_EQ(ceil_log2(16), 4);
+  EXPECT_EQ(ceil_log2(17), 5);
+  EXPECT_EQ(ceil_log2((1 << 16) - 1), 16);
+  EXPECT_EQ(ceil_log2(1 << 16), 16);
+  EXPECT_EQ(ceil_log2(1 << 16) + 1, 17);
+  EXPECT_EQ(ceil_log2(1UL << 31), 31);
+}
+
 }  // namespace
 }  // namespace pir

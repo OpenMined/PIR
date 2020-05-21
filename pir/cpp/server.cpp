@@ -103,8 +103,8 @@ std::vector<seal::Ciphertext> PIRServer::oblivious_expansion(
     const seal::GaloisKeys gal_keys) const {
   const auto poly_modulus_degree =
       context_->Parameters()->GetEncryptionParams().poly_modulus_degree();
-  size_t logm = ceil(log2(num_items));
-  std::vector<seal::Ciphertext> results(1 << logm);
+  size_t logm = ceil_log2(num_items);
+  std::vector<seal::Ciphertext> results(next_power_two(num_items));
   results[0] = ct;
 
   for (size_t j = 0; j < logm; ++j) {

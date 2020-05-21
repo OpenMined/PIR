@@ -75,16 +75,18 @@ StatusOr<int64_t> PIRClient::ProcessResponse(const PIRPayload& response) const {
   if (response.Get().size() != 1) {
     return InvalidArgumentError("Number of ciphertexts in response must be 1");
   }
-  const size_t logm = ceil(log2(DBSize()));
+  const uint32_t m = next_power_two(DBSize());
 
   seal::Plaintext plaintext;
   try {
     decryptor_->decrypt(response.Get()[0], plaintext);
-    return context_->Encoder()->decode_int64(plaintext) / (1 << logm);
+    // have to divide the integer result by the the next power of 2 greater than
+    // number of items in oblivious expansion.
+    return context_->Encoder()->decode_int64(plaintext) / m;
   } catch (const std::exception& e) {
     return InternalError(e.what());
   }
-  return 0;
+  return InternalError("Should never get here.");
 }
 
 vector<uint32_t> generate_galois_elts(uint64_t N) {
