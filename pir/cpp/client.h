@@ -26,6 +26,8 @@ namespace pir {
 using ::private_join_and_compute::StatusOr;
 
 class PIRClient {
+  friend class PIRClientTest;
+
  public:
   /**
    * Creates and returns a new client instance, from existing parameters
@@ -55,11 +57,6 @@ class PIRClient {
   PIRClient() = delete;
 
  private:
-  StatusOr<std::vector<int64_t>> decryptResponseBuffer(
-      const PIRPayload& in) const;
-  StatusOr<PIRPayload> encryptRequestBuffer(
-      const std::vector<int64_t>& in) const;
-
   PIRClient(std::unique_ptr<PIRContext>);
 
   std::unique_ptr<PIRContext> context_;

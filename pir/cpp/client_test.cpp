@@ -19,26 +19,52 @@
 #include "gtest/gtest.h"
 
 namespace pir {
-namespace {
+
+using seal::Ciphertext;
+using seal::Plaintext;
 
 class PIRClientTest : public ::testing::Test {
  protected:
+  static constexpr std::size_t dbsize = 10;
   void SetUp() {
-    constexpr std::size_t dbsize = 10;
-    client_ = PIRClient::Create(PIRParameters::Create(dbsize)).ValueOrDie();
+    pir_params_ = PIRParameters::Create(dbsize);
+    client_ = PIRClient::Create(pir_params_).ValueOrDie();
     ASSERT_TRUE(client_ != nullptr);
   }
 
+  PIRContext* Context() { return client_->context_.get(); }
+  std::shared_ptr<seal::Decryptor> Decryptor() { return client_->decryptor_; }
+  std::shared_ptr<seal::Encryptor> Encryptor() { return client_->encryptor_; }
+
+  std::shared_ptr<PIRParameters> pir_params_;
   std::unique_ptr<PIRClient> client_;
 };
 
-TEST_F(PIRClientTest, TestSanity) {
+TEST_F(PIRClientTest, TestCreateRequest) {
   int64_t index = 5;
 
   auto payload = client_->CreateRequest(index).ValueOrDie();
-  auto result = client_->ProcessResponse(payload).ValueOrDie();
+  Plaintext pt;
+  ASSERT_EQ(payload.Get().size(), 1);
+  Decryptor()->decrypt(payload.Get()[0], pt);
 
-  ASSERT_EQ(result, (1 << index) / 16);
+  const auto plain_mod =
+      pir_params_->GetEncryptionParams().plain_modulus().value();
+  EXPECT_EQ((pt[index] * next_power_two(dbsize)) % plain_mod, 1);
+}
+
+TEST_F(PIRClientTest, TestProcessResponse) {
+  int64_t value = 987654321;
+
+  // Create a fake payload.
+  Plaintext pt;
+  Context()->Encoder()->encode(value, pt);
+  vector<Ciphertext> ct(1);
+  Encryptor()->encrypt(pt, ct[0]);
+  PIRPayload payload = PIRPayload::Load(ct);
+
+  auto result = client_->ProcessResponse(payload).ValueOrDie();
+  ASSERT_EQ(result, value);
 }
 
 TEST(NextPowerTwoTest, NextPowerTwo) {
@@ -67,5 +93,4 @@ TEST(CeilLog2Test, CeilLog2) {
   EXPECT_EQ(ceil_log2(1UL << 31), 31);
 }
 
-}  // namespace
 }  // namespace pir

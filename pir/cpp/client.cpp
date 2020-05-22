@@ -55,10 +55,23 @@ StatusOr<PIRPayload> PIRClient::CreateRequest(std::size_t index) const {
     // Not yet implemented
     return InvalidArgumentError("More than 1 CT needed for selection vector");
   }
+
+  // Figure out 1 / m so that after oblivious expansion it's just 1 in the
+  // correct location.
+  const auto& plain_mod =
+      context_->Parameters()->GetEncryptionParams().plain_modulus();
+  if (plain_mod.uint64_count() > 1) {
+    return InternalError("Plaintext modulus too big");
+  }
+  uint64_t inverse_m;
+  if (!seal::util::try_invert_uint_mod(next_power_two(DBSize()),
+                                       plain_mod.value(), inverse_m)) {
+    return InternalError("Could not invert m value");
+  }
+
   Plaintext pt(poly_modulus_degree);
   pt.set_zero();
-  pt[index] = 1;
-  std::cout << "Query PT: " << pt.to_string() << std::endl;
+  pt[index] = inverse_m;
 
   vector<Ciphertext> query(1);
   GaloisKeys gal_keys;
@@ -76,14 +89,13 @@ StatusOr<int64_t> PIRClient::ProcessResponse(const PIRPayload& response) const {
   if (response.Get().size() != 1) {
     return InvalidArgumentError("Number of ciphertexts in response must be 1");
   }
-  const uint32_t m = next_power_two(DBSize());
 
   seal::Plaintext plaintext;
   try {
     decryptor_->decrypt(response.Get()[0], plaintext);
     // have to divide the integer result by the the next power of 2 greater than
     // number of items in oblivious expansion.
-    return context_->Encoder()->decode_int64(plaintext) / m;
+    return context_->Encoder()->decode_int64(plaintext);
   } catch (const std::exception& e) {
     return InternalError(e.what());
   }
@@ -94,8 +106,7 @@ vector<uint32_t> generate_galois_elts(uint64_t N) {
   const size_t logN = ceil_log2(N);
   vector<uint32_t> galois_elts(logN);
   for (size_t i = 0; i < logN; ++i) {
-    uint64_t two_exp_i = static_cast<uint64_t>(1) << i;
-    galois_elts[i] = (N / two_exp_i) + 1;
+    galois_elts[i] = (N >> i) + 1;
   }
   return galois_elts;
 }
