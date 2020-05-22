@@ -89,7 +89,7 @@ void PIRServer::multiply_power_of_x(const seal::Ciphertext& encrypted, int k,
   // Loop over polynomials in ciphertext
   for (size_t i = 0; i < encrypted.size(); i++) {
     // loop over each coefficient in polynomial
-    for (int j = 0; j < coeff_mod_count; j++) {
+    for (size_t j = 0; j < coeff_mod_count; j++) {
       seal::util::negacyclic_shift_poly_coeffmod(
           encrypted.data(i) + (j * poly_modulus_degree), poly_modulus_degree,
           index, params.coeff_modulus()[j],
