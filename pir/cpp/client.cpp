@@ -15,12 +15,12 @@
 //
 #include "client.h"
 
-#include "utils.h"
 #include "absl/memory/memory.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
 #include "util/status_macros.h"
 #include "util/statusor.h"
+#include "utils.h"
 
 namespace pir {
 

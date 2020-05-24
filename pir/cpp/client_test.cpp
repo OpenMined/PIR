@@ -16,8 +16,8 @@
 
 #include "client.h"
 
-#include "utils.h"
 #include "gtest/gtest.h"
+#include "utils.h"
 
 namespace pir {
 
