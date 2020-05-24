@@ -15,6 +15,7 @@
 //
 #include "server.h"
 
+#include "utils.h"
 #include "absl/memory/memory.h"
 #include "payload.h"
 #include "seal/seal.h"

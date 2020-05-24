@@ -15,6 +15,7 @@
 //
 #include "client.h"
 
+#include "utils.h"
 #include "absl/memory/memory.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
@@ -100,15 +101,6 @@ StatusOr<int64_t> PIRClient::ProcessResponse(const PIRPayload& response) const {
     return InternalError(e.what());
   }
   return InternalError("Should never get here.");
-}
-
-vector<uint32_t> generate_galois_elts(uint64_t N) {
-  const size_t logN = ceil_log2(N);
-  vector<uint32_t> galois_elts(logN);
-  for (size_t i = 0; i < logN; ++i) {
-    galois_elts[i] = (N >> i) + 1;
-  }
-  return galois_elts;
 }
 
 }  // namespace pir

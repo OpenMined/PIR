@@ -22,6 +22,7 @@
 #include <iostream>
 #include <vector>
 
+#include "utils.h"
 #include "client.h"
 #include "gtest/gtest.h"
 

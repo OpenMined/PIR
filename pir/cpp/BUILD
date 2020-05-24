@@ -27,6 +27,7 @@ cc_library(
             "parameters.h", "parameters.cpp",
             "payload.h", "payload.cpp",
             "database.cpp", "database.h",
+            "utils.cpp", "utils.h",
             ],
     hdrs = ["client.h", "server.h"],
     includes = PIR_DEFAULT_INCLUDES,

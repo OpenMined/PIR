@@ -66,9 +66,6 @@ class PIRClient {
   std::shared_ptr<seal::Decryptor> decryptor_;
 };
 
-// Utility function to generate Galois elements
-vector<uint32_t> generate_galois_elts(uint64_t N);
-
 }  // namespace pir
 
 #endif  // PIR_CLIENT_H_
