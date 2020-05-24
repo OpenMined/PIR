@@ -43,46 +43,22 @@ using seal::Ciphertext;
 using seal::GaloisKeys;
 using seal::Plaintext;
 
+using namespace seal;
 using namespace ::testing;
+using std::int64_t;
+using std::vector;
 
 class PIRServerTest : public ::testing::Test {
  protected:
-};
-
-TEST_F(PIRServerTest, TestCorrectness) {
-  constexpr std::size_t dbsize = 10;
-  std::vector<std::int64_t> db(dbsize, 0);
-
-  std::generate(db.begin(), db.end(), [n = 0]() mutable {
-    ++n;
-    return 4 * n;
-  });
-
-  auto params = PIRParameters::Create(db.size());
-  auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
-  auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
-
-  ASSERT_TRUE(server_ != nullptr);
-
-  for (auto& client_ :
-       {PIRClient::Create(PIRParameters::Create(dbsize)).ValueOrDie()}) {
-    size_t desiredIndex = 5;
-    auto payload = client_->CreateRequest(desiredIndex).ValueOrDie();
-    auto response = server_->ProcessRequest(payload).ValueOrDie();
-    auto out = client_->ProcessResponse(response).ValueOrDie();
-
-    ASSERT_EQ(out, db[desiredIndex]);
-  }
-}
-
-using namespace seal;
-
-class OperatorTestBase : public ::testing::Test {
- protected:
   void SetUp() {
-    std::vector<std::int64_t> db(1, 42);
-    pir_params_ = PIRParameters::Create(db.size());
-    auto pirdb = PIRDatabase::Create(db, pir_params_).ValueOrDie();
+    db_.resize(DB_SIZE);
+    std::generate(db_.begin(), db_.end(), [n = 0]() mutable {
+      ++n;
+      return 4 * n + 2600;
+    });
+
+    pir_params_ = PIRParameters::Create(db_.size());
+    auto pirdb = PIRDatabase::Create(db_, pir_params_).ValueOrDie();
     server_ = PIRServer::Create(pirdb, pir_params_).ValueOrDie();
     ASSERT_THAT(server_, NotNull());
 
@@ -97,8 +73,8 @@ class OperatorTestBase : public ::testing::Test {
     decryptor_ = make_unique<Decryptor>(context, keygen_->secret_key());
   }
 
-  void TearDown() {}
-
+  static constexpr size_t DB_SIZE = 10;
+  vector<std::int64_t> db_;
   shared_ptr<PIRParameters> pir_params_;
   unique_ptr<PIRServer> server_;
   unique_ptr<KeyGenerator> keygen_;
@@ -107,8 +83,65 @@ class OperatorTestBase : public ::testing::Test {
   unique_ptr<Decryptor> decryptor_;
 };
 
+TEST_F(PIRServerTest, TestCorrectness) {
+  auto client = PIRClient::Create(pir_params_).ValueOrDie();
+  const size_t desired_index = 5;
+  auto payload = client->CreateRequest(desired_index).ValueOrDie();
+  auto response = server_->ProcessRequest(payload).ValueOrDie();
+  auto result = client->ProcessResponse(response).ValueOrDie();
+
+  ASSERT_EQ(result, db_[desired_index]);
+}
+
+TEST_F(PIRServerTest, TestProcessRequest) {
+  const size_t desired_index = 7;
+  Plaintext pt(DEFAULT_POLY_MODULUS_DEGREE);
+  pt.set_zero();
+  pt[desired_index] = 1;
+
+  vector<Ciphertext> query(1);
+  encryptor_->encrypt(pt, query[0]);
+  GaloisKeys gal_keys = keygen_->galois_keys_local(
+      generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE));
+  auto payload = PIRPayload::Load(query, gal_keys);
+
+  auto result_or = server_->ProcessRequest(payload);
+  ASSERT_THAT(result_or.ok(), IsTrue());
+  auto result = result_or.ValueOrDie();
+  ASSERT_THAT(result.Get(), SizeIs(1));
+
+  Plaintext result_pt;
+  decryptor_->decrypt(result.Get()[0], result_pt);
+  auto encoder = server_->Context()->Encoder();
+  ASSERT_THAT(encoder->decode_int64(result_pt),
+              Eq(db_[desired_index] * next_power_two(DB_SIZE)));
+}
+
+// Make sure that if we get a weird request from client nothing explodes.
+TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
+  const size_t desired_index = 7;
+  Plaintext pt(DEFAULT_POLY_MODULUS_DEGREE);
+  pt.set_zero();
+
+  vector<Ciphertext> query(1);
+  encryptor_->encrypt(pt, query[0]);
+  GaloisKeys gal_keys = keygen_->galois_keys_local(
+      generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE));
+  auto payload = PIRPayload::Load(query, gal_keys);
+
+  auto result_or = server_->ProcessRequest(payload);
+  ASSERT_THAT(result_or.ok(), IsTrue());
+  auto result = result_or.ValueOrDie();
+  ASSERT_THAT(result.Get(), SizeIs(1));
+
+  Plaintext result_pt;
+  decryptor_->decrypt(result.Get()[0], result_pt);
+  auto encoder = server_->Context()->Encoder();
+  ASSERT_THAT(encoder->decode_int64(result_pt), 0);
+}
+
 class SubstituteOperatorTest
-    : public OperatorTestBase,
+    : public PIRServerTest,
       public testing::WithParamInterface<tuple<string, uint32_t, string>> {};
 
 TEST_P(SubstituteOperatorTest, SubstituteExamples) {
@@ -148,7 +181,7 @@ INSTANTIATE_TEST_SUITE_P(
                    "4x^4 + FBFCEx^3 + 222x^2 + FBFE8x^1 + 42")));
 
 class MultiplyPowerXTest
-    : public OperatorTestBase,
+    : public PIRServerTest,
       public testing::WithParamInterface<tuple<string, uint32_t, string>> {};
 
 TEST_P(MultiplyPowerXTest, MultiplyPowerXExamples) {
@@ -182,7 +215,7 @@ INSTANTIATE_TEST_SUITE_P(
                                "1x^12 + 1x^8 + 1x^4")));
 
 class ObliviousExpansionTest
-    : public OperatorTestBase,
+    : public PIRServerTest,
       public testing::WithParamInterface<tuple<string, vector<string>>> {};
 
 TEST_P(ObliviousExpansionTest, ObliviousExpansionExamples) {
