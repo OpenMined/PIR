@@ -58,8 +58,9 @@ StatusOr<Ciphertext> deserializeCT(
   return ciphertext;
 }
 
-PIRPayload PIRPayload::Load(const std::vector<Ciphertext> buff) {
-  return PIRPayload(buff);
+PIRPayload PIRPayload::Load(const std::vector<Ciphertext>& buff,
+                            const optional<GaloisKeys>& keys) {
+  return PIRPayload(buff, keys);
 }
 
 StatusOr<PIRPayload> PIRPayload::Load(

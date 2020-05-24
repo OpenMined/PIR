@@ -33,6 +33,8 @@ using ::seal::Modulus;
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
 
+constexpr uint32_t DEFAULT_POLY_MODULUS_DEGREE = 4096;
+
 StatusOr<std::string> serializeEncryptionParams(
     const seal::EncryptionParameters& parms);
 StatusOr<seal::EncryptionParameters> deserializeEncryptionParams(
