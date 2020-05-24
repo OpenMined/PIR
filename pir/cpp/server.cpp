@@ -26,7 +26,9 @@
 
 namespace pir {
 
+using ::private_join_and_compute::InternalError;
 using ::private_join_and_compute::InvalidArgumentError;
+using ::private_join_and_compute::Status;
 using ::private_join_and_compute::StatusOr;
 
 PIRServer::PIRServer(std::unique_ptr<PIRContext> context,
@@ -56,8 +58,9 @@ StatusOr<PIRPayload> PIRServer::ProcessRequest(
     return InvalidArgumentError("Must have Galois Keys in request");
   }
 
-  auto selection_vector =
-      oblivious_expansion(payload.Get()[0], DBSize(), *payload.GetKeys());
+  ASSIGN_OR_RETURN(
+      auto selection_vector,
+      oblivious_expansion(payload.Get()[0], DBSize(), *payload.GetKeys()));
 
   ASSIGN_OR_RETURN(auto mult_results, db_->multiply(selection_vector));
 
@@ -67,10 +70,15 @@ StatusOr<PIRPayload> PIRServer::ProcessRequest(
   return PIRPayload::Load(vector<seal::Ciphertext>{result});
 }
 
-void PIRServer::substitute_power_x_inplace(
+Status PIRServer::substitute_power_x_inplace(
     seal::Ciphertext& ct, uint32_t power,
     const seal::GaloisKeys& gal_keys) const {
-  context_->Evaluator()->apply_galois_inplace(ct, power, gal_keys);
+  try {
+    context_->Evaluator()->apply_galois_inplace(ct, power, gal_keys);
+  } catch (const std::exception& e) {
+    return InternalError(e.what());
+  }
+  return Status::OK;
 }
 
 void PIRServer::multiply_power_of_x(const seal::Ciphertext& encrypted, int k,
@@ -99,7 +107,7 @@ void PIRServer::multiply_power_of_x(const seal::Ciphertext& encrypted, int k,
   }
 }
 
-std::vector<seal::Ciphertext> PIRServer::oblivious_expansion(
+StatusOr<std::vector<seal::Ciphertext>> PIRServer::oblivious_expansion(
     const seal::Ciphertext& ct, const size_t num_items,
     const seal::GaloisKeys& gal_keys) const {
   const auto poly_modulus_degree =
@@ -118,11 +126,13 @@ std::vector<seal::Ciphertext> PIRServer::oblivious_expansion(
       multiply_power_of_x(c0, -two_power_j, c1);
 
       results[k] = c0;
-      substitute_power_x_inplace(c0, (poly_modulus_degree >> j) + 1, gal_keys);
+      RETURN_IF_ERROR(substitute_power_x_inplace(
+          c0, (poly_modulus_degree >> j) + 1, gal_keys));
       context_->Evaluator()->add_inplace(results[k], c0);
 
       results[k + two_power_j] = c1;
-      substitute_power_x_inplace(c1, (poly_modulus_degree >> j) + 1, gal_keys);
+      RETURN_IF_ERROR(substitute_power_x_inplace(
+          c1, (poly_modulus_degree >> j) + 1, gal_keys));
       context_->Evaluator()->add_inplace(results[k + two_power_j], c1);
     }
   }

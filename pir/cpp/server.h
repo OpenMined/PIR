@@ -27,6 +27,7 @@
 
 namespace pir {
 
+using ::private_join_and_compute::Status;
 using ::private_join_and_compute::StatusOr;
 
 class PIRServer {
@@ -73,8 +74,8 @@ class PIRServer {
    *   whoever encrypted the ciphertext using keygen, and must include the power
    *   being asked for.
    */
-  void substitute_power_x_inplace(seal::Ciphertext& ct, std::uint32_t power,
-                                  const seal::GaloisKeys& gal_keys) const;
+  Status substitute_power_x_inplace(seal::Ciphertext& ct, std::uint32_t power,
+                                    const seal::GaloisKeys& gal_keys) const;
 
   /**
    * Helper function to multiply a ciphertext by a given power of x. As a result
@@ -115,7 +116,7 @@ class PIRServer {
    * @param[in] gal_keys Galois keys supplied by the client.
    * @returns A vector of ciphertexts that are the expansion as described above.
    */
-  std::vector<seal::Ciphertext> oblivious_expansion(
+  StatusOr<std::vector<seal::Ciphertext>> oblivious_expansion(
       const seal::Ciphertext& ct, const size_t num_items,
       const seal::GaloisKeys& gal_keys) const;
 

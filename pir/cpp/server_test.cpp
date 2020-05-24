@@ -194,10 +194,13 @@ TEST_P(ObliviousExpansionTest, ObliviousExpansionExamples) {
   encryptor_->encrypt(input_pt, ct);
 
   auto expected = get<1>(GetParam());
-  auto results = server_->oblivious_expansion(
+  auto results_or = server_->oblivious_expansion(
       ct, expected.size(),
       keygen_->galois_keys_local(
           generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE)));
+
+  ASSERT_THAT(results_or.ok(), IsTrue());
+  auto results = results_or.ValueOrDie();
 
   vector<Plaintext> results_pt(results.size());
   for (size_t i = 0; i < results.size(); ++i) {
