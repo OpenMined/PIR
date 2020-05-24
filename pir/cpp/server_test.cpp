@@ -16,13 +16,12 @@
 
 #include "server.h"
 
-#include <gmock/gmock.h>
-
 #include <algorithm>
 #include <iostream>
 #include <vector>
 
 #include "client.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "utils.h"
 
