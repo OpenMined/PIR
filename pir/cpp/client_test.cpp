@@ -68,4 +68,16 @@ TEST_F(PIRClientTest, TestProcessResponse) {
   ASSERT_EQ(result, value);
 }
 
+TEST_F(PIRClientTest, TestPayloadSerialization) {
+  int64_t value = 987654321;
+  Plaintext pt;
+  Context()->Encoder()->encode(value, pt);
+  vector<Ciphertext> ct(1);
+  Encryptor()->encrypt(pt, ct[0]);
+  PIRPayload payload = PIRPayload::Load(ct);
+
+  auto dump = payload.Save().ValueOrDie();
+  auto reloaded = PIRPayload::Load(Context()->SEALContext(), dump).ValueOrDie();
+}
+
 }  // namespace pir

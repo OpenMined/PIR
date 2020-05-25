@@ -66,14 +66,23 @@ PIRPayload PIRPayload::Load(const std::vector<Ciphertext>& buff,
 StatusOr<PIRPayload> PIRPayload::Load(
     const std::shared_ptr<seal::SEALContext>& sealctx,
     const std::string& encoded) {
-  rapidjson::Document request;
-  request.Parse(encoded.data(), encoded.size());
-  if (request.HasParseError()) {
-    return InvalidArgumentError("failed to parse encoded string");
+  rapidjson::Document payload;
+  payload.Parse(encoded.data(), encoded.size());
+  if (payload.HasParseError()) {
+    return InvalidArgumentError("failed to parse payload");
+  }
+  if (!payload.IsObject()) {
+    return InvalidArgumentError("payload should be object");
+  }
+  const char* buffkey = "buffer";
+  if (!payload.HasMember(buffkey)) {
+    return InvalidArgumentError("failed to parse buffer");
   }
 
+  auto& request = payload[buffkey];
+
   if (!request.IsArray()) {
-    return InvalidArgumentError("payload should be array");
+    return InvalidArgumentError("buffer should be array");
   }
 
   size_t size = request.GetArray().Size();
@@ -95,18 +104,24 @@ StatusOr<PIRPayload> PIRPayload::Load(
 StatusOr<std::string> PIRPayload::Save() {
   std::vector<std::string> interm(buff_.size());
 
+  rapidjson::Document output;
+  output.SetObject();
+
+  // internal buffer
   for (size_t idx = 0; idx < buff_.size(); ++idx) {
     ASSIGN_OR_RETURN(interm[idx], serializeCT(buff_[idx]));
   }
 
-  rapidjson::Document output;
-  output.SetArray();
+  rapidjson::Document payloadbuff(&output.GetAllocator());
+  payloadbuff.SetArray();
   for (size_t idx = 0; idx < buff_.size(); ++idx) {
-    output.PushBack(
+    payloadbuff.PushBack(
         rapidjson::Value().SetString(interm[idx].data(), interm[idx].size(),
-                                     output.GetAllocator()),
-        output.GetAllocator());
+                                     payloadbuff.GetAllocator()),
+        payloadbuff.GetAllocator());
   }
+
+  output.AddMember("buffer", payloadbuff, output.GetAllocator());
 
   rapidjson::StringBuffer buffer;
   rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
@@ -114,6 +129,4 @@ StatusOr<std::string> PIRPayload::Save() {
 
   return std::string(buffer.GetString());
 }
-
-const buff_type& PIRPayload::Get() const { return buff_; }
 };  // namespace pir

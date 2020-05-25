@@ -52,10 +52,11 @@ class PIRPayload {
   /**
    * Returns a reference to the internal buffer.
    **/
-  const buff_type& Get() const;
-  PIRPayload() = delete;
+  const buff_type& Get() const { return buff_; }
 
   const optional<GaloisKeys>& GetKeys() const { return keys_; }
+
+  PIRPayload() = delete;
 
  private:
   PIRPayload(const std::vector<seal::Ciphertext>& buff,
