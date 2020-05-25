@@ -119,7 +119,6 @@ TEST_F(PIRServerTest, TestProcessRequest) {
 
 // Make sure that if we get a weird request from client nothing explodes.
 TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
-  const size_t desired_index = 7;
   Plaintext pt(DEFAULT_POLY_MODULUS_DEGREE);
   pt.set_zero();
 
