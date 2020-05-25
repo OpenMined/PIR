@@ -50,8 +50,11 @@ using std::vector;
 
 class PIRServerTest : public ::testing::Test {
  protected:
-  void SetUp() {
-    db_.resize(DB_SIZE);
+  void SetUp() { SetUpDB(10); }
+
+  void SetUpDB(size_t dbsize) {
+    db_size_ = dbsize;
+    db_.resize(dbsize);
     std::generate(db_.begin(), db_.end(), [n = 0]() mutable {
       ++n;
       return 4 * n + 2600;
@@ -73,7 +76,7 @@ class PIRServerTest : public ::testing::Test {
     decryptor_ = make_unique<Decryptor>(context, keygen_->secret_key());
   }
 
-  static constexpr size_t DB_SIZE = 10;
+  size_t db_size_;
   vector<std::int64_t> db_;
   shared_ptr<PIRParameters> pir_params_;
   unique_ptr<PIRServer> server_;
@@ -93,7 +96,7 @@ TEST_F(PIRServerTest, TestCorrectness) {
   ASSERT_EQ(result, db_[desired_index]);
 }
 
-TEST_F(PIRServerTest, TestProcessRequest) {
+TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
   const size_t desired_index = 7;
   Plaintext pt(DEFAULT_POLY_MODULUS_DEGREE);
   pt.set_zero();
@@ -106,7 +109,8 @@ TEST_F(PIRServerTest, TestProcessRequest) {
   auto payload = PIRPayload::Load(query, gal_keys);
 
   auto result_or = server_->ProcessRequest(payload);
-  ASSERT_THAT(result_or.ok(), IsTrue());
+  ASSERT_THAT(result_or.ok(), IsTrue())
+      << "Error: " << result_or.status().ToString();
   auto result = result_or.ValueOrDie();
   ASSERT_THAT(result.Get(), SizeIs(1));
 
@@ -114,12 +118,42 @@ TEST_F(PIRServerTest, TestProcessRequest) {
   decryptor_->decrypt(result.Get()[0], result_pt);
   auto encoder = server_->Context()->Encoder();
   ASSERT_THAT(encoder->decode_int64(result_pt),
-              Eq(db_[desired_index] * next_power_two(DB_SIZE)));
+              Eq(db_[desired_index] * next_power_two(db_size_)));
+}
+
+TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
+  SetUpDB(5000);
+  const size_t desired_index = 4200;
+  Plaintext pt(DEFAULT_POLY_MODULUS_DEGREE);
+  pt.set_zero();
+
+  vector<Ciphertext> query(2);
+  encryptor_->encrypt(pt, query[0]);
+  pt[desired_index - DEFAULT_POLY_MODULUS_DEGREE] = 1;
+  encryptor_->encrypt(pt, query[1]);
+  GaloisKeys gal_keys = keygen_->galois_keys_local(
+      generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE));
+  auto payload = PIRPayload::Load(query, gal_keys);
+
+  auto result_or = server_->ProcessRequest(payload);
+  ASSERT_THAT(result_or.ok(), IsTrue())
+      << "Error: " << result_or.status().ToString();
+  auto result = result_or.ValueOrDie();
+  ASSERT_THAT(result.Get(), SizeIs(1));
+
+  Plaintext result_pt;
+  decryptor_->decrypt(result.Get()[0], result_pt);
+  auto encoder = server_->Context()->Encoder();
+  cout << "Expected DB value " << db_[desired_index] << endl;
+  cout << "Expected m "
+       << next_power_two(db_size_ - DEFAULT_POLY_MODULUS_DEGREE) << endl;
+  ASSERT_THAT(encoder->decode_int64(result_pt),
+              Eq(db_[desired_index] *
+                 next_power_two(db_size_ - DEFAULT_POLY_MODULUS_DEGREE)));
 }
 
 // Make sure that if we get a weird request from client nothing explodes.
 TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
-  const size_t desired_index = 7;
   Plaintext pt(DEFAULT_POLY_MODULUS_DEGREE);
   pt.set_zero();
 
@@ -146,7 +180,7 @@ class SubstituteOperatorTest
 
 TEST_P(SubstituteOperatorTest, SubstituteExamples) {
   Plaintext input_pt(get<0>(GetParam()));
-  cout << "Input PT: " << input_pt.to_string() << endl;
+  // cout << "Input PT: " << input_pt.to_string() << endl;
 
   Ciphertext ct;
   encryptor_->encrypt(input_pt, ct);
@@ -157,10 +191,10 @@ TEST_P(SubstituteOperatorTest, SubstituteExamples) {
 
   Plaintext result_pt;
   decryptor_->decrypt(ct, result_pt);
-  cout << "Result PT: " << result_pt.to_string() << endl;
+  // cout << "Result PT: " << result_pt.to_string() << endl;
 
   Plaintext expected_pt(get<2>(GetParam()));
-  cout << "Expected PT: " << expected_pt.to_string() << endl;
+  // cout << "Expected PT: " << expected_pt.to_string() << endl;
   ASSERT_THAT(result_pt, Eq(expected_pt));
 }
 
@@ -180,39 +214,37 @@ INSTANTIATE_TEST_SUITE_P(
                    DEFAULT_POLY_MODULUS_DEGREE + 1,
                    "4x^4 + FBFCEx^3 + 222x^2 + FBFE8x^1 + 42")));
 
-class MultiplyPowerXTest
+class MultiplyInversePowerXTest
     : public PIRServerTest,
       public testing::WithParamInterface<tuple<string, uint32_t, string>> {};
 
-TEST_P(MultiplyPowerXTest, MultiplyPowerXExamples) {
+TEST_P(MultiplyInversePowerXTest, MultiplyInversePowerXExamples) {
   Plaintext input_pt(get<0>(GetParam()));
-  cout << "Input PT: " << input_pt.to_string() << endl;
+  // cout << "Input PT: " << input_pt.to_string() << endl;
 
   Ciphertext ct;
   encryptor_->encrypt(input_pt, ct);
 
   auto k = get<1>(GetParam());
   Ciphertext result_ct;
-  server_->multiply_power_of_x(ct, k, result_ct);
+  server_->multiply_inverse_power_of_x(ct, k, result_ct);
 
   Plaintext result_pt;
   decryptor_->decrypt(result_ct, result_pt);
-  cout << "Result PT: " << result_pt.to_string() << endl;
+  // cout << "Result PT: " << result_pt.to_string() << endl;
 
   Plaintext expected_pt(get<2>(GetParam()));
-  cout << "Expected PT: " << expected_pt.to_string() << endl;
+  // cout << "Expected PT: " << expected_pt.to_string() << endl;
   ASSERT_THAT(result_pt, Eq(expected_pt));
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    PowersOfX, MultiplyPowerXTest,
-    testing::Values(make_tuple("42", 1, "42x^1"),
-                    make_tuple("42x^1", 41, "42x^42"),
-                    make_tuple("1x^4 + 1x^3 + 1x^1", 3, "1x^7 + 1x^6 + 1x^4"),
-                    make_tuple("77x^1", -1, "77"),
-                    make_tuple("1x^4 + 1x^3 + 1x^1", -1, "1x^3 + 1x^2 + 1"),
-                    make_tuple("1x^16 + 1x^12 + 1x^8", -4,
-                               "1x^12 + 1x^8 + 1x^4")));
+INSTANTIATE_TEST_SUITE_P(InversePowersOfX, MultiplyInversePowerXTest,
+                         testing::Values(make_tuple("42x^1", 1, "42"),
+                                         make_tuple("42x^42", 41, "42x^1"),
+                                         make_tuple("1x^4 + 1x^3 + 1x^1", 1,
+                                                    "1x^3 + 1x^2 + 1"),
+                                         make_tuple("1x^16 + 1x^12 + 1x^8", 4,
+                                                    "1x^12 + 1x^8 + 1x^4")));
 
 class ObliviousExpansionTest
     : public PIRServerTest,
@@ -220,7 +252,7 @@ class ObliviousExpansionTest
 
 TEST_P(ObliviousExpansionTest, ObliviousExpansionExamples) {
   Plaintext input_pt(get<0>(GetParam()));
-  cout << "Input PT: " << input_pt.to_string() << endl;
+  // cout << "Input PT: " << input_pt.to_string() << endl;
 
   Ciphertext ct;
   encryptor_->encrypt(input_pt, ct);
@@ -237,13 +269,14 @@ TEST_P(ObliviousExpansionTest, ObliviousExpansionExamples) {
   vector<Plaintext> results_pt(results.size());
   for (size_t i = 0; i < results.size(); ++i) {
     decryptor_->decrypt(results[i], results_pt[i]);
-    cout << "Result PT[" << i << "]: " << results_pt[i].to_string() << endl;
+    // cout << "Result PT[" << i << "]: " << results_pt[i].to_string() << endl;
   }
 
   vector<Plaintext> expected_pt(expected.size());
   for (size_t i = 0; i < expected_pt.size(); ++i) {
     expected_pt[i] = Plaintext(expected[i]);
-    cout << "Expected PT[" << i << "]: " << expected_pt[i].to_string() << endl;
+    // cout << "Expected PT[" << i << "]: " << expected_pt[i].to_string() <<
+    // endl;
   }
 
   ASSERT_THAT(results_pt, ContainerEq(expected_pt));
@@ -258,5 +291,53 @@ INSTANTIATE_TEST_SUITE_P(
                     make_tuple("1x^5", vector<string>({"0", "0", "0", "0", "0",
                                                        "8"}))));
 
+class ObliviousExpansionTestMultiCT
+    : public PIRServerTest,
+      public testing::WithParamInterface<tuple<size_t, size_t, uint64_t>> {};
+
+TEST_P(ObliviousExpansionTestMultiCT, MultiCTExamples) {
+  const auto num_items = get<0>(GetParam());
+  const auto index = get<1>(GetParam());
+  const auto expected_value = get<2>(GetParam());
+
+  vector<Plaintext> input_pt(num_items / DEFAULT_POLY_MODULUS_DEGREE + 1,
+                             Plaintext(DEFAULT_POLY_MODULUS_DEGREE));
+  input_pt[index / DEFAULT_POLY_MODULUS_DEGREE]
+          [index % DEFAULT_POLY_MODULUS_DEGREE] = 1;
+  vector<Ciphertext> input_ct(input_pt.size());
+  for (size_t i = 0; i < input_pt.size(); ++i) {
+    // cout << "Input PT[" << i << "]: " << input_pt[i].to_string() << endl;
+    encryptor_->encrypt(input_pt[i], input_ct[i]);
+  }
+
+  auto results_or = server_->oblivious_expansion(
+      input_ct, num_items,
+      keygen_->galois_keys_local(
+          generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE)));
+
+  ASSERT_THAT(results_or.ok(), IsTrue())
+      << "Error: " << results_or.status().ToString();
+  auto results = results_or.ValueOrDie();
+  ASSERT_THAT(results, SizeIs(num_items));
+
+  for (size_t i = 0; i < results.size(); ++i) {
+    Plaintext result_pt;
+    decryptor_->decrypt(results[i], result_pt);
+    // const Plaintext& exp = (i == index) ? expected_pt : zero_pt;
+    const auto exp = (i == index) ? expected_value : 0;
+    // cout << "Result PT[" << i << "]: " << result_pt.to_string() << endl;
+    // cout << "Expect PT[" << i << "]: " << exp.to_string() << endl;
+    EXPECT_THAT(result_pt.coeff_count(), Eq(1));
+    EXPECT_THAT(result_pt[0], Eq(exp));
+  }
+}
+/*
+INSTANTIATE_TEST_SUITE_P(
+    ObliviousExpansionMultiCT, ObliviousExpansionTestMultiCT,
+    testing::Values(make_tuple(100, 42, 128), make_tuple(100, 0, 128),
+                    make_tuple(100, 99, 128), make_tuple(4096, 3007, 4096),
+                    make_tuple(5000, 4095, 4096),
+                    make_tuple(5000, 4200, 1024)));
+*/
 }  // namespace
 }  // namespace pir

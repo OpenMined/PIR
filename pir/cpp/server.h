@@ -78,19 +78,20 @@ class PIRServer {
                                     const seal::GaloisKeys& gal_keys) const;
 
   /**
-   * Helper function to multiply a ciphertext by a given power of x. As a result
-   * plaintext is also multiplied by the same power of x. For example, if the
-   * ciphertext is the encryption of p(x) = 99x^2, and if the given k is 3, then
-   * this results in p(x) * x^3 = 99x^5.
+   * Helper function to multiply a ciphertext by a given power of 1/x. As a
+   * result plaintext is also multiplied by the same power of 1/x. For example,
+   * if the ciphertext is the encryption of p(x) = 99x^5, and if the given k is
+   * 3, then this results in p(x) * 1/x^3 = 99x^2.
    * @param[in] encrypted Ciphertext to take as input.
-   * @param[in] k Power of x to multiply. Can be negative.
+   * @param[in] k Power of 1/x to multiply.
    * @param[out] destination Output ciphertext after multiplying by power of x.
    */
-  void multiply_power_of_x(const seal::Ciphertext& encrypted, int k,
-                           seal::Ciphertext& destination) const;
+  void multiply_inverse_power_of_x(const seal::Ciphertext& encrypted,
+                                   uint32_t k,
+                                   seal::Ciphertext& destination) const;
 
   /**
-   * Performans an oblivious expansion on an input ciphertext to a vector of
+   * Performs an oblivious expansion on an input ciphertext to a vector of
    * ciphertexts. If the input ciphertext is the encryption of a plaintext
    * polynomial of the form a0 + a1*x + a2*x^2 + ... + an*x^n, where n is the
    * num_items below, then the output is a series of ciphertexts, where each is
@@ -118,6 +119,22 @@ class PIRServer {
    */
   StatusOr<std::vector<seal::Ciphertext>> oblivious_expansion(
       const seal::Ciphertext& ct, const size_t num_items,
+      const seal::GaloisKeys& gal_keys) const;
+
+  /**
+   * Extension of oblivious_expansion to multiple ciphertexts. This allows
+   * selection vectors that are larger then poly_modulus_degree to be used. The
+   * output of the expansion of each ciphertext is concatenated to form the
+   * results of this function.
+   *
+   * @param[in] cts List of ciphertexts to use as input to the expansion
+   * @param[in] num_items Total number of items to expand
+   * @param[in] gal_keys Galois keys supplied by the client
+   * @returns A vector of ciphertexts that are the expansion of all of the input
+   *   ciphertexts concatenated.
+   */
+  StatusOr<std::vector<seal::Ciphertext>> oblivious_expansion(
+      const std::vector<seal::Ciphertext>& cts, const size_t num_items,
       const seal::GaloisKeys& gal_keys) const;
 
   // Just for testing: get the context
