@@ -72,14 +72,16 @@ StatusOr<PIRPayload> PIRClient::CreateRequest(std::size_t desired_index) const {
   for (size_t i = 0; i < query.size(); ++i) {
     Plaintext pt(poly_modulus_degree);
     pt.set_zero();
-    if (index >= poly_modulus_degree) {
-      index -= poly_modulus_degree;
-    } else if (index >= 0) {
+    if (index < 0) {
+      // already passed
+    } else if (static_cast<size_t>(index) < poly_modulus_degree) {
       uint64_t m = (i < query.size() - 1)
                        ? poly_modulus_degree
                        : next_power_two(DBSize() % poly_modulus_degree);
       ASSIGN_OR_RETURN(pt[index], InvertMod(m, plain_mod));
       index = -1;
+    } else {
+      index -= poly_modulus_degree;
     }
     try {
       encryptor_->encrypt(pt, query[i]);
