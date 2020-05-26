@@ -1,3 +1,26 @@
+# Bazel
+bazel-*
+
+# CLion
+.clwb
+
+# VScode
+.vscode
+
+# npm
+node_modules/
+
+# JS code coverage
+coverage/
+
+# TS output
+tsc-out/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
 # Prerequisites
 *.d
 
