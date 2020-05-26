@@ -6,6 +6,11 @@ message Payload {
   repeated bytes query = 1;
 }
 
+message SessionPayload {
+  Payload query = 1;
+  int64 id = 2;
+}
+
 message FullPayload {
   Payload query = 1;
   bytes galoiskeys = 2;

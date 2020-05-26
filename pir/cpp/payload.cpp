@@ -115,6 +115,62 @@ StatusOr<Payload> PIRPayload::SaveProto() {
   return output;
 }
 
+StatusOr<PIRSessionPayload> PIRSessionPayload::Load(const PIRPayload& buff,
+                                                    const size_t& session_id) {
+  return PIRSessionPayload(buff, session_id);
+}
+
+StatusOr<PIRSessionPayload> PIRSessionPayload::Load(
+    const std::shared_ptr<seal::SEALContext>& sealctx,
+    const SessionPayload& input) {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+  ASSIGN_OR_RETURN(auto buff, PIRPayload::Load(sealctx, input.query()));
+  auto session = input.id();
+
+  return PIRSessionPayload(buff, session);
+}
+
+StatusOr<PIRSessionPayload> PIRSessionPayload::Load(
+    const std::shared_ptr<seal::SEALContext>& sealctx,
+    const std::string& encoded) {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  std::stringstream stream;
+  stream << encoded;
+  SessionPayload input;
+
+  if (!input.ParseFromIstream(&stream)) {
+    return InvalidArgumentError("failed to parse session payload");
+  }
+
+  return Load(sealctx, input);
+}
+
+StatusOr<std::string> PIRSessionPayload::Save() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  std::stringstream stream;
+
+  ASSIGN_OR_RETURN(auto output, SaveProto());
+
+  if (!output.SerializeToOstream(&stream)) {
+    return InvalidArgumentError("failed to save protobuffer");
+  }
+
+  return stream.str();
+}
+StatusOr<SessionPayload> PIRSessionPayload::SaveProto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  SessionPayload output;
+
+  ASSIGN_OR_RETURN(auto buff, PIRPayload::SaveProto());
+  *output.mutable_query() = buff;
+  output.set_id(session_id_);
+
+  return output;
+}
+
 StatusOr<PIRFullPayload> PIRFullPayload::Load(const PIRPayload& buff,
                                               const GaloisKeys& keys) {
   return PIRFullPayload(buff, keys);

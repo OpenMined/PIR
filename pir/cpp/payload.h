@@ -65,6 +65,43 @@ class PIRPayload {
   buff_type buff_;
 };
 
+class PIRSessionPayload : public PIRPayload {
+ public:
+  /**
+   * Loads a PIR Session Payload.
+   **/
+  static StatusOr<PIRSessionPayload> Load(const PIRPayload& plain,
+                                          const size_t& session);
+  /**
+   * Decodes and loads a PIR Session Payload.
+   * @returns InvalidArgument if the decoding fails
+   **/
+  static StatusOr<PIRSessionPayload> Load(
+      const std::shared_ptr<seal::SEALContext>& ctx,
+      const std::string& encoded);
+  static StatusOr<PIRSessionPayload> Load(
+      const std::shared_ptr<seal::SEALContext>& ctx,
+      const SessionPayload& encoded);
+  /**
+   * Saves the PIR Session Payload to a string.
+   * @returns InvalidArgument if the encoding fails
+   **/
+  StatusOr<std::string> Save();
+  StatusOr<SessionPayload> SaveProto();
+  /**
+   * Returns a reference to the session ID.
+   **/
+  const size_t& GetID() const { return session_id_; }
+
+  PIRSessionPayload() = delete;
+
+ private:
+  PIRSessionPayload(const PIRPayload& buff, const size_t& session_id)
+      : PIRPayload(buff), session_id_(session_id){};
+
+  size_t session_id_;
+};
+
 class PIRFullPayload : public PIRPayload {
  public:
   /**
