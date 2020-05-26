@@ -31,11 +31,12 @@ using ::private_join_and_compute::StatusOr;
 
 using seal::Ciphertext;
 
-StatusOr<std::string> serializeCT(const Ciphertext& ciphertext) {
+template <class T>
+StatusOr<std::string> serialize(const T& sealobj) {
   std::stringstream stream;
 
   try {
-    ciphertext.save(stream);
+    sealobj.save(stream);
   } catch (const std::exception& e) {
     return InvalidArgumentError(e.what());
   }
@@ -43,19 +44,20 @@ StatusOr<std::string> serializeCT(const Ciphertext& ciphertext) {
   return stream.str();
 }
 
-StatusOr<Ciphertext> deserializeCT(
-    const std::shared_ptr<seal::SEALContext>& sealctx, const std::string& in) {
-  Ciphertext ciphertext(sealctx);
+template <class T>
+StatusOr<T> deserialize(const std::shared_ptr<seal::SEALContext>& sealctx,
+                        const std::string& in) {
+  T out;
 
   try {
     std::stringstream stream;
     stream << in;
-    ciphertext.load(sealctx, stream);
+    out.load(sealctx, stream);
   } catch (const std::exception& e) {
     return InvalidArgumentError(e.what());
   }
 
-  return ciphertext;
+  return out;
 }
 
 PIRPayload PIRPayload::Load(const std::vector<Ciphertext>& buff,
@@ -95,10 +97,16 @@ StatusOr<PIRPayload> PIRPayload::Load(
     std::string encoded(request[idx].GetString(),
                         request[idx].GetStringLength());
 
-    ASSIGN_OR_RETURN(buff[idx], deserializeCT(sealctx, encoded));
+    ASSIGN_OR_RETURN(buff[idx], deserialize<Ciphertext>(sealctx, encoded));
   }
 
-  return PIRPayload(buff);
+  optional<GaloisKeys> keys;
+  if (payload.HasMember("galois_keys")) {
+    // ASSIGN_OR_RETURN(keys, deserialize<GaloisKeys>(sealctx,
+    // payload["galois_keys"].GetString()));
+  }
+
+  return PIRPayload(buff, keys);
 }
 
 StatusOr<std::string> PIRPayload::Save() {
@@ -109,7 +117,7 @@ StatusOr<std::string> PIRPayload::Save() {
 
   // internal buffer
   for (size_t idx = 0; idx < buff_.size(); ++idx) {
-    ASSIGN_OR_RETURN(interm[idx], serializeCT(buff_[idx]));
+    ASSIGN_OR_RETURN(interm[idx], serialize<Ciphertext>(buff_[idx]));
   }
 
   rapidjson::Document payloadbuff(&output.GetAllocator());
@@ -120,8 +128,15 @@ StatusOr<std::string> PIRPayload::Save() {
                                      payloadbuff.GetAllocator()),
         payloadbuff.GetAllocator());
   }
-
   output.AddMember("buffer", payloadbuff, output.GetAllocator());
+
+  if (keys_) {
+    ASSIGN_OR_RETURN(auto keys, serialize<GaloisKeys>(*keys_));
+    output.AddMember("galois_keys",
+                     rapidjson::Value().SetString(keys.data(), keys.size(),
+                                                  output.GetAllocator()),
+                     output.GetAllocator());
+  }
 
   rapidjson::StringBuffer buffer;
   rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
