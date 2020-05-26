@@ -15,6 +15,7 @@
 //
 #include "payload.h"
 
+#include "payload.pb.h"
 #include "rapidjson/document.h"
 #include "rapidjson/error/en.h"
 #include "rapidjson/stringbuffer.h"
@@ -68,80 +69,50 @@ PIRPayload PIRPayload::Load(const std::vector<Ciphertext>& buff,
 StatusOr<PIRPayload> PIRPayload::Load(
     const std::shared_ptr<seal::SEALContext>& sealctx,
     const std::string& encoded) {
-  rapidjson::Document payload;
-  payload.Parse(encoded.data(), encoded.size());
-  if (payload.HasParseError()) {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  std::stringstream stream;
+  stream << encoded;
+  Payload input;
+
+  if (!input.ParseFromIstream(&stream)) {
     return InvalidArgumentError("failed to parse payload");
   }
-  if (!payload.IsObject()) {
-    return InvalidArgumentError("payload should be object");
+
+  std::vector<Ciphertext> buff(input.query_size());
+  for (int idx = 0; idx < input.query_size(); ++idx) {
+    ASSIGN_OR_RETURN(buff[idx],
+                     deserialize<Ciphertext>(sealctx, input.query(idx)));
   }
-  const char* buffkey = "buffer";
-  if (!payload.HasMember(buffkey)) {
-    return InvalidArgumentError("failed to parse buffer");
-  }
-
-  auto& request = payload[buffkey];
-
-  if (!request.IsArray()) {
-    return InvalidArgumentError("buffer should be array");
-  }
-
-  size_t size = request.GetArray().Size();
-
-  std::vector<Ciphertext> buff(size);
-  for (size_t idx = 0; idx < size; ++idx) {
-    if (!request[idx].IsString())
-      return InvalidArgumentError("elements must be string");
-
-    std::string encoded(request[idx].GetString(),
-                        request[idx].GetStringLength());
-
-    ASSIGN_OR_RETURN(buff[idx], deserialize<Ciphertext>(sealctx, encoded));
-  }
-
   optional<GaloisKeys> keys;
-  if (payload.HasMember("galois_keys")) {
-    // ASSIGN_OR_RETURN(keys, deserialize<GaloisKeys>(sealctx,
-    // payload["galois_keys"].GetString()));
+  auto rawkeys = deserialize<GaloisKeys>(sealctx, input.galoiskeys());
+  if (rawkeys.ok()) {
+    keys = rawkeys.ValueOrDie();
   }
 
   return PIRPayload(buff, keys);
 }
 
 StatusOr<std::string> PIRPayload::Save() {
-  std::vector<std::string> interm(buff_.size());
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-  rapidjson::Document output;
-  output.SetObject();
-
-  // internal buffer
+  Payload output;
   for (size_t idx = 0; idx < buff_.size(); ++idx) {
-    ASSIGN_OR_RETURN(interm[idx], serialize<Ciphertext>(buff_[idx]));
+    ASSIGN_OR_RETURN(auto ct, serialize<Ciphertext>(buff_[idx]));
+    output.add_query(ct);
   }
-
-  rapidjson::Document payloadbuff(&output.GetAllocator());
-  payloadbuff.SetArray();
-  for (size_t idx = 0; idx < buff_.size(); ++idx) {
-    payloadbuff.PushBack(
-        rapidjson::Value().SetString(interm[idx].data(), interm[idx].size(),
-                                     payloadbuff.GetAllocator()),
-        payloadbuff.GetAllocator());
-  }
-  output.AddMember("buffer", payloadbuff, output.GetAllocator());
 
   if (keys_) {
     ASSIGN_OR_RETURN(auto keys, serialize<GaloisKeys>(*keys_));
-    output.AddMember("galois_keys",
-                     rapidjson::Value().SetString(keys.data(), keys.size(),
-                                                  output.GetAllocator()),
-                     output.GetAllocator());
+    output.set_galoiskeys(keys);
   }
 
-  rapidjson::StringBuffer buffer;
-  rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-  output.Accept(writer);
+  std::stringstream stream;
 
-  return std::string(buffer.GetString());
+  if (!output.SerializeToOstream(&stream)) {
+    return InvalidArgumentError("failed to save protobuffer");
+  }
+
+  return stream.str();
 }
 };  // namespace pir

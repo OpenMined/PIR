@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package pir;
+
+message Payload {
+  repeated bytes query = 1;
+  bytes galoiskeys = 2;
+}

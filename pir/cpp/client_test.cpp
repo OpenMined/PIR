@@ -75,22 +75,23 @@ TEST_F(PIRClientTest, TestPayloadSerialization) {
   vector<Ciphertext> ct(1);
   Encryptor()->encrypt(pt, ct[0]);
 
+  auto payload = PIRPayload::Load(ct);
+  auto dump = payload.Save().ValueOrDie();
+  auto reloaded = PIRPayload::Load(Context()->SEALContext(), dump).ValueOrDie();
+
+  ASSERT_EQ(reloaded.Get().size(), 1);
+  ASSERT_FALSE(reloaded.GetKeys().has_value());
+
   auto keygen_ = make_unique<KeyGenerator>(Context()->SEALContext());
   GaloisKeys gal_keys = keygen_->galois_keys_local(
       generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE));
 
-  auto payload = PIRPayload::Load(ct, gal_keys);
-
-  auto dump = payload.Save().ValueOrDie();
-  std::cout << "dump " << dump << std::endl;
-  auto raw = PIRPayload::Load(Context()->SEALContext(), dump);
-  if (!raw.ok()) {
-    std::cout << raw.status().message() << std::endl;
-  }
-  auto reloaded = raw.ValueOrDie();
+  payload = PIRPayload::Load(ct, gal_keys);
+  dump = payload.Save().ValueOrDie();
+  reloaded = PIRPayload::Load(Context()->SEALContext(), dump).ValueOrDie();
 
   ASSERT_EQ(reloaded.Get().size(), 1);
-  // ASSERT_TRUE(reloaded.GetKeys().has_value());
+  ASSERT_TRUE(reloaded.GetKeys().has_value());
 }
 
 }  // namespace pir
