@@ -107,7 +107,6 @@ TEST_P(CreateRequestTest, TestCreateRequest_MoreThanOneCT) {
   for (const auto& ct : payload.Get()) {
     Plaintext pt;
     Decryptor()->decrypt(ct, pt);
-    // std::cout << "CreateRequest PT: " << pt.to_string() << std::endl;
     for (size_t i = 0; i < pt.coeff_count(); ++i) {
       if (i != desired_index) {
         EXPECT_EQ(pt[i], 0);
