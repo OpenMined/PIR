@@ -108,11 +108,12 @@ TEST_P(CreateRequestTest, TestCreateRequest_MoreThanOneCT) {
     Plaintext pt;
     Decryptor()->decrypt(ct, pt);
     for (size_t i = 0; i < pt.coeff_count(); ++i) {
-      if (i != desired_index) {
+      if (i != static_cast<size_t>(desired_index)) {
         EXPECT_EQ(pt[i], 0);
       }
     }
-    if (desired_index < 0 || desired_index >= poly_modulus_degree) {
+    if (desired_index < 0 ||
+        static_cast<size_t>(desired_index) >= poly_modulus_degree) {
       desired_index -= poly_modulus_degree;
       for (size_t i = 0; i < pt.coeff_count(); ++i) {
         EXPECT_EQ(pt[i], 0);
