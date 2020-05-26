@@ -103,7 +103,7 @@ TEST_F(PIRServerTest, TestProcessRequest) {
   encryptor_->encrypt(pt, query[0]);
   GaloisKeys gal_keys = keygen_->galois_keys_local(
       generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE));
-  auto payload = PIRPayload::Load(query, gal_keys);
+  auto payload = PIRFullPayload::Load(query, gal_keys).ValueOrDie();
 
   auto result_or = server_->ProcessRequest(payload);
   ASSERT_THAT(result_or.ok(), IsTrue());
@@ -126,7 +126,7 @@ TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
   encryptor_->encrypt(pt, query[0]);
   GaloisKeys gal_keys = keygen_->galois_keys_local(
       generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE));
-  auto payload = PIRPayload::Load(query, gal_keys);
+  auto payload = PIRFullPayload::Load(query, gal_keys).ValueOrDie();
 
   auto result_or = server_->ProcessRequest(payload);
   ASSERT_THAT(result_or.ok(), IsTrue());

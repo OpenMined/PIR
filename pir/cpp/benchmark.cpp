@@ -55,7 +55,7 @@ void BM_ClientCreateRequest(benchmark::State& state) {
       static_cast<double>(elements_processed), benchmark::Counter::kIsRate);
 }
 // Range is for the dbsize.
-BENCHMARK(BM_ClientCreateRequest)->RangeMultiplier(10)->Range(10, 10000);
+BENCHMARK(BM_ClientCreateRequest)->RangeMultiplier(10)->Range(10, 1000);
 
 void BM_ServerProcessRequest(benchmark::State& state) {
   std::size_t dbsize = state.range(0);

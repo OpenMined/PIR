@@ -20,6 +20,7 @@
 #include <optional>
 #include <string>
 
+#include "payload.pb.h"
 #include "seal/seal.h"
 #include "util/statusor.h"
 
@@ -35,8 +36,7 @@ class PIRPayload {
   /**
    * Loads a PIR Payload.
    **/
-  static PIRPayload Load(const buff_type& plain,
-                         const optional<GaloisKeys>& keys = {});
+  static StatusOr<PIRPayload> Load(const buff_type& buff);
   /**
    * Decodes and loads a PIR Payload.
    * @returns InvalidArgument if the decoding fails
@@ -44,27 +44,62 @@ class PIRPayload {
   static StatusOr<PIRPayload> Load(
       const std::shared_ptr<seal::SEALContext>& ctx,
       const std::string& encoded);
+
+  static StatusOr<PIRPayload> Load(
+      const std::shared_ptr<seal::SEALContext>& ctx, const Payload& encoded);
   /**
    * Saves the PIR Payload to a string.
    * @returns InvalidArgument if the encoding fails
    **/
   StatusOr<std::string> Save();
+  StatusOr<Payload> SaveProto();
   /**
    * Returns a reference to the internal buffer.
    **/
   const buff_type& Get() const { return buff_; }
-
-  const optional<GaloisKeys>& GetKeys() const { return keys_; }
-
   PIRPayload() = delete;
 
- private:
-  PIRPayload(const std::vector<seal::Ciphertext>& buff,
-             const optional<GaloisKeys>& keys = {})
-      : buff_(buff), keys_(keys){};
+  PIRPayload(const buff_type& buff) : buff_(buff){};
 
+ private:
   buff_type buff_;
-  optional<GaloisKeys> keys_;
+};
+
+class PIRFullPayload : public PIRPayload {
+ public:
+  /**
+   * Loads a PIR Full Payload.
+   **/
+  static StatusOr<PIRFullPayload> Load(const PIRPayload& plain,
+                                       const GaloisKeys& keys);
+  /**
+   * Decodes and loads a PIR Full Payload.
+   * @returns InvalidArgument if the decoding fails
+   **/
+  static StatusOr<PIRFullPayload> Load(
+      const std::shared_ptr<seal::SEALContext>& ctx,
+      const std::string& encoded);
+  static StatusOr<PIRFullPayload> Load(
+      const std::shared_ptr<seal::SEALContext>& ctx,
+      const FullPayload& encoded);
+  /**
+   * Saves the PIR Full Payload to a string.
+   * @returns InvalidArgument if the encoding fails
+   **/
+  StatusOr<std::string> Save();
+  StatusOr<FullPayload> SaveProto();
+  /**
+   * Returns a reference to the Galois keys object.
+   **/
+  const GaloisKeys& GetKeys() const { return keys_; }
+
+  PIRFullPayload() = delete;
+
+ private:
+  PIRFullPayload(const PIRPayload& buff, const GaloisKeys& keys)
+      : PIRPayload(buff), keys_(keys){};
+
+  GaloisKeys keys_;
 };
 
 }  // namespace pir

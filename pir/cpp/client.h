@@ -41,7 +41,7 @@ class PIRClient {
    * @param[in] desiredIndex Expected database value from an index
    * @returns InvalidArgument if the index is invalid or if the encryption fails
    **/
-  StatusOr<PIRPayload> CreateRequest(std::size_t /*index*/) const;
+  StatusOr<PIRFullPayload> CreateRequest(std::size_t /*index*/) const;
 
   /**
    * Extracts server response

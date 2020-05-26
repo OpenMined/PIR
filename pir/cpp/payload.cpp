@@ -15,7 +15,6 @@
 //
 #include "payload.h"
 
-#include "payload.pb.h"
 #include "rapidjson/document.h"
 #include "rapidjson/error/en.h"
 #include "rapidjson/stringbuffer.h"
@@ -61,9 +60,8 @@ StatusOr<T> deserialize(const std::shared_ptr<seal::SEALContext>& sealctx,
   return out;
 }
 
-PIRPayload PIRPayload::Load(const std::vector<Ciphertext>& buff,
-                            const optional<GaloisKeys>& keys) {
-  return PIRPayload(buff, keys);
+StatusOr<PIRPayload> PIRPayload::Load(const std::vector<Ciphertext>& buff) {
+  return PIRPayload(buff);
 }
 
 StatusOr<PIRPayload> PIRPayload::Load(
@@ -78,22 +76,34 @@ StatusOr<PIRPayload> PIRPayload::Load(
   if (!input.ParseFromIstream(&stream)) {
     return InvalidArgumentError("failed to parse payload");
   }
+  return PIRPayload::Load(sealctx, input);
+}
 
+StatusOr<PIRPayload> PIRPayload::Load(
+    const std::shared_ptr<seal::SEALContext>& sealctx, const Payload& input) {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
   std::vector<Ciphertext> buff(input.query_size());
   for (int idx = 0; idx < input.query_size(); ++idx) {
     ASSIGN_OR_RETURN(buff[idx],
                      deserialize<Ciphertext>(sealctx, input.query(idx)));
   }
-  optional<GaloisKeys> keys;
-  auto rawkeys = deserialize<GaloisKeys>(sealctx, input.galoiskeys());
-  if (rawkeys.ok()) {
-    keys = rawkeys.ValueOrDie();
-  }
-
-  return PIRPayload(buff, keys);
+  return PIRPayload(buff);
 }
 
 StatusOr<std::string> PIRPayload::Save() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+  std::stringstream stream;
+
+  ASSIGN_OR_RETURN(auto output, SaveProto());
+
+  if (!output.SerializeToOstream(&stream)) {
+    return InvalidArgumentError("failed to save protobuffer");
+  }
+
+  return stream.str();
+}
+
+StatusOr<Payload> PIRPayload::SaveProto() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   Payload output;
@@ -102,12 +112,47 @@ StatusOr<std::string> PIRPayload::Save() {
     output.add_query(ct);
   }
 
-  if (keys_) {
-    ASSIGN_OR_RETURN(auto keys, serialize<GaloisKeys>(*keys_));
-    output.set_galoiskeys(keys);
-  }
+  return output;
+}
+
+StatusOr<PIRFullPayload> PIRFullPayload::Load(const PIRPayload& buff,
+                                              const GaloisKeys& keys) {
+  return PIRFullPayload(buff, keys);
+}
+
+StatusOr<PIRFullPayload> PIRFullPayload::Load(
+    const std::shared_ptr<seal::SEALContext>& sealctx,
+    const FullPayload& input) {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+  ASSIGN_OR_RETURN(auto buff, PIRPayload::Load(sealctx, input.query()));
+  ASSIGN_OR_RETURN(GaloisKeys keys,
+                   deserialize<GaloisKeys>(sealctx, input.galoiskeys()));
+
+  return PIRFullPayload(buff, keys);
+}
+
+StatusOr<PIRFullPayload> PIRFullPayload::Load(
+    const std::shared_ptr<seal::SEALContext>& sealctx,
+    const std::string& encoded) {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   std::stringstream stream;
+  stream << encoded;
+  FullPayload input;
+
+  if (!input.ParseFromIstream(&stream)) {
+    return InvalidArgumentError("failed to parse payload");
+  }
+
+  return Load(sealctx, input);
+}
+
+StatusOr<std::string> PIRFullPayload::Save() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  std::stringstream stream;
+
+  ASSIGN_OR_RETURN(auto output, SaveProto());
 
   if (!output.SerializeToOstream(&stream)) {
     return InvalidArgumentError("failed to save protobuffer");
@@ -115,4 +160,18 @@ StatusOr<std::string> PIRPayload::Save() {
 
   return stream.str();
 }
+StatusOr<FullPayload> PIRFullPayload::SaveProto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  FullPayload output;
+
+  ASSIGN_OR_RETURN(auto buff, PIRPayload::SaveProto());
+  *output.mutable_query() = buff;
+
+  ASSIGN_OR_RETURN(auto keys, serialize<GaloisKeys>(keys_));
+  output.set_galoiskeys(keys);
+
+  return output;
+}
+
 };  // namespace pir
