@@ -15,6 +15,7 @@
 #
 
 package(default_visibility = ["//visibility:public"])
+load("@rules_proto//proto:defs.bzl", "proto_library")
 
 PIR_DEFAULT_INCLUDES = ["."]
 
@@ -23,7 +24,6 @@ PIR_DEFAULT_COPTS =  ["-std=c++17"]
 proto_library(
     name = "payload_proto",
     srcs = ["payload.proto"],
-    deps = ["@com_google_protobuf//:timestamp_proto"],
 )
 
 cc_proto_library(
