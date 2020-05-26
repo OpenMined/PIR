@@ -14,12 +14,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: Install Bazel - Ubuntu
-        run: .github/workflows/scripts/install_ubuntu.sh
-        if: ${{ github.matrix.os == 'ubuntu-18.04' }}
-      - name: Install Bazel - MacOS
-        run: .github/workflows/scripts/install_macos.sh
-        if: ${{ github.matrix.os == 'macos-latest' }}
       - name: Run tests
         run: .github/workflows/scripts/run_tests.sh
 
@@ -27,5 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: C++ Build
+        run: .github/workflows/scripts/build_cpp.sh
       - name: C++ linters
         run: .github/workflows/scripts/lint_cpp.sh

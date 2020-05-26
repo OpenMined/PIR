@@ -30,7 +30,7 @@ template <typename t>
 t next_power_two(t n) {
   if (n == 0) return 1;
   --n;
-  for (int i = 1; i < sizeof(n) * 8; i = i << 1) {
+  for (size_t i = 1; i < sizeof(n) * 8; i = i << 1) {
     n |= n >> i;
   }
   return n + 1;
