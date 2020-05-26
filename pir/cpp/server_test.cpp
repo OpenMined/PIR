@@ -48,6 +48,12 @@ using namespace ::testing;
 using std::int64_t;
 using std::vector;
 
+#ifdef TEST_DEBUG
+#define DEBUG_OUT(x) std::cout << x << std::endl
+#else
+#define DEBUG_OUT(x)
+#endif  // TEST_DEBUG
+
 class PIRServerTest : public ::testing::Test {
  protected:
   void SetUp() { SetUpDB(10); }
@@ -144,9 +150,9 @@ TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
   Plaintext result_pt;
   decryptor_->decrypt(result.Get()[0], result_pt);
   auto encoder = server_->Context()->Encoder();
-  cout << "Expected DB value " << db_[desired_index] << endl;
-  cout << "Expected m "
-       << next_power_two(db_size_ - DEFAULT_POLY_MODULUS_DEGREE) << endl;
+  DEBUG_OUT("Expected DB value " << db_[desired_index]);
+  DEBUG_OUT(
+      "Expected m " << next_power_two(db_size_ - DEFAULT_POLY_MODULUS_DEGREE));
   ASSERT_THAT(encoder->decode_int64(result_pt),
               Eq(db_[desired_index] *
                  next_power_two(db_size_ - DEFAULT_POLY_MODULUS_DEGREE)));
@@ -180,7 +186,7 @@ class SubstituteOperatorTest
 
 TEST_P(SubstituteOperatorTest, SubstituteExamples) {
   Plaintext input_pt(get<0>(GetParam()));
-  // cout << "Input PT: " << input_pt.to_string() << endl;
+  DEBUG_OUT("Input PT: " << input_pt.to_string());
 
   Ciphertext ct;
   encryptor_->encrypt(input_pt, ct);
@@ -191,10 +197,10 @@ TEST_P(SubstituteOperatorTest, SubstituteExamples) {
 
   Plaintext result_pt;
   decryptor_->decrypt(ct, result_pt);
-  // cout << "Result PT: " << result_pt.to_string() << endl;
+  DEBUG_OUT("Result PT: " << result_pt.to_string());
 
   Plaintext expected_pt(get<2>(GetParam()));
-  // cout << "Expected PT: " << expected_pt.to_string() << endl;
+  DEBUG_OUT("Expected PT: " << expected_pt.to_string());
   ASSERT_THAT(result_pt, Eq(expected_pt));
 }
 
@@ -220,7 +226,7 @@ class MultiplyInversePowerXTest
 
 TEST_P(MultiplyInversePowerXTest, MultiplyInversePowerXExamples) {
   Plaintext input_pt(get<0>(GetParam()));
-  // cout << "Input PT: " << input_pt.to_string() << endl;
+  DEBUG_OUT("Input PT: " << input_pt.to_string());
 
   Ciphertext ct;
   encryptor_->encrypt(input_pt, ct);
@@ -231,10 +237,10 @@ TEST_P(MultiplyInversePowerXTest, MultiplyInversePowerXExamples) {
 
   Plaintext result_pt;
   decryptor_->decrypt(result_ct, result_pt);
-  // cout << "Result PT: " << result_pt.to_string() << endl;
+  DEBUG_OUT("Result PT: " << result_pt.to_string());
 
   Plaintext expected_pt(get<2>(GetParam()));
-  // cout << "Expected PT: " << expected_pt.to_string() << endl;
+  DEBUG_OUT("Expected PT: " << expected_pt.to_string());
   ASSERT_THAT(result_pt, Eq(expected_pt));
 }
 
@@ -252,7 +258,7 @@ class ObliviousExpansionTest
 
 TEST_P(ObliviousExpansionTest, ObliviousExpansionExamples) {
   Plaintext input_pt(get<0>(GetParam()));
-  // cout << "Input PT: " << input_pt.to_string() << endl;
+  DEBUG_OUT("Input PT: " << input_pt.to_string());
 
   Ciphertext ct;
   encryptor_->encrypt(input_pt, ct);
@@ -269,14 +275,13 @@ TEST_P(ObliviousExpansionTest, ObliviousExpansionExamples) {
   vector<Plaintext> results_pt(results.size());
   for (size_t i = 0; i < results.size(); ++i) {
     decryptor_->decrypt(results[i], results_pt[i]);
-    // cout << "Result PT[" << i << "]: " << results_pt[i].to_string() << endl;
+    DEBUG_OUT("Result PT[" << i << "]: " << results_pt[i].to_string());
   }
 
   vector<Plaintext> expected_pt(expected.size());
   for (size_t i = 0; i < expected_pt.size(); ++i) {
     expected_pt[i] = Plaintext(expected[i]);
-    // cout << "Expected PT[" << i << "]: " << expected_pt[i].to_string() <<
-    // endl;
+    DEBUG_OUT("Expected PT[" << i << "]: " << expected_pt[i].to_string());
   }
 
   ASSERT_THAT(results_pt, ContainerEq(expected_pt));
@@ -306,7 +311,7 @@ TEST_P(ObliviousExpansionTestMultiCT, MultiCTExamples) {
           [index % DEFAULT_POLY_MODULUS_DEGREE] = 1;
   vector<Ciphertext> input_ct(input_pt.size());
   for (size_t i = 0; i < input_pt.size(); ++i) {
-    // cout << "Input PT[" << i << "]: " << input_pt[i].to_string() << endl;
+    DEBUG_OUT("Input PT[" << i << "]: " << input_pt[i].to_string());
     encryptor_->encrypt(input_pt[i], input_ct[i]);
   }
 
@@ -323,21 +328,20 @@ TEST_P(ObliviousExpansionTestMultiCT, MultiCTExamples) {
   for (size_t i = 0; i < results.size(); ++i) {
     Plaintext result_pt;
     decryptor_->decrypt(results[i], result_pt);
-    // const Plaintext& exp = (i == index) ? expected_pt : zero_pt;
     const auto exp = (i == index) ? expected_value : 0;
-    // cout << "Result PT[" << i << "]: " << result_pt.to_string() << endl;
-    // cout << "Expect PT[" << i << "]: " << exp.to_string() << endl;
-    EXPECT_THAT(result_pt.coeff_count(), Eq(1));
-    EXPECT_THAT(result_pt[0], Eq(exp));
+    EXPECT_THAT(result_pt.coeff_count(), Eq(1))
+        << "i = " << i << ", pt = " << result_pt.to_string();
+    EXPECT_THAT(result_pt[0], Eq(exp))
+        << "i = " << i << ", pt = " << result_pt.to_string();
   }
 }
-/*
+
 INSTANTIATE_TEST_SUITE_P(
     ObliviousExpansionMultiCT, ObliviousExpansionTestMultiCT,
     testing::Values(make_tuple(100, 42, 128), make_tuple(100, 0, 128),
                     make_tuple(100, 99, 128), make_tuple(4096, 3007, 4096),
                     make_tuple(5000, 4095, 4096),
                     make_tuple(5000, 4200, 1024)));
-*/
+
 }  // namespace
 }  // namespace pir
