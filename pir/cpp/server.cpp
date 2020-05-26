@@ -87,7 +87,6 @@ void PIRServer::multiply_inverse_power_of_x(
   const auto poly_modulus_degree = params.poly_modulus_degree();
   const auto coeff_mod_count = params.coeff_modulus().size();
 
-  // handle negative values of k properly
   uint32_t index =
       ((poly_modulus_degree << 1) - k) % (poly_modulus_degree << 1);
 
