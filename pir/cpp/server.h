@@ -55,7 +55,7 @@ class PIRServer {
    * @returns InvalidArgument if the deserialization or encrypted operations
    *fail
    **/
-  StatusOr<PIRPayload> ProcessRequest(const PIRSessionPayload& request) const;
+  StatusOr<PIRSessionPayload> ProcessRequest(const PIRSessionPayload& request);
 
   /**
    * Returns the database size.
@@ -129,6 +129,7 @@ class PIRServer {
 
   std::unique_ptr<PIRContext> context_;
   std::shared_ptr<PIRDatabase> db_;
+  std::unordered_map<std::size_t, GaloisKeys> keys_cache_;
 };
 
 }  // namespace pir

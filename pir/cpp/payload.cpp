@@ -123,7 +123,7 @@ StatusOr<PIRSessionPayload> PIRSessionPayload::Load(const PIRPayload& buff,
 StatusOr<PIRSessionPayload> PIRSessionPayload::Load(const PIRPayload& buff,
                                                     const GaloisKeys& keys) {
   ASSIGN_OR_RETURN(auto keys_str, serialize<GaloisKeys>(keys));
-  size_t session_id = std::hash<std::string>{}(keys_str);
+  std::size_t session_id = std::hash<std::string>{}(keys_str);
 
   return PIRSessionPayload(buff, session_id, keys);
 }

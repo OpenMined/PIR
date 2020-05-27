@@ -93,20 +93,20 @@ class PIRSessionPayload : public PIRPayload {
   /**
    * Returns a reference to the session ID.
    **/
-  const size_t& GetID() const { return session_id_; }
+  std::size_t GetID() const { return session_id_; }
   const optional<GaloisKeys>& GetKeys() const { return keys_; }
 
   PIRSessionPayload() = delete;
 
  private:
-  PIRSessionPayload(const PIRPayload& buff, const size_t& session_id)
+  PIRSessionPayload(const PIRPayload& buff, const std::size_t& session_id)
       : PIRPayload(buff), session_id_(session_id){};
 
-  PIRSessionPayload(const PIRPayload& buff, const size_t& session_id,
+  PIRSessionPayload(const PIRPayload& buff, const std::size_t& session_id,
                     const GaloisKeys& keys)
       : PIRPayload(buff), session_id_(session_id), keys_(keys){};
 
-  size_t session_id_;
+  std::size_t session_id_;
   optional<GaloisKeys> keys_;
 };
 

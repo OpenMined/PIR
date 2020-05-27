@@ -75,9 +75,16 @@ StatusOr<PIRSessionPayload> PIRClient::CreateRequest(std::size_t index) const {
   pt[index] = inverse_m;
 
   vector<Ciphertext> query(1);
-  GaloisKeys gal_keys;
   try {
     encryptor_->encrypt(pt, query[0]);
+  } catch (const std::exception& e) {
+    return InternalError(e.what());
+  }
+
+  if (session_id_) return PIRSessionPayload::Load(query, *session_id_);
+
+  GaloisKeys gal_keys;
+  try {
     gal_keys =
         keygen_->galois_keys_local(generate_galois_elts(poly_modulus_degree));
   } catch (const std::exception& e) {
@@ -86,10 +93,12 @@ StatusOr<PIRSessionPayload> PIRClient::CreateRequest(std::size_t index) const {
   return PIRSessionPayload::Load(query, gal_keys);
 }
 
-StatusOr<int64_t> PIRClient::ProcessResponse(const PIRPayload& response) const {
+StatusOr<int64_t> PIRClient::ProcessResponse(
+    const PIRSessionPayload& response) {
   if (response.Get().size() != 1) {
     return InvalidArgumentError("Number of ciphertexts in response must be 1");
   }
+  session_id_ = response.GetID();
 
   seal::Plaintext plaintext;
   try {

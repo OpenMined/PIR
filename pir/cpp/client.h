@@ -48,7 +48,7 @@ class PIRClient {
    * @param[in] response Server output
    * @returns InvalidArgument if the decryption fails
    **/
-  StatusOr<int64_t> ProcessResponse(const PIRPayload& response) const;
+  StatusOr<int64_t> ProcessResponse(const PIRSessionPayload& response);
 
   /**
    * Returns the database size.
@@ -64,6 +64,8 @@ class PIRClient {
   std::unique_ptr<seal::KeyGenerator> keygen_;
   std::shared_ptr<seal::Encryptor> encryptor_;
   std::shared_ptr<seal::Decryptor> decryptor_;
+
+  std::optional<std::size_t> session_id_;
 };
 
 }  // namespace pir

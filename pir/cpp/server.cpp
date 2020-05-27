@@ -33,7 +33,7 @@ using ::private_join_and_compute::StatusOr;
 
 PIRServer::PIRServer(std::unique_ptr<PIRContext> context,
                      std::shared_ptr<PIRDatabase> db)
-    : context_(std::move(context)), db_(db) {}
+    : context_(std::move(context)), db_(db), keys_cache_() {}
 
 StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
     std::shared_ptr<PIRDatabase> db, std::shared_ptr<PIRParameters> params) {
@@ -49,22 +49,35 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
   return PIRServer::Create(db, PIRParameters::Create(db->size()));
 }
 
-StatusOr<PIRPayload> PIRServer::ProcessRequest(
-    const PIRSessionPayload& payload) const {
+StatusOr<PIRSessionPayload> PIRServer::ProcessRequest(
+    const PIRSessionPayload& payload) {
   if (payload.Get().size() != 1) {
     return InvalidArgumentError("Number of ciphertexts in request must be 1");
   }
+  auto session_id = payload.GetID();
+  optional<GaloisKeys> keys;
 
-  ASSIGN_OR_RETURN(
-      auto selection_vector,
-      oblivious_expansion(payload.Get()[0], DBSize(), *payload.GetKeys()));
+  if (payload.GetKeys()) {
+    keys = payload.GetKeys();
+    keys_cache_[session_id] = *keys;
+  } else if (keys_cache_.find(session_id) != keys_cache_.end()) {
+    keys = keys_cache_[session_id];
+  }
+
+  if (!keys) {
+    return InvalidArgumentError("Must have Galois Keys in session");
+  }
+
+  ASSIGN_OR_RETURN(auto selection_vector,
+                   oblivious_expansion(payload.Get()[0], DBSize(), *keys));
 
   ASSIGN_OR_RETURN(auto mult_results, db_->multiply(selection_vector));
 
   seal::Ciphertext result;
   context_->Evaluator()->add_many(mult_results, result);
 
-  return PIRPayload::Load(vector<seal::Ciphertext>{result});
+  return PIRSessionPayload::Load(vector<seal::Ciphertext>{result},
+                                 payload.GetID());
 }
 
 Status PIRServer::substitute_power_x_inplace(

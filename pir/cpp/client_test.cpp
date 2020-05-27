@@ -28,6 +28,7 @@ using std::make_unique;
 class PIRClientTest : public ::testing::Test {
  protected:
   static constexpr std::size_t DB_SIZE = 100;
+  static constexpr std::size_t SESSION = 1234;
   void SetUp() {
     pir_params_ = PIRParameters::Create(DB_SIZE);
     client_ = PIRClient::Create(pir_params_).ValueOrDie();
@@ -75,7 +76,7 @@ TEST_F(PIRClientTest, TestProcessResponse) {
   Context()->Encoder()->encode(value, pt);
   vector<Ciphertext> ct(1);
   Encryptor()->encrypt(pt, ct[0]);
-  PIRPayload payload = PIRPayload::Load(ct).ValueOrDie();
+  PIRSessionPayload payload = PIRSessionPayload::Load(ct, SESSION).ValueOrDie();
 
   auto result = client_->ProcessResponse(payload).ValueOrDie();
   ASSERT_EQ(result, value);
@@ -88,11 +89,13 @@ TEST_F(PIRClientTest, TestPayloadSerialization) {
   vector<Ciphertext> ct(1);
   Encryptor()->encrypt(pt, ct[0]);
 
-  auto payload = PIRPayload::Load(ct).ValueOrDie();
+  auto payload = PIRSessionPayload::Load(ct, SESSION).ValueOrDie();
   auto dump = payload.Save().ValueOrDie();
-  auto reloaded = PIRPayload::Load(Context()->SEALContext(), dump).ValueOrDie();
+  auto reloaded =
+      PIRSessionPayload::Load(Context()->SEALContext(), dump).ValueOrDie();
 
   ASSERT_EQ(reloaded.Get().size(), 1);
+  ASSERT_EQ(reloaded.GetID(), SESSION);
 
   auto keygen_ = make_unique<KeyGenerator>(Context()->SEALContext());
   auto elts = generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE);
@@ -127,6 +130,7 @@ TEST_F(PIRClientTest, TestSessionReuse) {
   for (size_t iter = 0; iter < 10; ++iter) {
     auto full_payload = client_->CreateRequest(index).ValueOrDie();
     total_bytes_session += full_payload.Save().ValueOrDie().size();
+    ASSERT_EQ(full_payload.GetKeys().has_value(), iter == 0);
 
     auto response = server_->ProcessRequest(full_payload).ValueOrDie();
     auto output = client_->ProcessResponse(response).ValueOrDie();
@@ -135,7 +139,8 @@ TEST_F(PIRClientTest, TestSessionReuse) {
 
   std::cout << "Total comm size " << total_bytes << " needed " << payload_bytes
             << std::endl;
-  ASSERT_LT(total_bytes_session, 0.05 * (double)total_bytes);
-  ASSERT_LT(total_bytes_session, 1.1 * (double)payload_bytes);
+  ASSERT_LT(35 * (double)payload_bytes, total_bytes);
+  ASSERT_LT(total_bytes_session, 0.15 * (double)total_bytes);
+  ASSERT_LT(total_bytes_session, 5 * (double)payload_bytes);
 }
 }  // namespace pir
