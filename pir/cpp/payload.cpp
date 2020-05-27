@@ -60,37 +60,37 @@ StatusOr<T> deserialize(const std::shared_ptr<seal::SEALContext>& sealctx,
   return out;
 }
 
-StatusOr<PIRPayload> PIRPayload::Load(const std::vector<Ciphertext>& buff) {
-  return PIRPayload(buff);
+StatusOr<PIRPayloadData> PIRPayloadData::Load(const std::vector<Ciphertext>& buff) {
+  return PIRPayloadData(buff);
 }
 
-StatusOr<PIRPayload> PIRPayload::Load(
+StatusOr<PIRPayloadData> PIRPayloadData::Load(
     const std::shared_ptr<seal::SEALContext>& sealctx,
     const std::string& encoded) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   std::stringstream stream;
   stream << encoded;
-  Payload input;
+  PayloadData input;
 
   if (!input.ParseFromIstream(&stream)) {
     return InvalidArgumentError("failed to parse payload");
   }
-  return PIRPayload::Load(sealctx, input);
+  return PIRPayloadData::Load(sealctx, input);
 }
 
-StatusOr<PIRPayload> PIRPayload::Load(
-    const std::shared_ptr<seal::SEALContext>& sealctx, const Payload& input) {
+StatusOr<PIRPayloadData> PIRPayloadData::Load(
+    const std::shared_ptr<seal::SEALContext>& sealctx, const PayloadData& input) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
-  std::vector<Ciphertext> buff(input.query_size());
-  for (int idx = 0; idx < input.query_size(); ++idx) {
+  std::vector<Ciphertext> buff(input.data_size());
+  for (int idx = 0; idx < input.data_size(); ++idx) {
     ASSIGN_OR_RETURN(buff[idx],
-                     deserialize<Ciphertext>(sealctx, input.query(idx)));
+                     deserialize<Ciphertext>(sealctx, input.data(idx)));
   }
-  return PIRPayload(buff);
+  return PIRPayloadData(buff);
 }
 
-StatusOr<std::string> PIRPayload::Save() {
+StatusOr<std::string> PIRPayloadData::Save() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
   std::stringstream stream;
 
@@ -103,24 +103,24 @@ StatusOr<std::string> PIRPayload::Save() {
   return stream.str();
 }
 
-StatusOr<Payload> PIRPayload::SaveProto() {
+StatusOr<PayloadData> PIRPayloadData::SaveProto() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-  Payload output;
-  for (size_t idx = 0; idx < buff_.size(); ++idx) {
-    ASSIGN_OR_RETURN(auto ct, serialize<Ciphertext>(buff_[idx]));
-    output.add_query(ct);
+  PayloadData output;
+  for (size_t idx = 0; idx < data_.size(); ++idx) {
+    ASSIGN_OR_RETURN(auto ct, serialize<Ciphertext>(data_[idx]));
+    output.add_data(ct);
   }
 
   return output;
 }
 
-StatusOr<PIRSessionPayload> PIRSessionPayload::Load(const PIRPayload& buff,
+StatusOr<PIRSessionPayload> PIRSessionPayload::Load(const PIRPayloadData& buff,
                                                     const size_t& session_id) {
   return PIRSessionPayload(buff, session_id);
 }
 
-StatusOr<PIRSessionPayload> PIRSessionPayload::Load(const PIRPayload& buff,
+StatusOr<PIRSessionPayload> PIRSessionPayload::Load(const PIRPayloadData& buff,
                                                     const GaloisKeys& keys) {
   ASSIGN_OR_RETURN(auto keys_str, serialize<GaloisKeys>(keys));
   std::size_t session_id = std::hash<std::string>{}(keys_str);
@@ -130,9 +130,9 @@ StatusOr<PIRSessionPayload> PIRSessionPayload::Load(const PIRPayload& buff,
 
 StatusOr<PIRSessionPayload> PIRSessionPayload::Load(
     const std::shared_ptr<seal::SEALContext>& sealctx,
-    const SessionPayload& input) {
+    const Payload& input) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
-  ASSIGN_OR_RETURN(auto buff, PIRPayload::Load(sealctx, input.query()));
+  ASSIGN_OR_RETURN(auto buff, PIRPayloadData::Load(sealctx, input.data()));
   auto session = input.id();
 
   if (input.has_galoiskeys()) {
@@ -150,7 +150,7 @@ StatusOr<PIRSessionPayload> PIRSessionPayload::Load(
 
   std::stringstream stream;
   stream << encoded;
-  SessionPayload input;
+  Payload input;
 
   if (!input.ParseFromIstream(&stream)) {
     return InvalidArgumentError("failed to parse session payload");
@@ -172,13 +172,13 @@ StatusOr<std::string> PIRSessionPayload::Save() {
 
   return stream.str();
 }
-StatusOr<SessionPayload> PIRSessionPayload::SaveProto() {
+StatusOr<Payload> PIRSessionPayload::SaveProto() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-  SessionPayload output;
+  Payload output;
 
-  ASSIGN_OR_RETURN(auto buff, PIRPayload::SaveProto());
-  *output.mutable_query() = buff;
+  ASSIGN_OR_RETURN(auto buff, PIRPayloadData::SaveProto());
+  *output.mutable_data() = buff;
   output.set_id(session_id_);
   if (keys_) {
     ASSIGN_OR_RETURN(auto keys, serialize<GaloisKeys>(*keys_));

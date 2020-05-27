@@ -31,48 +31,48 @@ using seal::GaloisKeys;
 using std::optional;
 using buff_type = std::vector<seal::Ciphertext>;
 
-class PIRPayload {
+class PIRPayloadData {
  public:
   /**
    * Loads a PIR Payload.
    **/
-  static StatusOr<PIRPayload> Load(const buff_type& buff);
+  static StatusOr<PIRPayloadData> Load(const buff_type& data);
   /**
    * Decodes and loads a PIR Payload.
    * @returns InvalidArgument if the decoding fails
    **/
-  static StatusOr<PIRPayload> Load(
+  static StatusOr<PIRPayloadData> Load(
       const std::shared_ptr<seal::SEALContext>& ctx,
       const std::string& encoded);
 
-  static StatusOr<PIRPayload> Load(
-      const std::shared_ptr<seal::SEALContext>& ctx, const Payload& encoded);
+  static StatusOr<PIRPayloadData> Load(
+      const std::shared_ptr<seal::SEALContext>& ctx, const PayloadData& encoded);
   /**
    * Saves the PIR Payload to a string.
    * @returns InvalidArgument if the encoding fails
    **/
   StatusOr<std::string> Save();
-  StatusOr<Payload> SaveProto();
+  StatusOr<PayloadData> SaveProto();
   /**
    * Returns a reference to the internal buffer.
    **/
-  const buff_type& Get() const { return buff_; }
-  PIRPayload() = delete;
+  const buff_type& Get() const { return data_; }
+  PIRPayloadData() = delete;
 
-  PIRPayload(const buff_type& buff) : buff_(buff){};
+  PIRPayloadData(const buff_type& data) : data_(data){};
 
  private:
-  buff_type buff_;
+  buff_type data_;
 };
 
-class PIRSessionPayload : public PIRPayload {
+class PIRSessionPayload : public PIRPayloadData {
  public:
   /**
    * Loads a PIR Session Payload.
    **/
-  static StatusOr<PIRSessionPayload> Load(const PIRPayload& plain,
+  static StatusOr<PIRSessionPayload> Load(const PIRPayloadData& data,
                                           const size_t& session);
-  static StatusOr<PIRSessionPayload> Load(const PIRPayload& plain,
+  static StatusOr<PIRSessionPayload> Load(const PIRPayloadData& data,
                                           const GaloisKeys& keys);
   /**
    * Decodes and loads a PIR Session Payload.
@@ -83,13 +83,13 @@ class PIRSessionPayload : public PIRPayload {
       const std::string& encoded);
   static StatusOr<PIRSessionPayload> Load(
       const std::shared_ptr<seal::SEALContext>& ctx,
-      const SessionPayload& encoded);
+      const Payload& encoded);
   /**
    * Saves the PIR Session Payload to a string.
    * @returns InvalidArgument if the encoding fails
    **/
   StatusOr<std::string> Save();
-  StatusOr<SessionPayload> SaveProto();
+  StatusOr<Payload> SaveProto();
   /**
    * Returns a reference to the session ID.
    **/
@@ -99,12 +99,12 @@ class PIRSessionPayload : public PIRPayload {
   PIRSessionPayload() = delete;
 
  private:
-  PIRSessionPayload(const PIRPayload& buff, const std::size_t& session_id)
-      : PIRPayload(buff), session_id_(session_id){};
+  PIRSessionPayload(const PIRPayloadData& data, const std::size_t& session_id)
+      : PIRPayloadData(data), session_id_(session_id){};
 
-  PIRSessionPayload(const PIRPayload& buff, const std::size_t& session_id,
+  PIRSessionPayload(const PIRPayloadData& data, const std::size_t& session_id,
                     const GaloisKeys& keys)
-      : PIRPayload(buff), session_id_(session_id), keys_(keys){};
+      : PIRPayloadData(data), session_id_(session_id), keys_(keys){};
 
   std::size_t session_id_;
   optional<GaloisKeys> keys_;

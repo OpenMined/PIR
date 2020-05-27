@@ -123,7 +123,7 @@ TEST_F(PIRClientTest, TestSessionReuse) {
     auto full_payload = client_->CreateRequest(index).ValueOrDie();
     total_bytes += full_payload.Save().ValueOrDie().size();
 
-    auto payload = static_cast<PIRPayload>(full_payload);
+    auto payload = static_cast<PIRPayloadData>(full_payload);
     payload_bytes += payload.Save().ValueOrDie().size();
   }
 
