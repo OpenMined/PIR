@@ -149,26 +149,26 @@ StatusOr<std::vector<seal::Ciphertext>> PIRServer::oblivious_expansion(
 }
 
 StatusOr<std::vector<seal::Ciphertext>> PIRServer::oblivious_expansion(
-    const std::vector<seal::Ciphertext>& cts, size_t num_items,
+    const std::vector<seal::Ciphertext>& cts, size_t total_items,
     const seal::GaloisKeys& gal_keys) const {
   const auto poly_modulus_degree =
       context_->Parameters()->GetEncryptionParams().poly_modulus_degree();
 
-  if (cts.size() != num_items / poly_modulus_degree + 1) {
+  if (cts.size() != total_items / poly_modulus_degree + 1) {
     return InvalidArgumentError(
         "Number of ciphertexts doesn't match number of items for oblivious "
         "expansion.");
   }
 
   std::vector<seal::Ciphertext> results;
-  results.reserve(num_items);
+  results.reserve(total_items);
   for (const auto& ct : cts) {
     ASSIGN_OR_RETURN(
         auto v, oblivious_expansion(
-                    ct, std::min(poly_modulus_degree, num_items), gal_keys));
+                    ct, std::min(poly_modulus_degree, total_items), gal_keys));
     results.insert(results.end(), std::make_move_iterator(v.begin()),
                    std::make_move_iterator(v.end()));
-    num_items -= poly_modulus_degree;
+    total_items -= poly_modulus_degree;
   }
   return results;
 }

@@ -125,16 +125,17 @@ class PIRServer {
    * Extension of oblivious_expansion to multiple ciphertexts. This allows
    * selection vectors that are larger then poly_modulus_degree to be used. The
    * output of the expansion of each ciphertext is concatenated to form the
-   * results of this function.
+   * results of this function. Each ciphertext that isn't the last in the vector
+   * are assumed to contain exactly poly_modulus_degree items to be expanded.
    *
    * @param[in] cts List of ciphertexts to use as input to the expansion
-   * @param[in] num_items Total number of items to expand
+   * @param[in] total_items Total number of ciphertexts after expansion
    * @param[in] gal_keys Galois keys supplied by the client
    * @returns A vector of ciphertexts that are the expansion of all of the input
    *   ciphertexts concatenated.
    */
   StatusOr<std::vector<seal::Ciphertext>> oblivious_expansion(
-      const std::vector<seal::Ciphertext>& cts, const size_t num_items,
+      const std::vector<seal::Ciphertext>& cts, const size_t total_items,
       const seal::GaloisKeys& gal_keys) const;
 
   // Just for testing: get the context
