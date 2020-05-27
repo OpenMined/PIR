@@ -15,21 +15,10 @@
 #
 
 package(default_visibility = ["//visibility:public"])
-load("@rules_proto//proto:defs.bzl", "proto_library")
 
 PIR_DEFAULT_INCLUDES = ["."]
 
 PIR_DEFAULT_COPTS =  ["-std=c++17"]
-
-proto_library(
-    name = "payload_proto",
-    srcs = ["payload.proto"],
-)
-
-cc_proto_library(
-    name = "payload_cc_proto",
-    deps = [":payload_proto"],
-)
 
 cc_library(
     name = "pir",
@@ -43,7 +32,7 @@ cc_library(
     hdrs = ["client.h", "server.h"],
     includes = PIR_DEFAULT_INCLUDES,
     deps = [
-        ":payload_cc_proto",
+        "//pir/proto:payload_cc_proto",
         "@com_microsoft_seal//:seal",
         "@com_google_absl//absl/memory",
         "@private_join_and_compute//util:status",

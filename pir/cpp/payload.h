@@ -20,7 +20,7 @@
 #include <optional>
 #include <string>
 
-#include "payload.pb.h"
+#include "pir/proto/payload.pb.h"
 #include "seal/seal.h"
 #include "util/statusor.h"
 
