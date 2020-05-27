@@ -46,38 +46,52 @@ StatusOr<std::unique_ptr<PIRClient>> PIRClient::Create(
   return absl::WrapUnique(new PIRClient(std::move(context)));
 }
 
-StatusOr<PIRPayload> PIRClient::CreateRequest(std::size_t index) const {
+StatusOr<uint64_t> InvertMod(uint64_t m, const seal::Modulus& mod) {
+  if (mod.uint64_count() > 1) {
+    return InternalError("Modulus too big to invert");
+  }
+  uint64_t inverse;
+  if (!seal::util::try_invert_uint_mod(m, mod.value(), inverse)) {
+    return InternalError("Could not invert value");
+  }
+  return inverse;
+}
+
+StatusOr<PIRPayload> PIRClient::CreateRequest(std::size_t desired_index) const {
   const auto poly_modulus_degree =
       context_->Parameters()->GetEncryptionParams().poly_modulus_degree();
-  if (index >= DBSize()) {
+  if (desired_index >= DBSize()) {
     return InvalidArgumentError("invalid index");
   }
-  if (index >= poly_modulus_degree) {
-    // Not yet implemented
-    return InvalidArgumentError("More than 1 CT needed for selection vector");
-  }
 
-  // Figure out 1 / m so that after oblivious expansion it's just 1 in the
-  // correct location.
   const auto& plain_mod =
       context_->Parameters()->GetEncryptionParams().plain_modulus();
-  if (plain_mod.uint64_count() > 1) {
-    return InternalError("Plaintext modulus too big");
-  }
-  uint64_t inverse_m;
-  if (!seal::util::try_invert_uint_mod(next_power_two(DBSize()),
-                                       plain_mod.value(), inverse_m)) {
-    return InternalError("Could not invert m value");
+
+  int index = desired_index;
+  vector<Ciphertext> query(DBSize() / poly_modulus_degree + 1);
+  for (size_t i = 0; i < query.size(); ++i) {
+    Plaintext pt(poly_modulus_degree);
+    pt.set_zero();
+    if (index < 0) {
+      // already passed
+    } else if (static_cast<size_t>(index) < poly_modulus_degree) {
+      uint64_t m = (i < query.size() - 1)
+                       ? poly_modulus_degree
+                       : next_power_two(DBSize() % poly_modulus_degree);
+      ASSIGN_OR_RETURN(pt[index], InvertMod(m, plain_mod));
+      index = -1;
+    } else {
+      index -= poly_modulus_degree;
+    }
+    try {
+      encryptor_->encrypt(pt, query[i]);
+    } catch (const std::exception& e) {
+      return InternalError(e.what());
+    }
   }
 
-  Plaintext pt(poly_modulus_degree);
-  pt.set_zero();
-  pt[index] = inverse_m;
-
-  vector<Ciphertext> query(1);
   GaloisKeys gal_keys;
   try {
-    encryptor_->encrypt(pt, query[0]);
     gal_keys =
         keygen_->galois_keys_local(generate_galois_elts(poly_modulus_degree));
   } catch (const std::exception& e) {

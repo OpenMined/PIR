@@ -23,11 +23,16 @@ namespace pir {
 
 using seal::Ciphertext;
 using seal::Plaintext;
+using std::get;
+using std::make_tuple;
+using std::tuple;
 
 class PIRClientTest : public ::testing::Test {
  protected:
-  static constexpr std::size_t dbsize = 10;
-  void SetUp() {
+  static constexpr std::size_t DB_SIZE = 10;
+  void SetUp() { SetUpDB(DB_SIZE); }
+
+  void SetUpDB(size_t dbsize) {
     pir_params_ = PIRParameters::Create(dbsize);
     client_ = PIRClient::Create(pir_params_).ValueOrDie();
     ASSERT_TRUE(client_ != nullptr);
@@ -42,16 +47,21 @@ class PIRClientTest : public ::testing::Test {
 };
 
 TEST_F(PIRClientTest, TestCreateRequest) {
-  int64_t index = 5;
+  const size_t desired_index = 5;
 
-  auto payload = client_->CreateRequest(index).ValueOrDie();
+  auto payload = client_->CreateRequest(desired_index).ValueOrDie();
   Plaintext pt;
   ASSERT_EQ(payload.Get().size(), 1);
   Decryptor()->decrypt(payload.Get()[0], pt);
 
   const auto plain_mod =
       pir_params_->GetEncryptionParams().plain_modulus().value();
-  EXPECT_EQ((pt[index] * next_power_two(dbsize)) % plain_mod, 1);
+  EXPECT_EQ((pt[desired_index] * next_power_two(DB_SIZE)) % plain_mod, 1);
+  for (size_t i = 0; i < pt.coeff_count(); ++i) {
+    if (i != desired_index) {
+      EXPECT_EQ(pt[i], 0);
+    }
+  }
 }
 
 TEST_F(PIRClientTest, TestProcessResponse) {
@@ -67,5 +77,70 @@ TEST_F(PIRClientTest, TestProcessResponse) {
   auto result = client_->ProcessResponse(payload).ValueOrDie();
   ASSERT_EQ(result, value);
 }
+
+TEST_F(PIRClientTest, TestCreateRequest_InvalidIndex) {
+  auto payload_or = client_->CreateRequest(DB_SIZE + 1);
+  ASSERT_EQ(payload_or.status().code(),
+            private_join_and_compute::StatusCode::kInvalidArgument);
+}
+
+class CreateRequestTest
+    : public PIRClientTest,
+      public testing::WithParamInterface<tuple<size_t, size_t, uint64_t>> {};
+
+TEST_P(CreateRequestTest, TestCreateRequest_MoreThanOneCT) {
+  const auto dbsize = get<0>(GetParam());
+  int desired_index = get<1>(GetParam());
+  SetUpDB(dbsize);
+
+  const auto poly_modulus_degree =
+      pir_params_->GetEncryptionParams().poly_modulus_degree();
+  const auto plain_mod =
+      pir_params_->GetEncryptionParams().plain_modulus().value();
+
+  auto payload_or = client_->CreateRequest(desired_index);
+  ASSERT_TRUE(payload_or.ok())
+      << "Status is: " << payload_or.status().ToString();
+  auto payload = payload_or.ValueOrDie();
+  ASSERT_EQ(payload.Get().size(), dbsize / poly_modulus_degree + 1);
+
+  for (const auto& ct : payload.Get()) {
+    Plaintext pt;
+    Decryptor()->decrypt(ct, pt);
+    for (size_t i = 0; i < pt.coeff_count(); ++i) {
+      if (i != static_cast<size_t>(desired_index)) {
+        EXPECT_EQ(pt[i], 0);
+      }
+    }
+    if (desired_index < 0 ||
+        static_cast<size_t>(desired_index) >= poly_modulus_degree) {
+      desired_index -= poly_modulus_degree;
+      for (size_t i = 0; i < pt.coeff_count(); ++i) {
+        EXPECT_EQ(pt[i], 0);
+      }
+    } else {
+      auto m = get<2>(GetParam());
+      EXPECT_EQ((pt[desired_index] * m) % plain_mod, 1);
+      desired_index = -1;
+    }
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Requests, CreateRequestTest,
+    testing::Values(
+        make_tuple(10000, 5005, DEFAULT_POLY_MODULUS_DEGREE),
+        make_tuple(10000, 0, DEFAULT_POLY_MODULUS_DEGREE),
+        make_tuple(10000, 1, DEFAULT_POLY_MODULUS_DEGREE),
+        make_tuple(10000, 3333, DEFAULT_POLY_MODULUS_DEGREE),
+        make_tuple(10000, 4095, DEFAULT_POLY_MODULUS_DEGREE),
+        make_tuple(10000, 4096, DEFAULT_POLY_MODULUS_DEGREE),
+        make_tuple(10000, 4097, DEFAULT_POLY_MODULUS_DEGREE),
+        make_tuple(10000, 8191, DEFAULT_POLY_MODULUS_DEGREE),
+        make_tuple(10000, 8192, 2048), make_tuple(10000, 8193, 2048),
+        make_tuple(10000, 9007, 2048), make_tuple(10000, 9999, 2048),
+        make_tuple(4096, 0, 4096), make_tuple(4096, 4095, 4096),
+        make_tuple(16384, 12288, 4096), make_tuple(16384, 12289, 4096),
+        make_tuple(16384, 16383, 4096)));
 
 }  // namespace pir
