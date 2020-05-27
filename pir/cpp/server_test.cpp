@@ -54,6 +54,8 @@ using std::vector;
 #define DEBUG_OUT(x)
 #endif  // TEST_DEBUG
 
+constexpr uint32_t POLY_MODULUS_DEGREE = 4096;
+
 class PIRServerTest : public ::testing::Test {
  protected:
   void SetUp() { SetUpDB(10); }
@@ -66,7 +68,8 @@ class PIRServerTest : public ::testing::Test {
       return 4 * n + 2600;
     });
 
-    pir_params_ = PIRParameters::Create(db_.size());
+    pir_params_ = PIRParameters::Create(
+        db_.size(), generateEncryptionParams(POLY_MODULUS_DEGREE));
     auto pirdb = PIRDatabase::Create(db_, pir_params_).ValueOrDie();
     server_ = PIRServer::Create(pirdb, pir_params_).ValueOrDie();
     ASSERT_THAT(server_, NotNull());
@@ -104,14 +107,14 @@ TEST_F(PIRServerTest, TestCorrectness) {
 
 TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
   const size_t desired_index = 7;
-  Plaintext pt(DEFAULT_POLY_MODULUS_DEGREE);
+  Plaintext pt(POLY_MODULUS_DEGREE);
   pt.set_zero();
   pt[desired_index] = 1;
 
   vector<Ciphertext> query(1);
   encryptor_->encrypt(pt, query[0]);
-  GaloisKeys gal_keys = keygen_->galois_keys_local(
-      generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE));
+  GaloisKeys gal_keys =
+      keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
   auto payload = PIRPayload::Load(query, gal_keys);
 
   auto result_or = server_->ProcessRequest(payload);
@@ -130,15 +133,15 @@ TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
 TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
   SetUpDB(5000);
   const size_t desired_index = 4200;
-  Plaintext pt(DEFAULT_POLY_MODULUS_DEGREE);
+  Plaintext pt(POLY_MODULUS_DEGREE);
   pt.set_zero();
 
   vector<Ciphertext> query(2);
   encryptor_->encrypt(pt, query[0]);
-  pt[desired_index - DEFAULT_POLY_MODULUS_DEGREE] = 1;
+  pt[desired_index - POLY_MODULUS_DEGREE] = 1;
   encryptor_->encrypt(pt, query[1]);
-  GaloisKeys gal_keys = keygen_->galois_keys_local(
-      generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE));
+  GaloisKeys gal_keys =
+      keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
   auto payload = PIRPayload::Load(query, gal_keys);
 
   auto result_or = server_->ProcessRequest(payload);
@@ -151,22 +154,21 @@ TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
   decryptor_->decrypt(result.Get()[0], result_pt);
   auto encoder = server_->Context()->Encoder();
   DEBUG_OUT("Expected DB value " << db_[desired_index]);
-  DEBUG_OUT(
-      "Expected m " << next_power_two(db_size_ - DEFAULT_POLY_MODULUS_DEGREE));
-  ASSERT_THAT(encoder->decode_int64(result_pt),
-              Eq(db_[desired_index] *
-                 next_power_two(db_size_ - DEFAULT_POLY_MODULUS_DEGREE)));
+  DEBUG_OUT("Expected m " << next_power_two(db_size_ - POLY_MODULUS_DEGREE));
+  ASSERT_THAT(
+      encoder->decode_int64(result_pt),
+      Eq(db_[desired_index] * next_power_two(db_size_ - POLY_MODULUS_DEGREE)));
 }
 
 // Make sure that if we get a weird request from client nothing explodes.
 TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
-  Plaintext pt(DEFAULT_POLY_MODULUS_DEGREE);
+  Plaintext pt(POLY_MODULUS_DEGREE);
   pt.set_zero();
 
   vector<Ciphertext> query(1);
   encryptor_->encrypt(pt, query[0]);
-  GaloisKeys gal_keys = keygen_->galois_keys_local(
-      generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE));
+  GaloisKeys gal_keys =
+      keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
   auto payload = PIRPayload::Load(query, gal_keys);
 
   auto result_or = server_->ProcessRequest(payload);
@@ -206,19 +208,19 @@ TEST_P(SubstituteOperatorTest, SubstituteExamples) {
 
 INSTANTIATE_TEST_SUITE_P(
     Substitutions, SubstituteOperatorTest,
-    testing::Values(
-        make_tuple("42", 3, "42"), make_tuple("1x^1", 5, "1x^5"),
-        make_tuple("6x^2", 3, "6x^6"),
-        make_tuple("1x^1", DEFAULT_POLY_MODULUS_DEGREE + 1, "FC000x^1"),
-        make_tuple("1x^4", DEFAULT_POLY_MODULUS_DEGREE + 1, "1x^4"),
-        make_tuple("1x^8", DEFAULT_POLY_MODULUS_DEGREE / 2 + 1, "1x^8"),
-        make_tuple("1x^8", DEFAULT_POLY_MODULUS_DEGREE / 4 + 1, "1x^8"),
-        make_tuple("1x^8", DEFAULT_POLY_MODULUS_DEGREE / 8 + 1, "FC000x^8"),
-        make_tuple("77x^4095", 3, "77x^4093"),
-        make_tuple("1x^4095", DEFAULT_POLY_MODULUS_DEGREE + 1, "FC000x^4095"),
-        make_tuple("4x^4 + 33x^3 + 222x^2 + 19x^1 + 42",
-                   DEFAULT_POLY_MODULUS_DEGREE + 1,
-                   "4x^4 + FBFCEx^3 + 222x^2 + FBFE8x^1 + 42")));
+    testing::Values(make_tuple("42", 3, "42"), make_tuple("1x^1", 5, "1x^5"),
+                    make_tuple("6x^2", 3, "6x^6"),
+                    make_tuple("1x^1", POLY_MODULUS_DEGREE + 1, "FC000x^1"),
+                    make_tuple("1x^4", POLY_MODULUS_DEGREE + 1, "1x^4"),
+                    make_tuple("1x^8", POLY_MODULUS_DEGREE / 2 + 1, "1x^8"),
+                    make_tuple("1x^8", POLY_MODULUS_DEGREE / 4 + 1, "1x^8"),
+                    make_tuple("1x^8", POLY_MODULUS_DEGREE / 8 + 1, "FC000x^8"),
+                    make_tuple("77x^4095", 3, "77x^4093"),
+                    make_tuple("1x^4095", POLY_MODULUS_DEGREE + 1,
+                               "FC000x^4095"),
+                    make_tuple("4x^4 + 33x^3 + 222x^2 + 19x^1 + 42",
+                               POLY_MODULUS_DEGREE + 1,
+                               "4x^4 + FBFCEx^3 + 222x^2 + FBFE8x^1 + 42")));
 
 class MultiplyInversePowerXTest
     : public PIRServerTest,
@@ -266,8 +268,7 @@ TEST_P(ObliviousExpansionTest, ObliviousExpansionExamples) {
   auto expected = get<1>(GetParam());
   auto results_or = server_->oblivious_expansion(
       ct, expected.size(),
-      keygen_->galois_keys_local(
-          generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE)));
+      keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE)));
 
   ASSERT_THAT(results_or.ok(), IsTrue());
   auto results = results_or.ValueOrDie();
@@ -305,10 +306,9 @@ TEST_P(ObliviousExpansionTestMultiCT, MultiCTExamples) {
   const auto index = get<1>(GetParam());
   const auto expected_value = get<2>(GetParam());
 
-  vector<Plaintext> input_pt(num_items / DEFAULT_POLY_MODULUS_DEGREE + 1,
-                             Plaintext(DEFAULT_POLY_MODULUS_DEGREE));
-  input_pt[index / DEFAULT_POLY_MODULUS_DEGREE]
-          [index % DEFAULT_POLY_MODULUS_DEGREE] = 1;
+  vector<Plaintext> input_pt(num_items / POLY_MODULUS_DEGREE + 1,
+                             Plaintext(POLY_MODULUS_DEGREE));
+  input_pt[index / POLY_MODULUS_DEGREE][index % POLY_MODULUS_DEGREE] = 1;
   vector<Ciphertext> input_ct(input_pt.size());
   for (size_t i = 0; i < input_pt.size(); ++i) {
     DEBUG_OUT("Input PT[" << i << "]: " << input_pt[i].to_string());
@@ -317,8 +317,7 @@ TEST_P(ObliviousExpansionTestMultiCT, MultiCTExamples) {
 
   auto results_or = server_->oblivious_expansion(
       input_ct, num_items,
-      keygen_->galois_keys_local(
-          generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE)));
+      keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE)));
 
   ASSERT_THAT(results_or.ok(), IsTrue())
       << "Error: " << results_or.status().ToString();
