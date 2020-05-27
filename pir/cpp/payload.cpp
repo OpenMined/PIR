@@ -60,7 +60,8 @@ StatusOr<T> deserialize(const std::shared_ptr<seal::SEALContext>& sealctx,
   return out;
 }
 
-StatusOr<PIRPayloadData> PIRPayloadData::Load(const std::vector<Ciphertext>& buff) {
+StatusOr<PIRPayloadData> PIRPayloadData::Load(
+    const std::vector<Ciphertext>& buff) {
   return PIRPayloadData(buff);
 }
 
@@ -80,7 +81,8 @@ StatusOr<PIRPayloadData> PIRPayloadData::Load(
 }
 
 StatusOr<PIRPayloadData> PIRPayloadData::Load(
-    const std::shared_ptr<seal::SEALContext>& sealctx, const PayloadData& input) {
+    const std::shared_ptr<seal::SEALContext>& sealctx,
+    const PayloadData& input) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
   std::vector<Ciphertext> buff(input.data_size());
   for (int idx = 0; idx < input.data_size(); ++idx) {
@@ -115,22 +117,21 @@ StatusOr<PayloadData> PIRPayloadData::SaveProto() {
   return output;
 }
 
-StatusOr<PIRSessionPayload> PIRSessionPayload::Load(const PIRPayloadData& buff,
-                                                    const size_t& session_id) {
-  return PIRSessionPayload(buff, session_id);
+StatusOr<PIRPayload> PIRPayload::Load(const PIRPayloadData& buff,
+                                      const size_t& session_id) {
+  return PIRPayload(buff, session_id);
 }
 
-StatusOr<PIRSessionPayload> PIRSessionPayload::Load(const PIRPayloadData& buff,
-                                                    const GaloisKeys& keys) {
+StatusOr<PIRPayload> PIRPayload::Load(const PIRPayloadData& buff,
+                                      const GaloisKeys& keys) {
   ASSIGN_OR_RETURN(auto keys_str, serialize<GaloisKeys>(keys));
   std::size_t session_id = std::hash<std::string>{}(keys_str);
 
-  return PIRSessionPayload(buff, session_id, keys);
+  return PIRPayload(buff, session_id, keys);
 }
 
-StatusOr<PIRSessionPayload> PIRSessionPayload::Load(
-    const std::shared_ptr<seal::SEALContext>& sealctx,
-    const Payload& input) {
+StatusOr<PIRPayload> PIRPayload::Load(
+    const std::shared_ptr<seal::SEALContext>& sealctx, const Payload& input) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
   ASSIGN_OR_RETURN(auto buff, PIRPayloadData::Load(sealctx, input.data()));
   auto session = input.id();
@@ -138,12 +139,12 @@ StatusOr<PIRSessionPayload> PIRSessionPayload::Load(
   if (input.has_galoiskeys()) {
     ASSIGN_OR_RETURN(GaloisKeys keys,
                      deserialize<GaloisKeys>(sealctx, input.galoiskeys()));
-    return PIRSessionPayload(buff, session, keys);
+    return PIRPayload(buff, session, keys);
   }
-  return PIRSessionPayload(buff, session);
+  return PIRPayload(buff, session);
 }
 
-StatusOr<PIRSessionPayload> PIRSessionPayload::Load(
+StatusOr<PIRPayload> PIRPayload::Load(
     const std::shared_ptr<seal::SEALContext>& sealctx,
     const std::string& encoded) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
@@ -159,7 +160,7 @@ StatusOr<PIRSessionPayload> PIRSessionPayload::Load(
   return Load(sealctx, input);
 }
 
-StatusOr<std::string> PIRSessionPayload::Save() {
+StatusOr<std::string> PIRPayload::Save() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   std::stringstream stream;
@@ -172,7 +173,7 @@ StatusOr<std::string> PIRSessionPayload::Save() {
 
   return stream.str();
 }
-StatusOr<Payload> PIRSessionPayload::SaveProto() {
+StatusOr<Payload> PIRPayload::SaveProto() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   Payload output;

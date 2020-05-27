@@ -76,7 +76,7 @@ TEST_F(PIRClientTest, TestProcessResponse) {
   Context()->Encoder()->encode(value, pt);
   vector<Ciphertext> ct(1);
   Encryptor()->encrypt(pt, ct[0]);
-  PIRSessionPayload payload = PIRSessionPayload::Load(ct, SESSION).ValueOrDie();
+  PIRPayload payload = PIRPayload::Load(ct, SESSION).ValueOrDie();
 
   auto result = client_->ProcessResponse(payload).ValueOrDie();
   ASSERT_EQ(result, value);
@@ -89,10 +89,9 @@ TEST_F(PIRClientTest, TestPayloadSerialization) {
   vector<Ciphertext> ct(1);
   Encryptor()->encrypt(pt, ct[0]);
 
-  auto payload = PIRSessionPayload::Load(ct, SESSION).ValueOrDie();
+  auto payload = PIRPayload::Load(ct, SESSION).ValueOrDie();
   auto dump = payload.Save().ValueOrDie();
-  auto reloaded =
-      PIRSessionPayload::Load(Context()->SEALContext(), dump).ValueOrDie();
+  auto reloaded = PIRPayload::Load(Context()->SEALContext(), dump).ValueOrDie();
 
   ASSERT_EQ(reloaded.Get().size(), 1);
   ASSERT_EQ(reloaded.GetID(), SESSION);
@@ -101,10 +100,10 @@ TEST_F(PIRClientTest, TestPayloadSerialization) {
   auto elts = generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE);
   GaloisKeys gal_keys = keygen_->galois_keys_local(elts);
 
-  auto fullpayload = PIRSessionPayload::Load(ct, gal_keys).ValueOrDie();
+  auto fullpayload = PIRPayload::Load(ct, gal_keys).ValueOrDie();
   dump = fullpayload.Save().ValueOrDie();
   auto fullreloaded =
-      PIRSessionPayload::Load(Context()->SEALContext(), dump).ValueOrDie();
+      PIRPayload::Load(Context()->SEALContext(), dump).ValueOrDie();
 
   ASSERT_EQ(fullreloaded.Get().size(), 1);
   for (auto& elt : elts) {

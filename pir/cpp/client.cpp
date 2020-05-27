@@ -46,7 +46,7 @@ StatusOr<std::unique_ptr<PIRClient>> PIRClient::Create(
   return absl::WrapUnique(new PIRClient(std::move(context)));
 }
 
-StatusOr<PIRSessionPayload> PIRClient::CreateRequest(std::size_t index) const {
+StatusOr<PIRPayload> PIRClient::CreateRequest(std::size_t index) const {
   const auto poly_modulus_degree =
       context_->Parameters()->GetEncryptionParams().poly_modulus_degree();
   if (index >= DBSize()) {
@@ -81,7 +81,7 @@ StatusOr<PIRSessionPayload> PIRClient::CreateRequest(std::size_t index) const {
     return InternalError(e.what());
   }
 
-  if (session_id_) return PIRSessionPayload::Load(query, *session_id_);
+  if (session_id_) return PIRPayload::Load(query, *session_id_);
 
   GaloisKeys gal_keys;
   try {
@@ -90,11 +90,10 @@ StatusOr<PIRSessionPayload> PIRClient::CreateRequest(std::size_t index) const {
   } catch (const std::exception& e) {
     return InternalError(e.what());
   }
-  return PIRSessionPayload::Load(query, gal_keys);
+  return PIRPayload::Load(query, gal_keys);
 }
 
-StatusOr<int64_t> PIRClient::ProcessResponse(
-    const PIRSessionPayload& response) {
+StatusOr<int64_t> PIRClient::ProcessResponse(const PIRPayload& response) {
   if (response.Get().size() != 1) {
     return InvalidArgumentError("Number of ciphertexts in response must be 1");
   }

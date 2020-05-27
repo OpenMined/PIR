@@ -49,8 +49,7 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
   return PIRServer::Create(db, PIRParameters::Create(db->size()));
 }
 
-StatusOr<PIRSessionPayload> PIRServer::ProcessRequest(
-    const PIRSessionPayload& payload) {
+StatusOr<PIRPayload> PIRServer::ProcessRequest(const PIRPayload& payload) {
   if (payload.Get().size() != 1) {
     return InvalidArgumentError("Number of ciphertexts in request must be 1");
   }
@@ -76,8 +75,7 @@ StatusOr<PIRSessionPayload> PIRServer::ProcessRequest(
   seal::Ciphertext result;
   context_->Evaluator()->add_many(mult_results, result);
 
-  return PIRSessionPayload::Load(vector<seal::Ciphertext>{result},
-                                 payload.GetID());
+  return PIRPayload::Load(vector<seal::Ciphertext>{result}, payload.GetID());
 }
 
 Status PIRServer::substitute_power_x_inplace(

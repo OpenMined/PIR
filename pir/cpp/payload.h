@@ -46,7 +46,8 @@ class PIRPayloadData {
       const std::string& encoded);
 
   static StatusOr<PIRPayloadData> Load(
-      const std::shared_ptr<seal::SEALContext>& ctx, const PayloadData& encoded);
+      const std::shared_ptr<seal::SEALContext>& ctx,
+      const PayloadData& encoded);
   /**
    * Saves the PIR Payload to a string.
    * @returns InvalidArgument if the encoding fails
@@ -65,25 +66,24 @@ class PIRPayloadData {
   buff_type data_;
 };
 
-class PIRSessionPayload : public PIRPayloadData {
+class PIRPayload : public PIRPayloadData {
  public:
   /**
    * Loads a PIR Session Payload.
    **/
-  static StatusOr<PIRSessionPayload> Load(const PIRPayloadData& data,
-                                          const size_t& session);
-  static StatusOr<PIRSessionPayload> Load(const PIRPayloadData& data,
-                                          const GaloisKeys& keys);
+  static StatusOr<PIRPayload> Load(const PIRPayloadData& data,
+                                   const size_t& session);
+  static StatusOr<PIRPayload> Load(const PIRPayloadData& data,
+                                   const GaloisKeys& keys);
   /**
    * Decodes and loads a PIR Session Payload.
    * @returns InvalidArgument if the decoding fails
    **/
-  static StatusOr<PIRSessionPayload> Load(
+  static StatusOr<PIRPayload> Load(
       const std::shared_ptr<seal::SEALContext>& ctx,
       const std::string& encoded);
-  static StatusOr<PIRSessionPayload> Load(
-      const std::shared_ptr<seal::SEALContext>& ctx,
-      const Payload& encoded);
+  static StatusOr<PIRPayload> Load(
+      const std::shared_ptr<seal::SEALContext>& ctx, const Payload& encoded);
   /**
    * Saves the PIR Session Payload to a string.
    * @returns InvalidArgument if the encoding fails
@@ -96,14 +96,14 @@ class PIRSessionPayload : public PIRPayloadData {
   std::size_t GetID() const { return session_id_; }
   const optional<GaloisKeys>& GetKeys() const { return keys_; }
 
-  PIRSessionPayload() = delete;
+  PIRPayload() = delete;
 
  private:
-  PIRSessionPayload(const PIRPayloadData& data, const std::size_t& session_id)
+  PIRPayload(const PIRPayloadData& data, const std::size_t& session_id)
       : PIRPayloadData(data), session_id_(session_id){};
 
-  PIRSessionPayload(const PIRPayloadData& data, const std::size_t& session_id,
-                    const GaloisKeys& keys)
+  PIRPayload(const PIRPayloadData& data, const std::size_t& session_id,
+             const GaloisKeys& keys)
       : PIRPayloadData(data), session_id_(session_id), keys_(keys){};
 
   std::size_t session_id_;
