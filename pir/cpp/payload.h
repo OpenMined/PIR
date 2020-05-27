@@ -72,6 +72,8 @@ class PIRSessionPayload : public PIRPayload {
    **/
   static StatusOr<PIRSessionPayload> Load(const PIRPayload& plain,
                                           const size_t& session);
+  static StatusOr<PIRSessionPayload> Load(const PIRPayload& plain,
+                                          const GaloisKeys& keys);
   /**
    * Decodes and loads a PIR Session Payload.
    * @returns InvalidArgument if the decoding fails
@@ -92,6 +94,7 @@ class PIRSessionPayload : public PIRPayload {
    * Returns a reference to the session ID.
    **/
   const size_t& GetID() const { return session_id_; }
+  const optional<GaloisKeys>& GetKeys() const { return keys_; }
 
   PIRSessionPayload() = delete;
 
@@ -99,44 +102,12 @@ class PIRSessionPayload : public PIRPayload {
   PIRSessionPayload(const PIRPayload& buff, const size_t& session_id)
       : PIRPayload(buff), session_id_(session_id){};
 
+  PIRSessionPayload(const PIRPayload& buff, const size_t& session_id,
+                    const GaloisKeys& keys)
+      : PIRPayload(buff), session_id_(session_id), keys_(keys){};
+
   size_t session_id_;
-};
-
-class PIRFullPayload : public PIRPayload {
- public:
-  /**
-   * Loads a PIR Full Payload.
-   **/
-  static StatusOr<PIRFullPayload> Load(const PIRPayload& plain,
-                                       const GaloisKeys& keys);
-  /**
-   * Decodes and loads a PIR Full Payload.
-   * @returns InvalidArgument if the decoding fails
-   **/
-  static StatusOr<PIRFullPayload> Load(
-      const std::shared_ptr<seal::SEALContext>& ctx,
-      const std::string& encoded);
-  static StatusOr<PIRFullPayload> Load(
-      const std::shared_ptr<seal::SEALContext>& ctx,
-      const FullPayload& encoded);
-  /**
-   * Saves the PIR Full Payload to a string.
-   * @returns InvalidArgument if the encoding fails
-   **/
-  StatusOr<std::string> Save();
-  StatusOr<FullPayload> SaveProto();
-  /**
-   * Returns a reference to the Galois keys object.
-   **/
-  const GaloisKeys& GetKeys() const { return keys_; }
-
-  PIRFullPayload() = delete;
-
- private:
-  PIRFullPayload(const PIRPayload& buff, const GaloisKeys& keys)
-      : PIRPayload(buff), keys_(keys){};
-
-  GaloisKeys keys_;
+  optional<GaloisKeys> keys_;
 };
 
 }  // namespace pir

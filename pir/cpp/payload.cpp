@@ -120,6 +120,14 @@ StatusOr<PIRSessionPayload> PIRSessionPayload::Load(const PIRPayload& buff,
   return PIRSessionPayload(buff, session_id);
 }
 
+StatusOr<PIRSessionPayload> PIRSessionPayload::Load(const PIRPayload& buff,
+                                                    const GaloisKeys& keys) {
+  ASSIGN_OR_RETURN(auto keys_str, serialize<GaloisKeys>(keys));
+  size_t session_id = std::hash<std::string>{}(keys_str);
+
+  return PIRSessionPayload(buff, session_id, keys);
+}
+
 StatusOr<PIRSessionPayload> PIRSessionPayload::Load(
     const std::shared_ptr<seal::SEALContext>& sealctx,
     const SessionPayload& input) {
@@ -127,6 +135,11 @@ StatusOr<PIRSessionPayload> PIRSessionPayload::Load(
   ASSIGN_OR_RETURN(auto buff, PIRPayload::Load(sealctx, input.query()));
   auto session = input.id();
 
+  if (input.has_galoiskeys()) {
+    ASSIGN_OR_RETURN(GaloisKeys keys,
+                     deserialize<GaloisKeys>(sealctx, input.galoiskeys()));
+    return PIRSessionPayload(buff, session, keys);
+  }
   return PIRSessionPayload(buff, session);
 }
 
@@ -167,65 +180,10 @@ StatusOr<SessionPayload> PIRSessionPayload::SaveProto() {
   ASSIGN_OR_RETURN(auto buff, PIRPayload::SaveProto());
   *output.mutable_query() = buff;
   output.set_id(session_id_);
-
-  return output;
-}
-
-StatusOr<PIRFullPayload> PIRFullPayload::Load(const PIRPayload& buff,
-                                              const GaloisKeys& keys) {
-  return PIRFullPayload(buff, keys);
-}
-
-StatusOr<PIRFullPayload> PIRFullPayload::Load(
-    const std::shared_ptr<seal::SEALContext>& sealctx,
-    const FullPayload& input) {
-  GOOGLE_PROTOBUF_VERIFY_VERSION;
-  ASSIGN_OR_RETURN(auto buff, PIRPayload::Load(sealctx, input.query()));
-  ASSIGN_OR_RETURN(GaloisKeys keys,
-                   deserialize<GaloisKeys>(sealctx, input.galoiskeys()));
-
-  return PIRFullPayload(buff, keys);
-}
-
-StatusOr<PIRFullPayload> PIRFullPayload::Load(
-    const std::shared_ptr<seal::SEALContext>& sealctx,
-    const std::string& encoded) {
-  GOOGLE_PROTOBUF_VERIFY_VERSION;
-
-  std::stringstream stream;
-  stream << encoded;
-  FullPayload input;
-
-  if (!input.ParseFromIstream(&stream)) {
-    return InvalidArgumentError("failed to parse payload");
+  if (keys_) {
+    ASSIGN_OR_RETURN(auto keys, serialize<GaloisKeys>(*keys_));
+    output.set_galoiskeys(keys);
   }
-
-  return Load(sealctx, input);
-}
-
-StatusOr<std::string> PIRFullPayload::Save() {
-  GOOGLE_PROTOBUF_VERIFY_VERSION;
-
-  std::stringstream stream;
-
-  ASSIGN_OR_RETURN(auto output, SaveProto());
-
-  if (!output.SerializeToOstream(&stream)) {
-    return InvalidArgumentError("failed to save protobuffer");
-  }
-
-  return stream.str();
-}
-StatusOr<FullPayload> PIRFullPayload::SaveProto() {
-  GOOGLE_PROTOBUF_VERIFY_VERSION;
-
-  FullPayload output;
-
-  ASSIGN_OR_RETURN(auto buff, PIRPayload::SaveProto());
-  *output.mutable_query() = buff;
-
-  ASSIGN_OR_RETURN(auto keys, serialize<GaloisKeys>(keys_));
-  output.set_galoiskeys(keys);
 
   return output;
 }

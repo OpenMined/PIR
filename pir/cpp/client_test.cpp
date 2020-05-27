@@ -17,6 +17,7 @@
 #include "client.h"
 
 #include "gtest/gtest.h"
+#include "server.h"
 #include "utils.h"
 
 namespace pir {
@@ -26,11 +27,22 @@ using std::make_unique;
 
 class PIRClientTest : public ::testing::Test {
  protected:
-  static constexpr std::size_t dbsize = 10;
+  static constexpr std::size_t DB_SIZE = 100;
   void SetUp() {
-    pir_params_ = PIRParameters::Create(dbsize);
+    pir_params_ = PIRParameters::Create(DB_SIZE);
     client_ = PIRClient::Create(pir_params_).ValueOrDie();
+
     ASSERT_TRUE(client_ != nullptr);
+
+    vector<std::int64_t> db_;
+    db_.resize(DB_SIZE);
+    std::generate(db_.begin(), db_.end(), [n = 0]() mutable {
+      ++n;
+      return 4 * n + 2600;
+    });
+
+    auto pirdb = PIRDatabase::Create(db_, pir_params_).ValueOrDie();
+    server_ = PIRServer::Create(pirdb, pir_params_).ValueOrDie();
   }
 
   PIRContext* Context() { return client_->context_.get(); }
@@ -39,6 +51,7 @@ class PIRClientTest : public ::testing::Test {
 
   std::shared_ptr<PIRParameters> pir_params_;
   std::unique_ptr<PIRClient> client_;
+  std::unique_ptr<PIRServer> server_;
 };
 
 TEST_F(PIRClientTest, TestCreateRequest) {
@@ -51,7 +64,7 @@ TEST_F(PIRClientTest, TestCreateRequest) {
 
   const auto plain_mod =
       pir_params_->GetEncryptionParams().plain_modulus().value();
-  EXPECT_EQ((pt[index] * next_power_two(dbsize)) % plain_mod, 1);
+  EXPECT_EQ((pt[index] * next_power_two(DB_SIZE)) % plain_mod, 1);
 }
 
 TEST_F(PIRClientTest, TestProcessResponse) {
@@ -85,14 +98,44 @@ TEST_F(PIRClientTest, TestPayloadSerialization) {
   auto elts = generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE);
   GaloisKeys gal_keys = keygen_->galois_keys_local(elts);
 
-  auto fullpayload = PIRFullPayload::Load(ct, gal_keys).ValueOrDie();
+  auto fullpayload = PIRSessionPayload::Load(ct, gal_keys).ValueOrDie();
   dump = fullpayload.Save().ValueOrDie();
   auto fullreloaded =
-      PIRFullPayload::Load(Context()->SEALContext(), dump).ValueOrDie();
+      PIRSessionPayload::Load(Context()->SEALContext(), dump).ValueOrDie();
 
   ASSERT_EQ(fullreloaded.Get().size(), 1);
   for (auto& elt : elts) {
-    ASSERT_TRUE(fullreloaded.GetKeys().has_key(elt));
+    ASSERT_TRUE(fullreloaded.GetKeys()->has_key(elt));
   }
+}
+
+TEST_F(PIRClientTest, TestSessionReuse) {
+  int64_t index = 5;
+
+  int64_t total_bytes = 0;
+  int64_t total_bytes_session = 0;
+  int64_t payload_bytes = 0;
+
+  for (size_t iter = 0; iter < 10; ++iter) {
+    auto full_payload = client_->CreateRequest(index).ValueOrDie();
+    total_bytes += full_payload.Save().ValueOrDie().size();
+
+    auto payload = static_cast<PIRPayload>(full_payload);
+    payload_bytes += payload.Save().ValueOrDie().size();
+  }
+
+  for (size_t iter = 0; iter < 10; ++iter) {
+    auto full_payload = client_->CreateRequest(index).ValueOrDie();
+    total_bytes_session += full_payload.Save().ValueOrDie().size();
+
+    auto response = server_->ProcessRequest(full_payload).ValueOrDie();
+    auto output = client_->ProcessResponse(response).ValueOrDie();
+    ASSERT_EQ(output, 2624);
+  }
+
+  std::cout << "Total comm size " << total_bytes << " needed " << payload_bytes
+            << std::endl;
+  ASSERT_LT(total_bytes_session, 0.05 * (double)total_bytes);
+  ASSERT_LT(total_bytes_session, 1.1 * (double)payload_bytes);
 }
 }  // namespace pir

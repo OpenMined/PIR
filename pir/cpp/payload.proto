@@ -1,4 +1,4 @@
-syntax = "proto3";
+syntax = "proto2";
 
 package pir;
 
@@ -7,11 +7,7 @@ message Payload {
 }
 
 message SessionPayload {
-  Payload query = 1;
-  int64 id = 2;
-}
-
-message FullPayload {
-  Payload query = 1;
-  bytes galoiskeys = 2;
+  required Payload query = 1;
+  required int64 id = 2;
+  optional bytes galoiskeys = 3;
 }

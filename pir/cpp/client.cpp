@@ -46,7 +46,7 @@ StatusOr<std::unique_ptr<PIRClient>> PIRClient::Create(
   return absl::WrapUnique(new PIRClient(std::move(context)));
 }
 
-StatusOr<PIRFullPayload> PIRClient::CreateRequest(std::size_t index) const {
+StatusOr<PIRSessionPayload> PIRClient::CreateRequest(std::size_t index) const {
   const auto poly_modulus_degree =
       context_->Parameters()->GetEncryptionParams().poly_modulus_degree();
   if (index >= DBSize()) {
@@ -83,7 +83,7 @@ StatusOr<PIRFullPayload> PIRClient::CreateRequest(std::size_t index) const {
   } catch (const std::exception& e) {
     return InternalError(e.what());
   }
-  return PIRFullPayload::Load(query, gal_keys);
+  return PIRSessionPayload::Load(query, gal_keys);
 }
 
 StatusOr<int64_t> PIRClient::ProcessResponse(const PIRPayload& response) const {

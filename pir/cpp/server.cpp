@@ -50,14 +50,14 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
 }
 
 StatusOr<PIRPayload> PIRServer::ProcessRequest(
-    const PIRFullPayload& payload) const {
+    const PIRSessionPayload& payload) const {
   if (payload.Get().size() != 1) {
     return InvalidArgumentError("Number of ciphertexts in request must be 1");
   }
 
   ASSIGN_OR_RETURN(
       auto selection_vector,
-      oblivious_expansion(payload.Get()[0], DBSize(), payload.GetKeys()));
+      oblivious_expansion(payload.Get()[0], DBSize(), *payload.GetKeys()));
 
   ASSIGN_OR_RETURN(auto mult_results, db_->multiply(selection_vector));
 
