@@ -41,14 +41,14 @@ class PIRClient {
    * @param[in] desiredIndex Expected database value from an index
    * @returns InvalidArgument if the index is invalid or if the encryption fails
    **/
-  StatusOr<PIRPayload> CreateRequest(std::size_t /*index*/) const;
+  StatusOr<PIRQuery> CreateRequest(std::size_t /*index*/) const;
 
   /**
    * Extracts server response
    * @param[in] response Server output
    * @returns InvalidArgument if the decryption fails
    **/
-  StatusOr<int64_t> ProcessResponse(const PIRPayload& response);
+  StatusOr<int64_t> ProcessResponse(const PIRReply& response);
 
   /**
    * Returns the database size.
@@ -64,8 +64,6 @@ class PIRClient {
   std::unique_ptr<seal::KeyGenerator> keygen_;
   std::shared_ptr<seal::Encryptor> encryptor_;
   std::shared_ptr<seal::Decryptor> decryptor_;
-
-  std::optional<std::size_t> session_id_;
 };
 
 }  // namespace pir

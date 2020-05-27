@@ -16,9 +16,6 @@
 syntax = "proto2";
 
 package pir;
-/*
-#include "pir/proto/pryload.pb.h"
-*/
 
 /*PayloadData holds the request/response data buffers, usually ciphertexts */
 message PayloadData {
@@ -28,6 +25,5 @@ message PayloadData {
 /*Payload contains the entire request or response message */
 message Payload {
   required PayloadData data = 1; //payload data
-  required int64 id = 2; //session ID
   optional bytes galoiskeys = 3;//optional Galois keys
 }

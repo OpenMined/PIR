@@ -31,83 +31,99 @@ using seal::GaloisKeys;
 using std::optional;
 using buff_type = std::vector<seal::Ciphertext>;
 
-class PIRPayloadData {
+class PIRCiphertexts {
  public:
   /**
-   * Loads a PIR Payload.
+   * Loads the PIR ciphertexts.
    **/
-  static StatusOr<PIRPayloadData> Load(const buff_type& data);
+  static StatusOr<PIRCiphertexts> Load(const buff_type& ct);
   /**
-   * Decodes and loads a PIR Payload.
+   * Decodes and loads a PIR Ciphertext.
    * @returns InvalidArgument if the decoding fails
    **/
-  static StatusOr<PIRPayloadData> Load(
+  static StatusOr<PIRCiphertexts> Load(
       const std::shared_ptr<seal::SEALContext>& ctx,
       const std::string& encoded);
 
-  static StatusOr<PIRPayloadData> Load(
+  static StatusOr<PIRCiphertexts> Load(
       const std::shared_ptr<seal::SEALContext>& ctx,
-      const PayloadData& encoded);
+      const Ciphertexts& encoded);
   /**
-   * Saves the PIR Payload to a string.
+   * Saves the PIR Ciphertexts to an encoding.
    * @returns InvalidArgument if the encoding fails
    **/
   StatusOr<std::string> Save();
-  StatusOr<PayloadData> SaveProto();
+  StatusOr<Ciphertexts> SaveProto();
   /**
    * Returns a reference to the internal buffer.
    **/
-  const buff_type& Get() const { return data_; }
-  PIRPayloadData() = delete;
+  const buff_type& Get() const { return ct_; }
+  PIRCiphertexts() = delete;
 
-  PIRPayloadData(const buff_type& data) : data_(data){};
+  PIRCiphertexts(const buff_type& ct) : ct_(ct){};
 
  private:
-  buff_type data_;
+  buff_type ct_;
 };
 
-class PIRPayload : public PIRPayloadData {
+class PIRQuery : public PIRCiphertexts {
  public:
   /**
-   * Loads a PIR Session Payload.
+   * Loads a PIR Request.
    **/
-  static StatusOr<PIRPayload> Load(const PIRPayloadData& data,
-                                   const size_t& session);
-  static StatusOr<PIRPayload> Load(const PIRPayloadData& data,
-                                   const GaloisKeys& keys);
+  static StatusOr<PIRQuery> Load(const PIRCiphertexts& data,
+                                 const GaloisKeys& keys);
   /**
-   * Decodes and loads a PIR Session Payload.
+   * Decodes and loads a PIR Query.
    * @returns InvalidArgument if the decoding fails
    **/
-  static StatusOr<PIRPayload> Load(
-      const std::shared_ptr<seal::SEALContext>& ctx,
-      const std::string& encoded);
-  static StatusOr<PIRPayload> Load(
-      const std::shared_ptr<seal::SEALContext>& ctx, const Payload& encoded);
+  static StatusOr<PIRQuery> Load(const std::shared_ptr<seal::SEALContext>& ctx,
+                                 const std::string& encoded);
+  static StatusOr<PIRQuery> Load(const std::shared_ptr<seal::SEALContext>& ctx,
+                                 const Query& encoded);
   /**
-   * Saves the PIR Session Payload to a string.
+   * Saves the PIR Query to a string.
    * @returns InvalidArgument if the encoding fails
    **/
   StatusOr<std::string> Save();
-  StatusOr<Payload> SaveProto();
-  /**
-   * Returns a reference to the session ID.
-   **/
-  std::size_t GetID() const { return session_id_; }
-  const optional<GaloisKeys>& GetKeys() const { return keys_; }
+  StatusOr<Query> SaveProto();
 
-  PIRPayload() = delete;
+  const GaloisKeys& GetKeys() const { return keys_; }
+
+  PIRQuery() = delete;
 
  private:
-  PIRPayload(const PIRPayloadData& data, const std::size_t& session_id)
-      : PIRPayloadData(data), session_id_(session_id){};
+  PIRQuery(const PIRCiphertexts& data, const GaloisKeys& keys)
+      : PIRCiphertexts(data), keys_(keys){};
 
-  PIRPayload(const PIRPayloadData& data, const std::size_t& session_id,
-             const GaloisKeys& keys)
-      : PIRPayloadData(data), session_id_(session_id), keys_(keys){};
+  GaloisKeys keys_;
+};
 
-  std::size_t session_id_;
-  optional<GaloisKeys> keys_;
+class PIRReply : public PIRCiphertexts {
+ public:
+  /**
+   * Loads a PIR Reply.
+   **/
+  static StatusOr<PIRReply> Load(const PIRCiphertexts& data);
+  /**
+   * Decodes and loads a PIR Reply.
+   * @returns InvalidArgument if the decoding fails
+   **/
+  static StatusOr<PIRReply> Load(const std::shared_ptr<seal::SEALContext>& ctx,
+                                 const std::string& encoded);
+  static StatusOr<PIRReply> Load(const std::shared_ptr<seal::SEALContext>& ctx,
+                                 const Reply& encoded);
+  /**
+   * Saves the PIR Reply to a string.
+   * @returns InvalidArgument if the encoding fails
+   **/
+  StatusOr<std::string> Save();
+  StatusOr<Reply> SaveProto();
+
+  PIRReply() = delete;
+
+ private:
+  PIRReply(const PIRCiphertexts& data) : PIRCiphertexts(data){};
 };
 
 }  // namespace pir
