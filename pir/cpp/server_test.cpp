@@ -342,5 +342,24 @@ INSTANTIATE_TEST_SUITE_P(
                     make_tuple(5000, 4095, 4096),
                     make_tuple(5000, 4200, 1024)));
 
+class CalculateDimensionsTest
+    : public testing::TestWithParam<
+          tuple<uint32_t, uint32_t, vector<uint32_t>>> {};
+
+TEST_P(CalculateDimensionsTest, DimensionsExamples) {
+  EXPECT_THAT(
+      PIRServer::calculate_dimensions(get<0>(GetParam()), get<1>(GetParam())),
+      ContainerEq(get<2>(GetParam())));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    CalculateDimensions, CalculateDimensionsTest,
+    testing::Values(make_tuple(100, 2, vector<uint32_t>{10, 10}),
+                    make_tuple(82, 2, vector<uint32_t>{10, 9}),
+                    make_tuple(975, 2, vector<uint32_t>{32, 31}),
+                    make_tuple(1000, 3, vector<uint32_t>{10, 10, 10}),
+                    make_tuple(1001, 3, vector<uint32_t>{11, 10, 10}),
+                    make_tuple(1000001, 3, vector<uint32_t>{101, 100, 100})));
+
 }  // namespace
 }  // namespace pir
