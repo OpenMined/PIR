@@ -117,4 +117,14 @@ StatusOr<int64_t> PIRClient::ProcessResponse(const PIRPayload& response) const {
   return InternalError("Should never get here.");
 }
 
+vector<uint32_t> PIRClient::calculate_indices(uint32_t index) {
+  auto dims = context_->Parameters()->Dimensions();
+  vector<uint32_t> results(dims.size(), 0);
+  for (int i = results.size() - 1; i >= 0; --i) {
+    results[i] = index % dims[i];
+    index = index / dims[i];
+  }
+  return results;
+}
+
 }  // namespace pir

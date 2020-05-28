@@ -54,7 +54,17 @@ class PIRClient {
    * Returns the database size.
    **/
   std::size_t DBSize() const { return context_->DBSize(); }
+
   PIRClient() = delete;
+
+  /**
+   * Helper function to calculate indices within the multi-dimensional
+   * representation of the database for a given index in the flat
+   * representation. Dimension sizes are taken from the current context.
+   * @param[in] index Index in the flat representation
+   * @returns Vector of indices
+   */
+  vector<uint32_t> calculate_indices(uint32_t index);
 
  private:
   PIRClient(std::unique_ptr<PIRContext>);
