@@ -138,16 +138,6 @@ class PIRServer {
       const std::vector<seal::Ciphertext>& cts, const size_t total_items,
       const seal::GaloisKeys& gal_keys) const;
 
-  /**
-   * Helper function to calculate the dimensions for representing a database of
-   * db_size elements as a hypercube with num_dimensions dimensions.
-   * @param[in] db_size Number of elements in the database
-   * @param[in] num_dimensions Number of dimensions
-   * @returns vector of dimension sizes
-   */
-  static std::vector<uint32_t> calculate_dimensions(uint32_t db_size,
-                                                    uint32_t num_dimensions);
-
   // Just for testing: get the context
   PIRContext* Context() { return context_.get(); }
 

@@ -42,7 +42,9 @@ cc_library(
 
 cc_test(
     name = "pir_test",
-    srcs = ["client_test.cpp", "server_test.cpp"],
+    srcs = ["client_test.cpp",
+     "parameters_test.cpp",
+     "server_test.cpp"],
     includes = PIR_DEFAULT_INCLUDES,
     deps = [
         ":pir",
