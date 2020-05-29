@@ -102,7 +102,7 @@ StatusOr<PIRQuery> PIRClient::CreateRequest(std::size_t desired_index) const {
   return PIRQuery::Load(query, gal_keys);
 }
 
-StatusOr<int64_t> PIRClient::ProcessResponse(const PIRReply& response) {
+StatusOr<int64_t> PIRClient::ProcessResponse(const PIRReply& response) const {
   if (response.Get().size() != 1) {
     return InvalidArgumentError("Number of ciphertexts in response must be 1");
   }

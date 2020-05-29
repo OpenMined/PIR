@@ -49,7 +49,7 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
   return PIRServer::Create(db, PIRParameters::Create(db->size()));
 }
 
-StatusOr<PIRReply> PIRServer::ProcessRequest(const PIRQuery& request) {
+StatusOr<PIRReply> PIRServer::ProcessRequest(const PIRQuery& request) const {
   ASSIGN_OR_RETURN(
       auto selection_vector,
       oblivious_expansion(request.Get(), DBSize(), request.GetKeys()));
