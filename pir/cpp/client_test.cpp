@@ -51,10 +51,13 @@ class PIRClientTest : public ::testing::Test {
 TEST_F(PIRClientTest, TestCreateRequest) {
   const size_t desired_index = 5;
 
-  auto payload = client_->CreateRequest(desired_index).ValueOrDie();
+  auto req_proto = client_->CreateRequest(desired_index).ValueOrDie();
+  auto req =
+      DecodedQuery::Load(Context()->SEALContext(), req_proto).ValueOrDie();
+
   Plaintext pt;
-  ASSERT_EQ(payload.Get().size(), 1);
-  Decryptor()->decrypt(payload.Get()[0], pt);
+  ASSERT_EQ(req.Get().size(), 1);
+  Decryptor()->decrypt(req.Get()[0], pt);
 
   const auto plain_mod =
       pir_params_->GetEncryptionParams().plain_modulus().value();
@@ -74,9 +77,9 @@ TEST_F(PIRClientTest, TestProcessResponse) {
   Context()->Encoder()->encode(value, pt);
   vector<Ciphertext> ct(1);
   Encryptor()->encrypt(pt, ct[0]);
-  PIRReply payload = PIRReply::Load(ct).ValueOrDie();
+  auto reply = DecodedReply::Load(ct).Save().ValueOrDie();
 
-  auto result = client_->ProcessResponse(payload).ValueOrDie();
+  auto result = client_->ProcessResponse(reply).ValueOrDie();
   ASSERT_EQ(result, value);
 }
 
@@ -87,9 +90,9 @@ TEST_F(PIRClientTest, TestPayloadSerialization) {
   vector<Ciphertext> ct(1);
   Encryptor()->encrypt(pt, ct[0]);
 
-  auto reply = PIRReply::Load(ct).ValueOrDie();
-  auto dump = reply.Save().ValueOrDie();
-  auto reloaded = PIRReply::Load(Context()->SEALContext(), dump).ValueOrDie();
+  auto reply_proto = DecodedReply::Load(ct).Save().ValueOrDie();
+  auto reloaded =
+      DecodedReply::Load(Context()->SEALContext(), reply_proto).ValueOrDie();
 
   ASSERT_EQ(reloaded.Get().size(), 1);
 
@@ -97,10 +100,9 @@ TEST_F(PIRClientTest, TestPayloadSerialization) {
   auto elts = generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE);
   GaloisKeys gal_keys = keygen_->galois_keys_local(elts);
 
-  auto req = PIRQuery::Load(ct, gal_keys).ValueOrDie();
-  dump = req.Save().ValueOrDie();
+  auto req_proto = DecodedQuery::Load(ct, gal_keys).Save().ValueOrDie();
   auto reqreloaded =
-      PIRQuery::Load(Context()->SEALContext(), dump).ValueOrDie();
+      DecodedQuery::Load(Context()->SEALContext(), req_proto).ValueOrDie();
 
   ASSERT_EQ(reqreloaded.Get().size(), 1);
   for (auto& elt : elts) {
@@ -131,7 +133,9 @@ TEST_P(CreateRequestTest, TestCreateRequest_MoreThanOneCT) {
   auto payload_or = client_->CreateRequest(desired_index);
   ASSERT_TRUE(payload_or.ok())
       << "Status is: " << payload_or.status().ToString();
-  auto payload = payload_or.ValueOrDie();
+  auto payload =
+      DecodedQuery::Load(Context()->SEALContext(), payload_or.ValueOrDie())
+          .ValueOrDie();
   ASSERT_EQ(payload.Get().size(), dbsize / poly_modulus_degree + 1);
 
   for (const auto& ct : payload.Get()) {

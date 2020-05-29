@@ -49,7 +49,10 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
   return PIRServer::Create(db, PIRParameters::Create(db->size()));
 }
 
-StatusOr<PIRReply> PIRServer::ProcessRequest(const PIRQuery& request) const {
+StatusOr<Reply> PIRServer::ProcessRequest(const Query& request_proto) const {
+  ASSIGN_OR_RETURN(auto request,
+                   DecodedQuery::Load(context_->SEALContext(), request_proto));
+
   ASSIGN_OR_RETURN(
       auto selection_vector,
       oblivious_expansion(request.Get(), DBSize(), request.GetKeys()));
@@ -59,7 +62,7 @@ StatusOr<PIRReply> PIRServer::ProcessRequest(const PIRQuery& request) const {
   seal::Ciphertext result;
   context_->Evaluator()->add_many(mult_results, result);
 
-  return PIRReply::Load(vector<seal::Ciphertext>{result});
+  return DecodedReply::Load(vector<seal::Ciphertext>{result}).Save();
 }
 
 Status PIRServer::substitute_power_x_inplace(

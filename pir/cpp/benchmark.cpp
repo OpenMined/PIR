@@ -123,13 +123,13 @@ void BM_PayloadSize(benchmark::State& state) {
   size_t desiredIndex = dbsize - 1;
 
   auto payload = client_->CreateRequest(desiredIndex).ValueOrDie();
-  int64_t raw_payload = payload.Save().ValueOrDie().size();
+  int64_t raw_payload = payload.ByteSizeLong();
 
   for (auto _ : state) {
     total_bytes += raw_payload;
     auto payload = client_->CreateRequest(desiredIndex).ValueOrDie();
     ::benchmark::DoNotOptimize(payload);
-    network_bytes += payload.Save().ValueOrDie().size();
+    network_bytes += payload.ByteSizeLong();
     auto response = server_->ProcessRequest(payload).ValueOrDie();
     ::benchmark::DoNotOptimize(response);
     auto out = client_->ProcessResponse(response).ValueOrDie();

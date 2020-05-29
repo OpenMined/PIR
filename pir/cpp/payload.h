@@ -31,99 +31,90 @@ using seal::GaloisKeys;
 using std::optional;
 using buff_type = std::vector<seal::Ciphertext>;
 
-class PIRCiphertexts {
+class DecodedCiphertexts {
  public:
   /**
    * Loads the PIR ciphertexts.
+   * @param[in] The ciphertexts buffers
    **/
-  static StatusOr<PIRCiphertexts> Load(const buff_type& ct);
+  static DecodedCiphertexts Load(const buff_type& ct);
   /**
    * Decodes and loads a PIR Ciphertext.
-   * @returns InvalidArgument if the decoding fails
+   * @param[in] The SEAL context, for buffer allocations.
+   * @param[in] The encoded ciphertext.
+   * @returns InvalidArgument if the decoding fails.
    **/
-  static StatusOr<PIRCiphertexts> Load(
-      const std::shared_ptr<seal::SEALContext>& ctx,
-      const std::string& encoded);
-
-  static StatusOr<PIRCiphertexts> Load(
+  static StatusOr<DecodedCiphertexts> Load(
       const std::shared_ptr<seal::SEALContext>& ctx,
       const Ciphertexts& encoded);
   /**
-   * Saves the PIR Ciphertexts to an encoding.
+   * Saves the Ciphertexts to a protobuffer.
    * @returns InvalidArgument if the encoding fails
    **/
-  StatusOr<std::string> Save();
-  StatusOr<Ciphertexts> SaveProto();
+  StatusOr<Ciphertexts> Save();
   /**
-   * Returns a reference to the internal buffer.
+   * Returns a reference to the plain internal buffer.
    **/
   const buff_type& Get() const { return ct_; }
-  PIRCiphertexts() = delete;
+  DecodedCiphertexts() = delete;
 
-  PIRCiphertexts(const buff_type& ct) : ct_(ct){};
+  DecodedCiphertexts(const buff_type& ct) : ct_(ct){};
 
  private:
   buff_type ct_;
 };
 
-class PIRQuery : public PIRCiphertexts {
+class DecodedQuery : public DecodedCiphertexts {
  public:
   /**
    * Loads a PIR Request.
    **/
-  static StatusOr<PIRQuery> Load(const PIRCiphertexts& data,
-                                 const GaloisKeys& keys);
+  static DecodedQuery Load(const DecodedCiphertexts& buff,
+                           const GaloisKeys& keys);
   /**
    * Decodes and loads a PIR Query.
    * @returns InvalidArgument if the decoding fails
    **/
-  static StatusOr<PIRQuery> Load(const std::shared_ptr<seal::SEALContext>& ctx,
-                                 const std::string& encoded);
-  static StatusOr<PIRQuery> Load(const std::shared_ptr<seal::SEALContext>& ctx,
-                                 const Query& encoded);
+  static StatusOr<DecodedQuery> Load(
+      const std::shared_ptr<seal::SEALContext>& ctx, const Query& encoded);
   /**
    * Saves the PIR Query to a string.
    * @returns InvalidArgument if the encoding fails
    **/
-  StatusOr<std::string> Save();
-  StatusOr<Query> SaveProto();
+  StatusOr<Query> Save();
 
   const GaloisKeys& GetKeys() const { return keys_; }
-
-  PIRQuery() = delete;
+  DecodedQuery() = delete;
 
  private:
-  PIRQuery(const PIRCiphertexts& data, const GaloisKeys& keys)
-      : PIRCiphertexts(data), keys_(keys){};
+  DecodedQuery(const DecodedCiphertexts& buff, const GaloisKeys& keys)
+      : DecodedCiphertexts(buff), keys_(keys){};
 
   GaloisKeys keys_;
 };
 
-class PIRReply : public PIRCiphertexts {
+class DecodedReply : public DecodedCiphertexts {
  public:
   /**
    * Loads a PIR Reply.
    **/
-  static StatusOr<PIRReply> Load(const PIRCiphertexts& data);
+  static DecodedReply Load(const DecodedCiphertexts& buff);
   /**
    * Decodes and loads a PIR Reply.
    * @returns InvalidArgument if the decoding fails
    **/
-  static StatusOr<PIRReply> Load(const std::shared_ptr<seal::SEALContext>& ctx,
-                                 const std::string& encoded);
-  static StatusOr<PIRReply> Load(const std::shared_ptr<seal::SEALContext>& ctx,
-                                 const Reply& encoded);
+  static StatusOr<DecodedReply> Load(
+      const std::shared_ptr<seal::SEALContext>& ctx, const Reply& encoded);
   /**
    * Saves the PIR Reply to a string.
    * @returns InvalidArgument if the encoding fails
    **/
-  StatusOr<std::string> Save();
-  StatusOr<Reply> SaveProto();
+  StatusOr<Reply> Save();
 
-  PIRReply() = delete;
+  DecodedReply() = delete;
 
  private:
-  PIRReply(const PIRCiphertexts& data) : PIRCiphertexts(data){};
+  DecodedReply(const DecodedCiphertexts& buff) : DecodedCiphertexts(buff){};
 };
 
 }  // namespace pir

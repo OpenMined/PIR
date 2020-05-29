@@ -55,7 +55,7 @@ class PIRServer {
    * @returns InvalidArgument if the deserialization or encrypted operations
    *fail
    **/
-  StatusOr<PIRReply> ProcessRequest(const PIRQuery& request) const;
+  StatusOr<Reply> ProcessRequest(const Query& request) const;
 
   /**
    * Returns the database size.

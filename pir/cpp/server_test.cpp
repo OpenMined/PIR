@@ -84,6 +84,7 @@ class PIRServerTest : public ::testing::Test {
     evaluator_ = make_unique<Evaluator>(context);
     decryptor_ = make_unique<Decryptor>(context, keygen_->secret_key());
   }
+  PIRContext* Context() { return server_->Context(); }
 
   size_t db_size_;
   vector<std::int64_t> db_;
@@ -115,12 +116,14 @@ TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
   encryptor_->encrypt(pt, query[0]);
   GaloisKeys gal_keys =
       keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
-  auto req = PIRQuery::Load(query, gal_keys).ValueOrDie();
+  auto req = DecodedQuery::Load(query, gal_keys).Save().ValueOrDie();
 
   auto result_or = server_->ProcessRequest(req);
   ASSERT_THAT(result_or.ok(), IsTrue())
       << "Error: " << result_or.status().ToString();
-  auto result = result_or.ValueOrDie();
+  auto result =
+      DecodedReply::Load(Context()->SEALContext(), result_or.ValueOrDie())
+          .ValueOrDie();
   ASSERT_THAT(result.Get(), SizeIs(1));
 
   Plaintext result_pt;
@@ -142,12 +145,14 @@ TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
   encryptor_->encrypt(pt, query[1]);
   GaloisKeys gal_keys =
       keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
-  auto req = PIRQuery::Load(query, gal_keys).ValueOrDie();
+  auto req = DecodedQuery::Load(query, gal_keys).Save().ValueOrDie();
 
   auto result_or = server_->ProcessRequest(req);
   ASSERT_THAT(result_or.ok(), IsTrue())
       << "Error: " << result_or.status().ToString();
-  auto result = result_or.ValueOrDie();
+  auto result =
+      DecodedReply::Load(Context()->SEALContext(), result_or.ValueOrDie())
+          .ValueOrDie();
   ASSERT_THAT(result.Get(), SizeIs(1));
 
   Plaintext result_pt;
@@ -169,11 +174,13 @@ TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
   encryptor_->encrypt(pt, query[0]);
   GaloisKeys gal_keys =
       keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
-  auto req = PIRQuery::Load(query, gal_keys).ValueOrDie();
+  auto req = DecodedQuery::Load(query, gal_keys).Save().ValueOrDie();
 
   auto result_or = server_->ProcessRequest(req);
   ASSERT_THAT(result_or.ok(), IsTrue());
-  auto result = result_or.ValueOrDie();
+  auto result =
+      DecodedReply::Load(Context()->SEALContext(), result_or.ValueOrDie())
+          .ValueOrDie();
   ASSERT_THAT(result.Get(), SizeIs(1));
 
   Plaintext result_pt;

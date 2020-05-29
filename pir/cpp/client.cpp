@@ -57,7 +57,7 @@ StatusOr<uint64_t> InvertMod(uint64_t m, const seal::Modulus& mod) {
   return inverse;
 }
 
-StatusOr<PIRQuery> PIRClient::CreateRequest(std::size_t desired_index) const {
+StatusOr<Query> PIRClient::CreateRequest(std::size_t desired_index) const {
   const auto poly_modulus_degree =
       context_->Parameters()->GetEncryptionParams().poly_modulus_degree();
   if (desired_index >= DBSize()) {
@@ -99,10 +99,13 @@ StatusOr<PIRQuery> PIRClient::CreateRequest(std::size_t desired_index) const {
     return InternalError(e.what());
   }
 
-  return PIRQuery::Load(query, gal_keys);
+  return DecodedQuery::Load(query, gal_keys).Save();
 }
 
-StatusOr<int64_t> PIRClient::ProcessResponse(const PIRReply& response) const {
+StatusOr<int64_t> PIRClient::ProcessResponse(
+    const Reply& response_proto) const {
+  ASSIGN_OR_RETURN(auto response,
+                   DecodedReply::Load(context_->SEALContext(), response_proto));
   if (response.Get().size() != 1) {
     return InvalidArgumentError("Number of ciphertexts in response must be 1");
   }
