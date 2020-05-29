@@ -53,11 +53,11 @@ TEST_F(PIRClientTest, TestCreateRequest) {
 
   auto req_proto = client_->CreateRequest(desired_index).ValueOrDie();
   auto req =
-      DecodedQuery::Load(Context()->SEALContext(), req_proto).ValueOrDie();
+      LoadCiphertexts(Context()->SEALContext(), req_proto.query()).ValueOrDie();
 
   Plaintext pt;
-  ASSERT_EQ(req.Get().size(), 1);
-  Decryptor()->decrypt(req.Get()[0], pt);
+  ASSERT_EQ(req.size(), 1);
+  Decryptor()->decrypt(req[0], pt);
 
   const auto plain_mod =
       pir_params_->GetEncryptionParams().plain_modulus().value();
@@ -77,7 +77,9 @@ TEST_F(PIRClientTest, TestProcessResponse) {
   Context()->Encoder()->encode(value, pt);
   vector<Ciphertext> ct(1);
   Encryptor()->encrypt(pt, ct[0]);
-  auto reply = DecodedReply::Load(ct).Save().ValueOrDie();
+
+  Reply reply;
+  *reply.mutable_reply() = SaveCiphertexts(ct).ValueOrDie();
 
   auto result = client_->ProcessResponse(reply).ValueOrDie();
   ASSERT_EQ(result, value);
@@ -90,23 +92,34 @@ TEST_F(PIRClientTest, TestPayloadSerialization) {
   vector<Ciphertext> ct(1);
   Encryptor()->encrypt(pt, ct[0]);
 
-  auto reply_proto = DecodedReply::Load(ct).Save().ValueOrDie();
-  auto reloaded =
-      DecodedReply::Load(Context()->SEALContext(), reply_proto).ValueOrDie();
+  Reply reply_proto;
+  *reply_proto.mutable_reply() = SaveCiphertexts(ct).ValueOrDie();
 
-  ASSERT_EQ(reloaded.Get().size(), 1);
+  auto reloaded = LoadCiphertexts(Context()->SEALContext(), reply_proto.reply())
+                      .ValueOrDie();
+
+  ASSERT_EQ(reloaded.size(), 1);
 
   auto keygen_ = make_unique<KeyGenerator>(Context()->SEALContext());
   auto elts = generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE);
   GaloisKeys gal_keys = keygen_->galois_keys_local(elts);
 
-  auto req_proto = DecodedQuery::Load(ct, gal_keys).Save().ValueOrDie();
-  auto reqreloaded =
-      DecodedQuery::Load(Context()->SEALContext(), req_proto).ValueOrDie();
+  auto encoded_query = SaveCiphertexts(ct).ValueOrDie();
+  auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
 
-  ASSERT_EQ(reqreloaded.Get().size(), 1);
+  Query proto_query;
+  *proto_query.mutable_query() = encoded_query;
+  proto_query.set_keys(encoded_keys);
+
+  auto request = LoadCiphertexts(Context()->SEALContext(), proto_query.query())
+                     .ValueOrDie();
+  auto keys =
+      SEALDeserialize<GaloisKeys>(Context()->SEALContext(), proto_query.keys())
+          .ValueOrDie();
+
+  ASSERT_EQ(request.size(), 1);
   for (auto& elt : elts) {
-    ASSERT_TRUE(reqreloaded.GetKeys().has_key(elt));
+    ASSERT_TRUE(keys.has_key(elt));
   }
 }
 
@@ -134,11 +147,11 @@ TEST_P(CreateRequestTest, TestCreateRequest_MoreThanOneCT) {
   ASSERT_TRUE(payload_or.ok())
       << "Status is: " << payload_or.status().ToString();
   auto payload =
-      DecodedQuery::Load(Context()->SEALContext(), payload_or.ValueOrDie())
+      LoadCiphertexts(Context()->SEALContext(), payload_or.ValueOrDie().query())
           .ValueOrDie();
-  ASSERT_EQ(payload.Get().size(), dbsize / poly_modulus_degree + 1);
+  ASSERT_EQ(payload.size(), dbsize / poly_modulus_degree + 1);
 
-  for (const auto& ct : payload.Get()) {
+  for (const auto& ct : payload) {
     Plaintext pt;
     Decryptor()->decrypt(ct, pt);
     for (size_t i = 0; i < pt.coeff_count(); ++i) {

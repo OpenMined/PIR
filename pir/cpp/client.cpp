@@ -27,8 +27,9 @@ namespace pir {
 using ::private_join_and_compute::InternalError;
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
-using seal::Ciphertext;
-using seal::Plaintext;
+using ::seal::Ciphertext;
+using ::seal::GaloisKeys;
+using ::seal::Plaintext;
 
 PIRClient::PIRClient(std::unique_ptr<PIRContext> context)
     : context_(std::move(context)) {
@@ -99,19 +100,26 @@ StatusOr<Query> PIRClient::CreateRequest(std::size_t desired_index) const {
     return InternalError(e.what());
   }
 
-  return DecodedQuery::Load(query, gal_keys).Save();
+  ASSIGN_OR_RETURN(auto encoded_query, SaveCiphertexts(query));
+  ASSIGN_OR_RETURN(auto encoded_keys, SEALSerialize<GaloisKeys>(gal_keys));
+
+  Query proto_query;
+  *proto_query.mutable_query() = encoded_query;
+  proto_query.set_keys(encoded_keys);
+
+  return proto_query;
 }
 
 StatusOr<int64_t> PIRClient::ProcessResponse(
     const Reply& response_proto) const {
-  ASSIGN_OR_RETURN(auto response,
-                   DecodedReply::Load(context_->SEALContext(), response_proto));
-  if (response.Get().size() != 1) {
+  ASSIGN_OR_RETURN(auto response, LoadCiphertexts(context_->SEALContext(),
+                                                  response_proto.reply()));
+  if (response.size() != 1) {
     return InvalidArgumentError("Number of ciphertexts in response must be 1");
   }
   seal::Plaintext plaintext;
   try {
-    decryptor_->decrypt(response.Get()[0], plaintext);
+    decryptor_->decrypt(response[0], plaintext);
     // have to divide the integer result by the the next power of 2 greater than
     // number of items in oblivious expansion.
     return context_->Encoder()->decode_int64(plaintext);

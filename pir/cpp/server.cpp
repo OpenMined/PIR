@@ -30,6 +30,7 @@ using ::private_join_and_compute::InternalError;
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::Status;
 using ::private_join_and_compute::StatusOr;
+using ::seal::GaloisKeys;
 
 PIRServer::PIRServer(std::unique_ptr<PIRContext> context,
                      std::shared_ptr<PIRDatabase> db)
@@ -50,19 +51,25 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
 }
 
 StatusOr<Reply> PIRServer::ProcessRequest(const Query& request_proto) const {
-  ASSIGN_OR_RETURN(auto request,
-                   DecodedQuery::Load(context_->SEALContext(), request_proto));
+  ASSIGN_OR_RETURN(auto request, LoadCiphertexts(context_->SEALContext(),
+                                                 request_proto.query()));
+  ASSIGN_OR_RETURN(auto keys,
+                   SEALDeserialize<GaloisKeys>(context_->SEALContext(),
+                                               request_proto.keys()));
 
-  ASSIGN_OR_RETURN(
-      auto selection_vector,
-      oblivious_expansion(request.Get(), DBSize(), request.GetKeys()));
+  ASSIGN_OR_RETURN(auto selection_vector,
+                   oblivious_expansion(request, DBSize(), keys));
 
   ASSIGN_OR_RETURN(auto mult_results, db_->multiply(selection_vector));
 
   seal::Ciphertext result;
   context_->Evaluator()->add_many(mult_results, result);
 
-  return DecodedReply::Load(vector<seal::Ciphertext>{result}).Save();
+  Reply reply;
+  ASSIGN_OR_RETURN(*reply.mutable_reply(),
+                   SaveCiphertexts(vector<seal::Ciphertext>{result}));
+
+  return reply;
 }
 
 Status PIRServer::substitute_power_x_inplace(

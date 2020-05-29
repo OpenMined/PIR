@@ -35,15 +35,6 @@ def pir_deps():
             url = "https://github.com/google/benchmark/archive/8cead007830bdbe94b7cc259e873179d0ef84da6.zip",
         )
 
-    if "com_tencent_rapidjson" not in native.existing_rules():
-        http_archive(
-            name = "com_tencent_rapidjson",
-            build_file = "//third_party:rapidjson.BUILD",
-            sha256 = "e6fc99c7df7f29995838a764dd68df87b71db360f7727ace467b21b82c85efda",
-            strip_prefix = "rapidjson-8f4c021fa2f1e001d2376095928fc0532adf2ae6/include",
-            url = "https://github.com/Tencent/rapidjson/archive/8f4c021fa2f1e001d2376095928fc0532adf2ae6.zip",
-        )
-
     if "com_google_absl" not in native.existing_rules():
         http_archive(
             name = "com_google_absl",

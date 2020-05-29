@@ -17,106 +17,70 @@
 #ifndef PIR_PAYLOAD_H_
 #define PIR_PAYLOAD_H_
 
-#include <optional>
 #include <string>
 
 #include "pir/proto/payload.pb.h"
 #include "seal/seal.h"
+#include "util/canonical_errors.h"
+#include "util/status_macros.h"
 #include "util/statusor.h"
 
 namespace pir {
 
+using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
-using seal::GaloisKeys;
-using std::optional;
 using buff_type = std::vector<seal::Ciphertext>;
 
-class DecodedCiphertexts {
- public:
-  /**
-   * Loads the PIR ciphertexts.
-   * @param[in] The ciphertexts buffers
-   **/
-  static DecodedCiphertexts Load(const buff_type& ct);
-  /**
-   * Decodes and loads a PIR Ciphertext.
-   * @param[in] The SEAL context, for buffer allocations.
-   * @param[in] The encoded ciphertext.
-   * @returns InvalidArgument if the decoding fails.
-   **/
-  static StatusOr<DecodedCiphertexts> Load(
-      const std::shared_ptr<seal::SEALContext>& ctx,
-      const Ciphertexts& encoded);
-  /**
-   * Saves the Ciphertexts to a protobuffer.
-   * @returns InvalidArgument if the encoding fails
-   **/
-  StatusOr<Ciphertexts> Save();
-  /**
-   * Returns a reference to the plain internal buffer.
-   **/
-  const buff_type& Get() const { return ct_; }
-  DecodedCiphertexts() = delete;
+/**
+ * Decodes and loads a PIR Ciphertext.
+ * @param[in] The SEAL context, for buffer allocations.
+ * @param[in] The encoded ciphertext.
+ * @returns InvalidArgument if the decoding fails.
+ **/
+StatusOr<buff_type> LoadCiphertexts(
+    const std::shared_ptr<seal::SEALContext>& ctx, const Ciphertexts& encoded);
+/**
+ * Saves the Ciphertexts to a protobuffer.
+ * @returns InvalidArgument if the encoding fails
+ **/
+StatusOr<Ciphertexts> SaveCiphertexts(const buff_type& buff);
 
-  DecodedCiphertexts(const buff_type& ct) : ct_(ct){};
+/**
+ * Saves a SEAL object to a string.
+ * @returns InvalidArgument if the encoding fails.
+ **/
+template <class T>
+StatusOr<std::string> SEALSerialize(const T& sealobj) {
+  std::stringstream stream;
 
- private:
-  buff_type ct_;
-};
+  try {
+    sealobj.save(stream);
+  } catch (const std::exception& e) {
+    return InvalidArgumentError(e.what());
+  }
 
-class DecodedQuery : public DecodedCiphertexts {
- public:
-  /**
-   * Loads a PIR Request.
-   **/
-  static DecodedQuery Load(const DecodedCiphertexts& buff,
-                           const GaloisKeys& keys);
-  /**
-   * Decodes and loads a PIR Query.
-   * @returns InvalidArgument if the decoding fails
-   **/
-  static StatusOr<DecodedQuery> Load(
-      const std::shared_ptr<seal::SEALContext>& ctx, const Query& encoded);
-  /**
-   * Saves the PIR Query to a string.
-   * @returns InvalidArgument if the encoding fails
-   **/
-  StatusOr<Query> Save();
+  return stream.str();
+}
 
-  const GaloisKeys& GetKeys() const { return keys_; }
-  DecodedQuery() = delete;
+/**
+ * Loads a SEAL object from a string.
+ * @returns InvalidArgument if the decoding fails.
+ **/
+template <class T>
+StatusOr<T> SEALDeserialize(const std::shared_ptr<seal::SEALContext>& sealctx,
+                            const std::string& in) {
+  T out;
 
- private:
-  DecodedQuery(const DecodedCiphertexts& buff, const GaloisKeys& keys)
-      : DecodedCiphertexts(buff), keys_(keys){};
+  try {
+    std::stringstream stream;
+    stream << in;
+    out.load(sealctx, stream);
+  } catch (const std::exception& e) {
+    return InvalidArgumentError(e.what());
+  }
 
-  GaloisKeys keys_;
-};
-
-class DecodedReply : public DecodedCiphertexts {
- public:
-  /**
-   * Loads a PIR Reply.
-   **/
-  static DecodedReply Load(const DecodedCiphertexts& buff);
-  /**
-   * Decodes and loads a PIR Reply.
-   * @returns InvalidArgument if the decoding fails
-   **/
-  static StatusOr<DecodedReply> Load(
-      const std::shared_ptr<seal::SEALContext>& ctx, const Reply& encoded);
-  /**
-   * Saves the PIR Reply to a string.
-   * @returns InvalidArgument if the encoding fails
-   **/
-  StatusOr<Reply> Save();
-
-  DecodedReply() = delete;
-
- private:
-  DecodedReply(const DecodedCiphertexts& buff) : DecodedCiphertexts(buff){};
-};
-
+  return out;
+}
 }  // namespace pir
 
 #endif  // PIR_PAYLOAD_H_
