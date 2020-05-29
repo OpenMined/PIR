@@ -67,24 +67,42 @@ StatusOr<PIRPayload> PIRClient::CreateRequest(std::size_t desired_index) const {
   const auto& plain_mod =
       context_->Parameters()->GetEncryptionParams().plain_modulus();
 
-  int index = desired_index;
-  vector<Ciphertext> query(DBSize() / poly_modulus_degree + 1);
-  for (size_t i = 0; i < query.size(); ++i) {
+  auto dims = context_->Parameters()->Dimensions();
+  auto indices = calculate_indices(desired_index);
+
+  const size_t dim_sum =
+      std::accumulate(dims.begin(), dims.end(), decltype(dims)::value_type(0));
+
+  size_t offset = 0;
+  vector<Ciphertext> query(dim_sum / poly_modulus_degree + 1);
+  for (size_t c = 0; c < query.size(); ++c) {
     Plaintext pt(poly_modulus_degree);
     pt.set_zero();
-    if (index < 0) {
-      // already passed
-    } else if (static_cast<size_t>(index) < poly_modulus_degree) {
-      uint64_t m = (i < query.size() - 1)
+
+    while (!indices.empty()) {
+      if (indices[0] + offset >= poly_modulus_degree) {
+        // no more slots in this poly
+        indices[0] -= (poly_modulus_degree - offset);
+        dims[0] -= (poly_modulus_degree - offset);
+        offset = 0;
+        break;
+      }
+      uint64_t m = (c < query.size() - 1)
                        ? poly_modulus_degree
-                       : next_power_two(DBSize() % poly_modulus_degree);
-      ASSIGN_OR_RETURN(pt[index], InvertMod(m, plain_mod));
-      index = -1;
-    } else {
-      index -= poly_modulus_degree;
+                       : next_power_two(dim_sum % poly_modulus_degree);
+      ASSIGN_OR_RETURN(pt[indices[0] + offset], InvertMod(m, plain_mod));
+      offset += dims[0];
+      indices.erase(indices.begin());
+      dims.erase(dims.begin());
+
+      if (offset >= poly_modulus_degree) {
+        offset -= poly_modulus_degree;
+        break;
+      }
     }
+
     try {
-      encryptor_->encrypt(pt, query[i]);
+      encryptor_->encrypt(pt, query[c]);
     } catch (const std::exception& e) {
       return InternalError(e.what());
     }
@@ -117,8 +135,8 @@ StatusOr<int64_t> PIRClient::ProcessResponse(const PIRPayload& response) const {
   return InternalError("Should never get here.");
 }
 
-vector<uint32_t> PIRClient::calculate_indices(uint32_t index) {
-  auto dims = context_->Parameters()->Dimensions();
+vector<uint32_t> PIRClient::calculate_indices(uint32_t index) const {
+  const auto dims = context_->Parameters()->Dimensions();
   vector<uint32_t> results(dims.size(), 0);
   for (int i = results.size() - 1; i >= 0; --i) {
     results[i] = index % dims[i];
