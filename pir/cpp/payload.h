@@ -27,9 +27,9 @@
 
 namespace pir {
 
+using ::private_join_and_compute::InternalError;
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
-using buff_type = std::vector<seal::Ciphertext>;
 
 /**
  * Decodes and loads a PIR Ciphertext.
@@ -37,17 +37,20 @@ using buff_type = std::vector<seal::Ciphertext>;
  * @param[in] The encoded ciphertext.
  * @returns InvalidArgument if the decoding fails.
  **/
-StatusOr<buff_type> LoadCiphertexts(
+StatusOr<std::vector<seal::Ciphertext>> LoadCiphertexts(
     const std::shared_ptr<seal::SEALContext>& ctx, const Ciphertexts& encoded);
 /**
  * Saves the Ciphertexts to a protobuffer.
  * @returns InvalidArgument if the encoding fails
  **/
-StatusOr<Ciphertexts> SaveCiphertexts(const buff_type& buff);
+StatusOr<Ciphertexts> SaveCiphertexts(
+    const std::vector<seal::Ciphertext>& buff);
 
 /**
  * Saves a SEAL object to a string.
- * @returns InvalidArgument if the encoding fails.
+ * Compatible SEAL types: Ciphertext, Plaintext, SecretKey, PublicKey,
+ *GaloisKeys, RelinKeys.
+ * @returns InternalError if the encoding fails.
  **/
 template <class T>
 StatusOr<std::string> SEALSerialize(const T& sealobj) {
@@ -56,7 +59,7 @@ StatusOr<std::string> SEALSerialize(const T& sealobj) {
   try {
     sealobj.save(stream);
   } catch (const std::exception& e) {
-    return InvalidArgumentError(e.what());
+    return InternalError(e.what());
   }
 
   return stream.str();
@@ -64,6 +67,8 @@ StatusOr<std::string> SEALSerialize(const T& sealobj) {
 
 /**
  * Loads a SEAL object from a string.
+ * Compatible SEAL types: Ciphertext, Plaintext, SecretKey, PublicKey,
+ *GaloisKeys, RelinKeys.
  * @returns InvalidArgument if the decoding fails.
  **/
 template <class T>

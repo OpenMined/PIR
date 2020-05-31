@@ -50,7 +50,8 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
   return PIRServer::Create(db, PIRParameters::Create(db->size()));
 }
 
-StatusOr<Reply> PIRServer::ProcessRequest(const Query& request_proto) const {
+StatusOr<Response> PIRServer::ProcessRequest(
+    const Request& request_proto) const {
   ASSIGN_OR_RETURN(auto request, LoadCiphertexts(context_->SEALContext(),
                                                  request_proto.query()));
   ASSIGN_OR_RETURN(auto keys,
@@ -65,7 +66,7 @@ StatusOr<Reply> PIRServer::ProcessRequest(const Query& request_proto) const {
   seal::Ciphertext result;
   context_->Evaluator()->add_many(mult_results, result);
 
-  Reply reply;
+  Response reply;
   ASSIGN_OR_RETURN(*reply.mutable_reply(),
                    SaveCiphertexts(vector<seal::Ciphertext>{result}));
 

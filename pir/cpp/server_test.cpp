@@ -112,19 +112,19 @@ TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
   pt.set_zero();
   pt[desired_index] = 1;
 
-  vector<Ciphertext> query(1);
-  encryptor_->encrypt(pt, query[0]);
+  vector<Ciphertext> request(1);
+  encryptor_->encrypt(pt, request[0]);
   GaloisKeys gal_keys =
       keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
 
-  auto encoded_query = SaveCiphertexts(query).ValueOrDie();
+  auto encoded_request = SaveCiphertexts(request).ValueOrDie();
   auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
 
-  Query proto_query;
-  *proto_query.mutable_query() = encoded_query;
-  proto_query.set_keys(encoded_keys);
+  Request proto_request;
+  *proto_request.mutable_query() = encoded_request;
+  proto_request.set_keys(encoded_keys);
 
-  auto result_or = server_->ProcessRequest(proto_query);
+  auto result_or = server_->ProcessRequest(proto_request);
   ASSERT_THAT(result_or.ok(), IsTrue())
       << "Error: " << result_or.status().ToString();
   auto result =
@@ -145,21 +145,21 @@ TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
   Plaintext pt(POLY_MODULUS_DEGREE);
   pt.set_zero();
 
-  vector<Ciphertext> query(2);
-  encryptor_->encrypt(pt, query[0]);
+  vector<Ciphertext> request(2);
+  encryptor_->encrypt(pt, request[0]);
   pt[desired_index - POLY_MODULUS_DEGREE] = 1;
-  encryptor_->encrypt(pt, query[1]);
+  encryptor_->encrypt(pt, request[1]);
   GaloisKeys gal_keys =
       keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
 
-  auto encoded_query = SaveCiphertexts(query).ValueOrDie();
+  auto encoded_request = SaveCiphertexts(request).ValueOrDie();
   auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
 
-  Query proto_query;
-  *proto_query.mutable_query() = encoded_query;
-  proto_query.set_keys(encoded_keys);
+  Request proto_request;
+  *proto_request.mutable_query() = encoded_request;
+  proto_request.set_keys(encoded_keys);
 
-  auto result_or = server_->ProcessRequest(proto_query);
+  auto result_or = server_->ProcessRequest(proto_request);
   ASSERT_THAT(result_or.ok(), IsTrue())
       << "Error: " << result_or.status().ToString();
   auto result =
@@ -182,19 +182,19 @@ TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
   Plaintext pt(POLY_MODULUS_DEGREE);
   pt.set_zero();
 
-  vector<Ciphertext> query(1);
-  encryptor_->encrypt(pt, query[0]);
+  vector<Ciphertext> request(1);
+  encryptor_->encrypt(pt, request[0]);
   GaloisKeys gal_keys =
       keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
 
-  auto encoded_query = SaveCiphertexts(query).ValueOrDie();
+  auto encoded_request = SaveCiphertexts(request).ValueOrDie();
   auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
 
-  Query proto_query;
-  *proto_query.mutable_query() = encoded_query;
-  proto_query.set_keys(encoded_keys);
+  Request proto_request;
+  *proto_request.mutable_query() = encoded_request;
+  proto_request.set_keys(encoded_keys);
 
-  auto result_or = server_->ProcessRequest(proto_query);
+  auto result_or = server_->ProcessRequest(proto_request);
   ASSERT_THAT(result_or.ok(), IsTrue());
   auto result =
       LoadCiphertexts(Context()->SEALContext(), result_or.ValueOrDie().reply())

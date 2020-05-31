@@ -27,10 +27,10 @@ using ::private_join_and_compute::StatusOr;
 
 using seal::Ciphertext;
 
-StatusOr<buff_type> LoadCiphertexts(
+StatusOr<std::vector<seal::Ciphertext>> LoadCiphertexts(
     const std::shared_ptr<seal::SEALContext>& sealctx,
     const Ciphertexts& input) {
-  buff_type buff(input.ct_size());
+  std::vector<seal::Ciphertext> buff(input.ct_size());
   for (int idx = 0; idx < input.ct_size(); ++idx) {
     ASSIGN_OR_RETURN(buff[idx],
                      SEALDeserialize<Ciphertext>(sealctx, input.ct(idx)));
@@ -39,11 +39,13 @@ StatusOr<buff_type> LoadCiphertexts(
   return buff;
 }
 
-StatusOr<Ciphertexts> SaveCiphertexts(const buff_type& ct_) {
+StatusOr<Ciphertexts> SaveCiphertexts(
+    const std::vector<seal::Ciphertext>& ciphertexts) {
   Ciphertexts output;
-  for (size_t idx = 0; idx < ct_.size(); ++idx) {
-    ASSIGN_OR_RETURN(auto ct, SEALSerialize<Ciphertext>(ct_[idx]));
-    output.add_ct(ct);
+  for (size_t idx = 0; idx < ciphertexts.size(); ++idx) {
+    ASSIGN_OR_RETURN(auto ciphertext_str,
+                     SEALSerialize<Ciphertext>(ciphertexts[idx]));
+    output.add_ct(ciphertext_str);
   }
 
   return output;

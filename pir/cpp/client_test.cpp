@@ -78,7 +78,7 @@ TEST_F(PIRClientTest, TestProcessResponse) {
   vector<Ciphertext> ct(1);
   Encryptor()->encrypt(pt, ct[0]);
 
-  Reply reply;
+  Response reply;
   *reply.mutable_reply() = SaveCiphertexts(ct).ValueOrDie();
 
   auto result = client_->ProcessResponse(reply).ValueOrDie();
@@ -92,7 +92,7 @@ TEST_F(PIRClientTest, TestPayloadSerialization) {
   vector<Ciphertext> ct(1);
   Encryptor()->encrypt(pt, ct[0]);
 
-  Reply reply_proto;
+  Response reply_proto;
   *reply_proto.mutable_reply() = SaveCiphertexts(ct).ValueOrDie();
 
   auto reloaded = LoadCiphertexts(Context()->SEALContext(), reply_proto.reply())
@@ -107,7 +107,7 @@ TEST_F(PIRClientTest, TestPayloadSerialization) {
   auto encoded_query = SaveCiphertexts(ct).ValueOrDie();
   auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
 
-  Query proto_query;
+  Request proto_query;
   *proto_query.mutable_query() = encoded_query;
   proto_query.set_keys(encoded_keys);
 

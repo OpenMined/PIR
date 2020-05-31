@@ -58,7 +58,7 @@ StatusOr<uint64_t> InvertMod(uint64_t m, const seal::Modulus& mod) {
   return inverse;
 }
 
-StatusOr<Query> PIRClient::CreateRequest(std::size_t desired_index) const {
+StatusOr<Request> PIRClient::CreateRequest(std::size_t desired_index) const {
   const auto poly_modulus_degree =
       context_->Parameters()->GetEncryptionParams().poly_modulus_degree();
   if (desired_index >= DBSize()) {
@@ -103,7 +103,7 @@ StatusOr<Query> PIRClient::CreateRequest(std::size_t desired_index) const {
   ASSIGN_OR_RETURN(auto encoded_query, SaveCiphertexts(query));
   ASSIGN_OR_RETURN(auto encoded_keys, SEALSerialize<GaloisKeys>(gal_keys));
 
-  Query proto_query;
+  Request proto_query;
   *proto_query.mutable_query() = encoded_query;
   proto_query.set_keys(encoded_keys);
 
@@ -111,7 +111,7 @@ StatusOr<Query> PIRClient::CreateRequest(std::size_t desired_index) const {
 }
 
 StatusOr<int64_t> PIRClient::ProcessResponse(
-    const Reply& response_proto) const {
+    const Response& response_proto) const {
   ASSIGN_OR_RETURN(auto response, LoadCiphertexts(context_->SEALContext(),
                                                   response_proto.reply()));
   if (response.size() != 1) {
