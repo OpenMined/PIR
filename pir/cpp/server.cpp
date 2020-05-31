@@ -67,8 +67,8 @@ StatusOr<Response> PIRServer::ProcessRequest(
   context_->Evaluator()->add_many(mult_results, result);
 
   Response reply;
-  ASSIGN_OR_RETURN(*reply.mutable_reply(),
-                   SaveCiphertexts(vector<seal::Ciphertext>{result}));
+  RETURN_IF_ERROR(
+      SaveCiphertexts(vector<seal::Ciphertext>{result}, reply.mutable_reply()));
 
   return reply;
 }

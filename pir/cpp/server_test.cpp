@@ -84,7 +84,6 @@ class PIRServerTest : public ::testing::Test {
     evaluator_ = make_unique<Evaluator>(context);
     decryptor_ = make_unique<Decryptor>(context, keygen_->secret_key());
   }
-  PIRContext* Context() { return server_->Context(); }
 
   size_t db_size_;
   vector<std::int64_t> db_;
@@ -117,19 +116,18 @@ TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
   GaloisKeys gal_keys =
       keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
 
-  auto encoded_request = SaveCiphertexts(request).ValueOrDie();
   auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
 
   Request proto_request;
-  *proto_request.mutable_query() = encoded_request;
+  SaveCiphertexts(request, proto_request.mutable_query());
   proto_request.set_keys(encoded_keys);
 
   auto result_or = server_->ProcessRequest(proto_request);
   ASSERT_THAT(result_or.ok(), IsTrue())
       << "Error: " << result_or.status().ToString();
-  auto result =
-      LoadCiphertexts(Context()->SEALContext(), result_or.ValueOrDie().reply())
-          .ValueOrDie();
+  auto result = LoadCiphertexts(server_->Context()->SEALContext(),
+                                result_or.ValueOrDie().reply())
+                    .ValueOrDie();
   ASSERT_THAT(result, SizeIs(1));
 
   Plaintext result_pt;
@@ -152,19 +150,18 @@ TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
   GaloisKeys gal_keys =
       keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
 
-  auto encoded_request = SaveCiphertexts(request).ValueOrDie();
   auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
 
   Request proto_request;
-  *proto_request.mutable_query() = encoded_request;
+  SaveCiphertexts(request, proto_request.mutable_query());
   proto_request.set_keys(encoded_keys);
 
   auto result_or = server_->ProcessRequest(proto_request);
   ASSERT_THAT(result_or.ok(), IsTrue())
       << "Error: " << result_or.status().ToString();
-  auto result =
-      LoadCiphertexts(Context()->SEALContext(), result_or.ValueOrDie().reply())
-          .ValueOrDie();
+  auto result = LoadCiphertexts(server_->Context()->SEALContext(),
+                                result_or.ValueOrDie().reply())
+                    .ValueOrDie();
   ASSERT_THAT(result, SizeIs(1));
 
   Plaintext result_pt;
@@ -187,18 +184,17 @@ TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
   GaloisKeys gal_keys =
       keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
 
-  auto encoded_request = SaveCiphertexts(request).ValueOrDie();
   auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
 
   Request proto_request;
-  *proto_request.mutable_query() = encoded_request;
+  SaveCiphertexts(request, proto_request.mutable_query());
   proto_request.set_keys(encoded_keys);
 
   auto result_or = server_->ProcessRequest(proto_request);
   ASSERT_THAT(result_or.ok(), IsTrue());
-  auto result =
-      LoadCiphertexts(Context()->SEALContext(), result_or.ValueOrDie().reply())
-          .ValueOrDie();
+  auto result = LoadCiphertexts(server_->Context()->SEALContext(),
+                                result_or.ValueOrDie().reply())
+                    .ValueOrDie();
 
   ASSERT_THAT(result, SizeIs(1));
 

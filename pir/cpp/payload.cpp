@@ -30,25 +30,27 @@ using seal::Ciphertext;
 StatusOr<std::vector<seal::Ciphertext>> LoadCiphertexts(
     const std::shared_ptr<seal::SEALContext>& sealctx,
     const Ciphertexts& input) {
-  std::vector<seal::Ciphertext> buff(input.ct_size());
+  std::vector<seal::Ciphertext> output(input.ct_size());
   for (int idx = 0; idx < input.ct_size(); ++idx) {
-    ASSIGN_OR_RETURN(buff[idx],
+    ASSIGN_OR_RETURN(output[idx],
                      SEALDeserialize<Ciphertext>(sealctx, input.ct(idx)));
   }
 
-  return buff;
+  return output;
 }
 
-StatusOr<Ciphertexts> SaveCiphertexts(
-    const std::vector<seal::Ciphertext>& ciphertexts) {
-  Ciphertexts output;
+Status SaveCiphertexts(const std::vector<seal::Ciphertext>& ciphertexts,
+                       Ciphertexts* output) {
+  if (output == nullptr) {
+    return InvalidArgumentError("output nullptr");
+  }
+
   for (size_t idx = 0; idx < ciphertexts.size(); ++idx) {
     ASSIGN_OR_RETURN(auto ciphertext_str,
                      SEALSerialize<Ciphertext>(ciphertexts[idx]));
-    output.add_ct(ciphertext_str);
+    output->add_ct(ciphertext_str);
   }
-
-  return output;
+  return Status::OK;
 }
 
 };  // namespace pir

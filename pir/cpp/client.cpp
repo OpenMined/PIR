@@ -100,11 +100,11 @@ StatusOr<Request> PIRClient::CreateRequest(std::size_t desired_index) const {
     return InternalError(e.what());
   }
 
-  ASSIGN_OR_RETURN(auto encoded_query, SaveCiphertexts(query));
+  Request proto_query;
+
+  RETURN_IF_ERROR(SaveCiphertexts(query, proto_query.mutable_query()));
   ASSIGN_OR_RETURN(auto encoded_keys, SEALSerialize<GaloisKeys>(gal_keys));
 
-  Request proto_query;
-  *proto_query.mutable_query() = encoded_query;
   proto_query.set_keys(encoded_keys);
 
   return proto_query;

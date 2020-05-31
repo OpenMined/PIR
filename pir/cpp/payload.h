@@ -29,6 +29,7 @@ namespace pir {
 
 using ::private_join_and_compute::InternalError;
 using ::private_join_and_compute::InvalidArgumentError;
+using ::private_join_and_compute::Status;
 using ::private_join_and_compute::StatusOr;
 
 /**
@@ -43,8 +44,8 @@ StatusOr<std::vector<seal::Ciphertext>> LoadCiphertexts(
  * Saves the Ciphertexts to a protobuffer.
  * @returns InvalidArgument if the encoding fails
  **/
-StatusOr<Ciphertexts> SaveCiphertexts(
-    const std::vector<seal::Ciphertext>& buff);
+Status SaveCiphertexts(const std::vector<seal::Ciphertext>& buff,
+                       Ciphertexts* output);
 
 /**
  * Saves a SEAL object to a string.
