@@ -27,6 +27,7 @@ namespace pir {
 
 using ::private_join_and_compute::StatusOr;
 using seal::GaloisKeys;
+using seal::RelinKeys;
 using std::optional;
 using buff_type = std::vector<seal::Ciphertext>;
 
@@ -36,7 +37,9 @@ class PIRPayload {
    * Loads a PIR Payload.
    **/
   static PIRPayload Load(const buff_type& plain,
-                         const optional<GaloisKeys>& keys = {});
+                         const optional<GaloisKeys>& keys = {},
+                         const optional<RelinKeys>& relin_keys = {});
+
   /**
    * Decodes and loads a PIR Payload.
    * @returns InvalidArgument if the decoding fails
@@ -44,11 +47,13 @@ class PIRPayload {
   static StatusOr<PIRPayload> Load(
       const std::shared_ptr<seal::SEALContext>& ctx,
       const std::string& encoded);
+
   /**
    * Saves the PIR Payload to a string.
    * @returns InvalidArgument if the encoding fails
    **/
   StatusOr<std::string> Save();
+
   /**
    * Returns a reference to the internal buffer.
    **/
@@ -57,13 +62,17 @@ class PIRPayload {
 
   const optional<GaloisKeys>& GetKeys() const { return keys_; }
 
+  const optional<RelinKeys>& GetRelinKeys() const { return relin_keys_; }
+
  private:
   PIRPayload(const std::vector<seal::Ciphertext>& buff,
-             const optional<GaloisKeys>& keys = {})
-      : buff_(buff), keys_(keys){};
+             const optional<GaloisKeys>& keys = {},
+             const optional<RelinKeys>& relin_keys = {})
+      : buff_(buff), keys_(keys), relin_keys_(relin_keys){};
 
   buff_type buff_;
   optional<GaloisKeys> keys_;
+  optional<RelinKeys> relin_keys_;
 };
 
 }  // namespace pir

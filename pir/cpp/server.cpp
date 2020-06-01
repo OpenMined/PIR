@@ -65,7 +65,11 @@ StatusOr<PIRPayload> PIRServer::ProcessRequest(
       auto selection_vector,
       oblivious_expansion(payload.Get(), dim_sum, *payload.GetKeys()));
 
-  ASSIGN_OR_RETURN(seal::Ciphertext result, db_->multiply(selection_vector));
+  ASSIGN_OR_RETURN(
+      seal::Ciphertext result,
+      db_->multiply(selection_vector, payload.GetRelinKeys()
+                                          ? &(*payload.GetRelinKeys())
+                                          : nullptr));
 
   return PIRPayload::Load(vector<seal::Ciphertext>{result});
 }

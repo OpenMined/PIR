@@ -80,6 +80,9 @@ class PIRServerTest : public ::testing::Test {
              << context->parameter_error_message();
     }
     keygen_ = make_unique<KeyGenerator>(context);
+    gal_keys_ =
+        keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
+    relin_keys_ = keygen_->relin_keys_local();
     encryptor_ = make_unique<Encryptor>(context, keygen_->public_key());
     evaluator_ = make_unique<Evaluator>(context);
     decryptor_ = make_unique<Decryptor>(context, keygen_->secret_key());
@@ -87,6 +90,8 @@ class PIRServerTest : public ::testing::Test {
 
   size_t db_size_;
   vector<std::int64_t> db_;
+  GaloisKeys gal_keys_;
+  RelinKeys relin_keys_;
   shared_ptr<PIRParameters> pir_params_;
   unique_ptr<PIRServer> server_;
   unique_ptr<KeyGenerator> keygen_;
@@ -113,9 +118,7 @@ TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
 
   vector<Ciphertext> query(1);
   encryptor_->encrypt(pt, query[0]);
-  GaloisKeys gal_keys =
-      keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
-  auto payload = PIRPayload::Load(query, gal_keys);
+  auto payload = PIRPayload::Load(query, gal_keys_, relin_keys_);
 
   auto result_or = server_->ProcessRequest(payload);
   ASSERT_THAT(result_or.ok(), IsTrue())
@@ -140,9 +143,7 @@ TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
   encryptor_->encrypt(pt, query[0]);
   pt[desired_index - POLY_MODULUS_DEGREE] = 1;
   encryptor_->encrypt(pt, query[1]);
-  GaloisKeys gal_keys =
-      keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
-  auto payload = PIRPayload::Load(query, gal_keys);
+  auto payload = PIRPayload::Load(query, gal_keys_, relin_keys_);
 
   auto result_or = server_->ProcessRequest(payload);
   ASSERT_THAT(result_or.ok(), IsTrue())
@@ -167,9 +168,7 @@ TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
 
   vector<Ciphertext> query(1);
   encryptor_->encrypt(pt, query[0]);
-  GaloisKeys gal_keys =
-      keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
-  auto payload = PIRPayload::Load(query, gal_keys);
+  auto payload = PIRPayload::Load(query, gal_keys_, relin_keys_);
 
   auto result_or = server_->ProcessRequest(payload);
   ASSERT_THAT(result_or.ok(), IsTrue());
@@ -194,9 +193,7 @@ TEST_F(PIRServerTest, TestProcessRequest_2Dim) {
 
   vector<Ciphertext> query(1);
   encryptor_->encrypt(pt, query[0]);
-  GaloisKeys gal_keys =
-      keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
-  auto payload = PIRPayload::Load(query, gal_keys);
+  auto payload = PIRPayload::Load(query, gal_keys_, relin_keys_);
 
   auto result_or = server_->ProcessRequest(payload);
   ASSERT_THAT(result_or.ok(), IsTrue())

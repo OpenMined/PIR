@@ -110,13 +110,15 @@ StatusOr<PIRPayload> PIRClient::CreateRequest(std::size_t desired_index) const {
   }
 
   GaloisKeys gal_keys;
+  RelinKeys relin_keys;
   try {
     gal_keys =
         keygen_->galois_keys_local(generate_galois_elts(poly_modulus_degree));
+    relin_keys = keygen_->relin_keys_local();
   } catch (const std::exception& e) {
     return InternalError(e.what());
   }
-  return PIRPayload::Load(query, gal_keys);
+  return PIRPayload::Load(query, gal_keys, relin_keys);
 }
 
 StatusOr<int64_t> PIRClient::ProcessResponse(const PIRPayload& response) const {
