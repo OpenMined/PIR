@@ -85,7 +85,7 @@ TEST_F(PIRClientTest, TestProcessResponse) {
   ASSERT_EQ(result, value);
 }
 
-TEST_F(PIRClientTest, TestPayloadSerialization) {
+TEST_F(PIRClientTest, TestRequestSerialization) {
   int64_t value = 987654321;
   Plaintext pt;
   Context()->Encoder()->encode(value, pt);
