@@ -65,7 +65,8 @@ Ciphertext multiply_dims(
     const seal::RelinKeys* const relin_keys, seal::Decryptor* const decryptor,
     size_t depth) {
   const size_t this_dimension = dimensions[0];
-  auto remaining_dimensions = vector(dimensions.begin() + 1, dimensions.end());
+  auto remaining_dimensions =
+      vector<uint32_t>(dimensions.begin() + 1, dimensions.end());
 
   string depth_string(depth, ' ');
 
