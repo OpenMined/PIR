@@ -53,7 +53,9 @@ class PIRDatabaseTest : public ::testing::Test {
  protected:
   void SetUp() { SetUpDB(100); }
 
-  void SetUpDB(size_t dbsize, size_t dimensions = 1) {
+  void SetUpDB(size_t dbsize, size_t dimensions = 1,
+               uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE) {
+    poly_modulus_degree_ = poly_modulus_degree;
     db_size_ = dbsize;
     rawdb_.resize(dbsize);
     std::generate(rawdb_.begin(), rawdb_.end(), [n = 0]() mutable {
@@ -63,7 +65,7 @@ class PIRDatabaseTest : public ::testing::Test {
 
     pir_params_ =
         PIRParameters::Create(rawdb_.size(), dimensions,
-                              generateEncryptionParams(POLY_MODULUS_DEGREE));
+                              generateEncryptionParams(poly_modulus_degree));
     pirdb_ = PIRDatabase::Create(rawdb_, pir_params_).ValueOrDie();
 
     seal_context_ =
@@ -80,6 +82,7 @@ class PIRDatabaseTest : public ::testing::Test {
   }
 
   size_t db_size_;
+  uint32_t poly_modulus_degree_;
   vector<std::int64_t> rawdb_;
   std::shared_ptr<PIRDatabase> pirdb_;
   shared_ptr<PIRParameters> pir_params_;
@@ -161,14 +164,15 @@ TEST_F(PIRDatabaseTest, TestMultiplySelectionVectorTooBig) {
 
 class MultiplyMultiDimTest
     : public PIRDatabaseTest,
-      public testing::WithParamInterface<tuple<uint32_t, uint32_t, uint32_t>> {
-};
+      public testing::WithParamInterface<
+          tuple<uint32_t, uint32_t, uint32_t, uint32_t>> {};
 
 TEST_P(MultiplyMultiDimTest, TestMultiply) {
-  const auto dbsize = get<0>(GetParam());
-  const auto d = get<1>(GetParam());
-  const auto desired_index = get<2>(GetParam());
-  SetUpDB(dbsize, d);
+  const auto poly_modulus_degree = get<0>(GetParam());
+  const auto dbsize = get<1>(GetParam());
+  const auto d = get<2>(GetParam());
+  const auto desired_index = get<3>(GetParam());
+  SetUpDB(dbsize, d, poly_modulus_degree);
   const auto dims = PIRParameters::calculate_dimensions(dbsize, d);
   const auto indices = PIRDatabase::calculate_indices(dims, desired_index);
 
@@ -188,27 +192,25 @@ TEST_P(MultiplyMultiDimTest, TestMultiply) {
     }
   }
 
-  auto results_or = pirdb_->multiply(cts);
+  auto relin_keys = keygen_->relin_keys_local();
+  auto results_or = pirdb_->multiply(cts, &relin_keys);
   ASSERT_THAT(results_or.ok(), IsTrue())
       << "Error: " << results_or.status().ToString();
   auto result_ct = results_or.ValueOrDie();
 
   Plaintext result_pt;
   decryptor_->decrypt(result_ct, result_pt);
-  auto result = encoder_->decode_int32(result_pt);
+  auto result = encoder_->decode_uint64(result_pt);
   EXPECT_THAT(result, Eq(rawdb_[desired_index]));
 }
 
-INSTANTIATE_TEST_SUITE_P(Multiplies, MultiplyMultiDimTest,
-                         testing::Values(make_tuple(10, 1, 7),
-                                         make_tuple(16, 2, 11),
-                                         make_tuple(16, 2, 0),
-                                         make_tuple(16, 2, 15),
-                                         make_tuple(82, 2, 42) /*,
-                                          make_tuple(117, 3, 17),
-                                          make_tuple(222, 4, 111),
-                                          make_tuple(28, 3, 2)*/
-                                         ));
+INSTANTIATE_TEST_SUITE_P(
+    Multiplies, MultiplyMultiDimTest,
+    testing::Values(make_tuple(4096, 10, 1, 7), make_tuple(4096, 16, 2, 11),
+                    make_tuple(4096, 16, 2, 0), make_tuple(4096, 16, 2, 15),
+                    make_tuple(4096, 82, 2, 42), make_tuple(8192, 27, 3, 2),
+                    make_tuple(8192, 117, 3, 17),
+                    make_tuple(8192, 222, 4, 111)));
 
 class CalculateIndicesTest
     : public testing::TestWithParam<

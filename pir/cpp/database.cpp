@@ -61,7 +61,9 @@ Ciphertext multiply_dims(
     vector<Ciphertext>::const_iterator selection_vector_it,
     const vector<Ciphertext>::const_iterator selection_vector_end,
     vector<Plaintext>::const_iterator& database_it,
-    const std::vector<Plaintext>::const_iterator database_end, size_t depth) {
+    const std::vector<Plaintext>::const_iterator database_end,
+    const seal::RelinKeys* const relin_keys, seal::Decryptor* const decryptor,
+    size_t depth) {
   const size_t this_dimension = dimensions[0];
   auto remaining_dimensions = vector(dimensions.begin() + 1, dimensions.end());
 
@@ -70,42 +72,66 @@ Ciphertext multiply_dims(
   Ciphertext result;
   bool first_pass = true;
   for (size_t i = 0; i < this_dimension; ++i) {
-    // std::cout << depth_string << "i = " << i << std::endl;
     // make sure we don't go past end of DB
     if (database_it == database_end) break;
     Ciphertext temp_ct;
     if (remaining_dimensions.empty()) {
       // base case: have to multiply against DB
-      // std::cout << depth_string << "Base case multiplication" << std::endl;
       evaluator.multiply_plain(*(selection_vector_it + i), *(database_it++),
                                temp_ct);
+      if (decryptor != nullptr) {
+        std::cout << depth_string << "i = " << i << " noise budget base "
+                  << decryptor->invariant_noise_budget(temp_ct) << std::endl;
+      }
 
     } else {
-      temp_ct = multiply_dims(
-          evaluator, remaining_dimensions, selection_vector_it + this_dimension,
-          selection_vector_end, database_it, database_end, depth + 1);
+      temp_ct = multiply_dims(evaluator, remaining_dimensions,
+                              selection_vector_it + this_dimension,
+                              selection_vector_end, database_it, database_end,
+                              relin_keys, decryptor, depth + 1);
+      if (decryptor != nullptr) {
+        std::cout << depth_string << "i = " << i << " noise budget recurse "
+                  << decryptor->invariant_noise_budget(temp_ct) << std::endl;
+      }
 
-      // std::cout << depth_string << "Multiplying by selection vector" <<
-      // std::endl;
       evaluator.multiply_inplace(temp_ct, *(selection_vector_it + i));
-      // TODO: relinearize after multiply?
+      if (decryptor != nullptr) {
+        std::cout << depth_string << "i = " << i << " noise budget after mult "
+                  << decryptor->invariant_noise_budget(temp_ct) << std::endl;
+      }
+
+      if (relin_keys != nullptr) {
+        evaluator.relinearize_inplace(temp_ct, *relin_keys);
+        if (decryptor != nullptr) {
+          std::cout << depth_string << "i = " << i << " noise budget relin "
+                    << decryptor->invariant_noise_budget(temp_ct) << std::endl;
+        }
+      }
     }
 
     if (first_pass) {
       result = temp_ct;
       first_pass = false;
     } else {
-      // std::cout << depth_string << "Summing" << std::endl;
       evaluator.add_inplace(result, temp_ct);
+      if (decryptor != nullptr) {
+        std::cout << depth_string << "i = " << i << " noise budget result "
+                  << decryptor->invariant_noise_budget(result) << std::endl;
+      }
     }
   }
-  // if (first_pass) std::cout << "Still on first pass!" << std::endl;
-  // std::cout << depth_string << "Finished" << std::endl;
+  if (decryptor != nullptr) {
+    std::cout << depth_string << "result noise budget "
+              << decryptor->invariant_noise_budget(result) << std::endl;
+  }
+
   return result;
 }
 
 StatusOr<Ciphertext> PIRDatabase::multiply(
-    const vector<Ciphertext>& selection_vector) const {
+    const vector<Ciphertext>& selection_vector,
+    const seal::RelinKeys* const relin_keys,
+    seal::Decryptor* const decryptor) const {
   auto dimensions = context_->Parameters()->Dimensions();
   const size_t dim_sum = std::accumulate(dimensions.begin(), dimensions.end(),
                                          decltype(dimensions)::value_type(0));
@@ -119,7 +145,7 @@ StatusOr<Ciphertext> PIRDatabase::multiply(
   try {
     return multiply_dims(*(context_->Evaluator()), dimensions,
                          selection_vector.begin(), selection_vector.end(),
-                         database_it, db_.end(), 0);
+                         database_it, db_.end(), relin_keys, decryptor, 0);
   } catch (std::exception& e) {
     return InternalError(e.what());
   }
