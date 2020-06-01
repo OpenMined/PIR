@@ -16,6 +16,7 @@
 #include "client.h"
 
 #include "absl/memory/memory.h"
+#include "database.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
 #include "util/status_macros.h"
@@ -68,7 +69,7 @@ StatusOr<PIRPayload> PIRClient::CreateRequest(std::size_t desired_index) const {
       context_->Parameters()->GetEncryptionParams().plain_modulus();
 
   auto dims = context_->Parameters()->Dimensions();
-  auto indices = calculate_indices(desired_index);
+  auto indices = PIRDatabase::calculate_indices(dims, desired_index);
 
   const size_t dim_sum =
       std::accumulate(dims.begin(), dims.end(), decltype(dims)::value_type(0));
@@ -133,16 +134,6 @@ StatusOr<int64_t> PIRClient::ProcessResponse(const PIRPayload& response) const {
     return InternalError(e.what());
   }
   return InternalError("Should never get here.");
-}
-
-vector<uint32_t> PIRClient::calculate_indices(uint32_t index) const {
-  const auto dims = context_->Parameters()->Dimensions();
-  vector<uint32_t> results(dims.size(), 0);
-  for (int i = results.size() - 1; i >= 0; --i) {
-    results[i] = index % dims[i];
-    index = index / dims[i];
-  }
-  return results;
 }
 
 }  // namespace pir

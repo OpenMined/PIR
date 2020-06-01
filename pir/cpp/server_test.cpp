@@ -60,7 +60,7 @@ class PIRServerTest : public ::testing::Test {
  protected:
   void SetUp() { SetUpDB(10); }
 
-  void SetUpDB(size_t dbsize) {
+  void SetUpDB(size_t dbsize, size_t dimensions = 1) {
     db_size_ = dbsize;
     db_.resize(dbsize);
     std::generate(db_.begin(), db_.end(), [n = 0]() mutable {
@@ -69,7 +69,7 @@ class PIRServerTest : public ::testing::Test {
     });
 
     pir_params_ = PIRParameters::Create(
-        db_.size(), 1, generateEncryptionParams(POLY_MODULUS_DEGREE));
+        db_.size(), dimensions, generateEncryptionParams(POLY_MODULUS_DEGREE));
     auto pirdb = PIRDatabase::Create(db_, pir_params_).ValueOrDie();
     server_ = PIRServer::Create(pirdb, pir_params_).ValueOrDie();
     ASSERT_THAT(server_, NotNull());
@@ -180,6 +180,35 @@ TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
   decryptor_->decrypt(result.Get()[0], result_pt);
   auto encoder = server_->Context()->Encoder();
   ASSERT_THAT(encoder->decode_int64(result_pt), 0);
+}
+
+TEST_F(PIRServerTest, TestProcessRequest_2Dim) {
+  SetUpDB(82, 2);
+  const size_t desired_index = 42;
+  Plaintext pt(POLY_MODULUS_DEGREE);
+  pt.set_zero();
+  // select 4th row
+  pt[4] = 1;
+  // select 6th column (after 10-item selection vector for rows)
+  pt[16] = 1;
+
+  vector<Ciphertext> query(1);
+  encryptor_->encrypt(pt, query[0]);
+  GaloisKeys gal_keys =
+      keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
+  auto payload = PIRPayload::Load(query, gal_keys);
+
+  auto result_or = server_->ProcessRequest(payload);
+  ASSERT_THAT(result_or.ok(), IsTrue())
+      << "Error: " << result_or.status().ToString();
+  auto result = result_or.ValueOrDie();
+  ASSERT_THAT(result.Get(), SizeIs(1));
+
+  Plaintext result_pt;
+  decryptor_->decrypt(result.Get()[0], result_pt);
+  auto encoder = server_->Context()->Encoder();
+  ASSERT_THAT(encoder->decode_int64(result_pt),
+              Eq(db_[desired_index] * 32 * 32));
 }
 
 class SubstituteOperatorTest

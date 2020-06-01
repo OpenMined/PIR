@@ -62,15 +62,6 @@ class PIRClient {
 
   PIRClient() = delete;
 
-  /**
-   * Helper function to calculate indices within the multi-dimensional
-   * representation of the database for a given index in the flat
-   * representation. Dimension sizes are taken from the current context.
-   * @param[in] index Index in the flat representation
-   * @returns Vector of indices
-   */
-  vector<uint32_t> calculate_indices(uint32_t index) const;
-
  private:
   PIRClient(std::unique_ptr<PIRContext>);
 

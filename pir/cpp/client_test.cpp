@@ -305,34 +305,4 @@ INSTANTIATE_TEST_SUITE_P(
         make_tuple(16384, 12288, 4096), make_tuple(16384, 12289, 4096),
         make_tuple(16384, 16383, 4096)));
 
-class CalculateIndicesTest
-    : public PIRClientTest,
-      public testing::WithParamInterface<
-          tuple<uint32_t, uint32_t, uint32_t, vector<uint32_t>>> {};
-
-TEST_P(CalculateIndicesTest, IndicesExamples) {
-  const auto num_items = get<0>(GetParam());
-  const auto d = get<1>(GetParam());
-  const auto desired_index = get<2>(GetParam());
-  const auto& expected_indices = get<3>(GetParam());
-  ASSERT_THAT(expected_indices, SizeIs(d));
-  SetUpDB(num_items, d);
-  ASSERT_THAT(Context()->Parameters()->Dimensions(),
-              ContainerEq(PIRParameters::calculate_dimensions(num_items, d)));
-  auto indices = client_->calculate_indices(desired_index);
-  EXPECT_THAT(indices, ContainerEq(expected_indices));
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    CalculateIndices, CalculateIndicesTest,
-    Values(make_tuple(100, 1, 42, vector<uint32_t>{42}),
-           make_tuple(100, 1, 7, vector<uint32_t>{7}),
-           make_tuple(84, 2, 7, vector<uint32_t>{0, 7}),
-           make_tuple(87, 2, 27, vector<uint32_t>{3, 0}),
-           make_tuple(87, 2, 42, vector<uint32_t>{4, 6}),
-           make_tuple(87, 2, 86, vector<uint32_t>{9, 5}),
-           make_tuple(82, 3, 3, vector<uint32_t>{0, 0, 3}),
-           make_tuple(82, 3, 20, vector<uint32_t>{1, 0, 0}),
-           make_tuple(82, 3, 75, vector<uint32_t>{3, 3, 3})));
-
 }  // namespace pir

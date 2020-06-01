@@ -55,14 +55,17 @@ StatusOr<PIRPayload> PIRServer::ProcessRequest(
     return InvalidArgumentError("Must have Galois Keys in request");
   }
 
+  const auto dimensions = context_->Parameters()->Dimensions();
+  size_t dim_sum = 0;
+  for (const auto d : dimensions) {
+    dim_sum += d;
+  }
+
   ASSIGN_OR_RETURN(
       auto selection_vector,
-      oblivious_expansion(payload.Get(), DBSize(), *payload.GetKeys()));
+      oblivious_expansion(payload.Get(), dim_sum, *payload.GetKeys()));
 
-  ASSIGN_OR_RETURN(auto mult_results, db_->multiply(selection_vector));
-
-  seal::Ciphertext result;
-  context_->Evaluator()->add_many(mult_results, result);
+  ASSIGN_OR_RETURN(seal::Ciphertext result, db_->multiply(selection_vector));
 
   return PIRPayload::Load(vector<seal::Ciphertext>{result});
 }
