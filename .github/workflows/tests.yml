@@ -25,3 +25,5 @@ jobs:
         run: .github/workflows/scripts/build_cpp.sh
       - name: C++ linters
         run: .github/workflows/scripts/lint_cpp.sh
+      - name: Bazel linters
+        run: .github/workflows/scripts/lint_bazel.sh
