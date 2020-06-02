@@ -95,9 +95,7 @@ TEST_F(PIRSerializationTest, TestRequestSerialization) {
 
   ASSERT_EQ(request.size(), 1);
   EXPECT_THAT(reloaded, ElementsAreArray(ct));
-  for (auto& elt : elts) {
-    ASSERT_TRUE(keys.has_key(elt));
-  }
+  ASSERT_THAT(keys, ElementsAreArray(elts));
 }
 
 }  // namespace pir
