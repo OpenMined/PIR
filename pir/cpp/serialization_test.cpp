@@ -56,10 +56,12 @@ TEST_F(PIRSerializationTest, TestResponseSerialization) {
   Response response_proto;
   SaveCiphertexts(ct, response_proto.mutable_response());
 
-  auto reloaded =
-      LoadCiphertexts(Context()->SEALContext(), response_proto.response())
-          .ValueOrDie();
+  auto reloaded_or =
+      LoadCiphertexts(Context()->SEALContext(), response_proto.response());
+  ASSERT_TRUE(reloaded_or.ok())
+      << "Status is: " << reloaded_or.status().ToString();
 
+  auto reloaded = reloaded_or.ValueOrDie();
   ASSERT_EQ(reloaded.size(), 1);
   EXPECT_THAT(reloaded, ElementsAreArray(ct));
 }
@@ -79,12 +81,17 @@ TEST_F(PIRSerializationTest, TestRequestSerialization) {
   SaveCiphertexts(ct, request_proto.mutable_query());
   SEALSerialize<GaloisKeys>(gal_keys, request_proto.mutable_keys());
 
-  auto request =
-      LoadCiphertexts(Context()->SEALContext(), request_proto.query())
-          .ValueOrDie();
-  auto keys = SEALDeserialize<GaloisKeys>(Context()->SEALContext(),
-                                          request_proto.keys())
-                  .ValueOrDie();
+  auto request_or =
+      LoadCiphertexts(Context()->SEALContext(), request_proto.query());
+  ASSERT_TRUE(request_or.ok())
+      << "Status is: " << request_or.status().ToString();
+
+  auto request = request_or.ValueOrDie();
+  auto keys_r = SEALDeserialize<GaloisKeys>(Context()->SEALContext(),
+                                            request_proto.keys())
+                    .ValueOrDie();
+  ASSERT_TRUE(keys_or.ok()) << "Status is: " << keys_or.status().ToString();
+  auto keys = keys_or.ValueOrDie();
 
   ASSERT_EQ(request.size(), 1);
   EXPECT_THAT(reloaded, ElementsAreArray(ct));
