@@ -17,8 +17,8 @@
 #ifndef PIR_CLIENT_H_
 #define PIR_CLIENT_H_
 
-#include "context.h"
-#include "payload.h"
+#include "pir/cpp/context.h"
+#include "pir/cpp/serialization.h"
 #include "util/statusor.h"
 
 namespace pir {
@@ -41,14 +41,14 @@ class PIRClient {
    * @param[in] desiredIndex Expected database value from an index
    * @returns InvalidArgument if the index is invalid or if the encryption fails
    **/
-  StatusOr<PIRPayload> CreateRequest(std::size_t /*index*/) const;
+  StatusOr<Request> CreateRequest(std::size_t /*index*/) const;
 
   /**
    * Extracts server response
    * @param[in] response Server output
    * @returns InvalidArgument if the decryption fails
    **/
-  StatusOr<int64_t> ProcessResponse(const PIRPayload& response) const;
+  StatusOr<int64_t> ProcessResponse(const Response& response) const;
 
   /**
    * Returns the database size.

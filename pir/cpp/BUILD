@@ -25,24 +25,24 @@ cc_library(
     srcs = ["client.cpp", "server.cpp", 
             "context.cpp", "context.h", 
             "parameters.h", "parameters.cpp",
-            "payload.h", "payload.cpp",
+            "serialization.h", "serialization.cpp",
             "database.cpp", "database.h",
             "utils.cpp", "utils.h",
             ],
     hdrs = ["client.h", "server.h"],
     includes = PIR_DEFAULT_INCLUDES,
     deps = [
+        "//pir/proto:payload_cc_proto",
         "@com_microsoft_seal//:seal",
         "@com_google_absl//absl/memory",
         "@private_join_and_compute//util:status",
-        "@com_tencent_rapidjson//:rapidjson",
     ],
    copts = PIR_DEFAULT_COPTS,
 )
 
 cc_test(
     name = "pir_test",
-    srcs = ["client_test.cpp", "server_test.cpp"],
+    srcs = ["client_test.cpp", "server_test.cpp", "serialization_test.cpp"],
     includes = PIR_DEFAULT_INCLUDES,
     deps = [
         ":pir",

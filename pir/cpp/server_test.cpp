@@ -14,16 +14,16 @@
 // limitations under the License.
 //
 
-#include "server.h"
+#include "pir/cpp/server.h"
 
 #include <algorithm>
 #include <iostream>
 #include <vector>
 
-#include "client.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "utils.h"
+#include "pir/cpp/client.h"
+#include "pir/cpp/utils.h"
 
 namespace pir {
 namespace {
@@ -98,8 +98,8 @@ class PIRServerTest : public ::testing::Test {
 TEST_F(PIRServerTest, TestCorrectness) {
   auto client = PIRClient::Create(pir_params_).ValueOrDie();
   const size_t desired_index = 5;
-  auto payload = client->CreateRequest(desired_index).ValueOrDie();
-  auto response = server_->ProcessRequest(payload).ValueOrDie();
+  auto request = client->CreateRequest(desired_index).ValueOrDie();
+  auto response = server_->ProcessRequest(request).ValueOrDie();
   auto result = client->ProcessResponse(response).ValueOrDie();
 
   ASSERT_EQ(result, db_[desired_index]);
@@ -115,16 +115,21 @@ TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
   encryptor_->encrypt(pt, query[0]);
   GaloisKeys gal_keys =
       keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
-  auto payload = PIRPayload::Load(query, gal_keys);
 
-  auto result_or = server_->ProcessRequest(payload);
+  Request request_proto;
+  SaveCiphertexts(query, request_proto.mutable_query());
+  SEALSerialize<GaloisKeys>(gal_keys, request_proto.mutable_keys());
+
+  auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue())
       << "Error: " << result_or.status().ToString();
-  auto result = result_or.ValueOrDie();
-  ASSERT_THAT(result.Get(), SizeIs(1));
+  auto result = LoadCiphertexts(server_->Context()->SEALContext(),
+                                result_or.ValueOrDie().reply())
+                    .ValueOrDie();
+  ASSERT_THAT(result, SizeIs(1));
 
   Plaintext result_pt;
-  decryptor_->decrypt(result.Get()[0], result_pt);
+  decryptor_->decrypt(result[0], result_pt);
   auto encoder = server_->Context()->Encoder();
   ASSERT_THAT(encoder->decode_int64(result_pt),
               Eq(db_[desired_index] * next_power_two(db_size_)));
@@ -142,16 +147,21 @@ TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
   encryptor_->encrypt(pt, query[1]);
   GaloisKeys gal_keys =
       keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
-  auto payload = PIRPayload::Load(query, gal_keys);
 
-  auto result_or = server_->ProcessRequest(payload);
+  Request request_proto;
+  SaveCiphertexts(query, request_proto.mutable_query());
+  SEALSerialize<GaloisKeys>(gal_keys, request_proto.mutable_keys());
+
+  auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue())
       << "Error: " << result_or.status().ToString();
-  auto result = result_or.ValueOrDie();
-  ASSERT_THAT(result.Get(), SizeIs(1));
+  auto result = LoadCiphertexts(server_->Context()->SEALContext(),
+                                result_or.ValueOrDie().reply())
+                    .ValueOrDie();
+  ASSERT_THAT(result, SizeIs(1));
 
   Plaintext result_pt;
-  decryptor_->decrypt(result.Get()[0], result_pt);
+  decryptor_->decrypt(result[0], result_pt);
   auto encoder = server_->Context()->Encoder();
   DEBUG_OUT("Expected DB value " << db_[desired_index]);
   DEBUG_OUT("Expected m " << next_power_two(db_size_ - POLY_MODULUS_DEGREE));
@@ -169,15 +179,21 @@ TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
   encryptor_->encrypt(pt, query[0]);
   GaloisKeys gal_keys =
       keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
-  auto payload = PIRPayload::Load(query, gal_keys);
 
-  auto result_or = server_->ProcessRequest(payload);
+  Request request_proto;
+  SaveCiphertexts(query, request_proto.mutable_query());
+  SEALSerialize<GaloisKeys>(gal_keys, request_proto.mutable_keys());
+
+  auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue());
-  auto result = result_or.ValueOrDie();
-  ASSERT_THAT(result.Get(), SizeIs(1));
+  auto result = LoadCiphertexts(server_->Context()->SEALContext(),
+                                result_or.ValueOrDie().reply())
+                    .ValueOrDie();
+
+  ASSERT_THAT(result, SizeIs(1));
 
   Plaintext result_pt;
-  decryptor_->decrypt(result.Get()[0], result_pt);
+  decryptor_->decrypt(result[0], result_pt);
   auto encoder = server_->Context()->Encoder();
   ASSERT_THAT(encoder->decode_int64(result_pt), 0);
 }

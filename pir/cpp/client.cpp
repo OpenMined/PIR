@@ -13,22 +13,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-#include "client.h"
+#include "pir/cpp/client.h"
 
 #include "absl/memory/memory.h"
+#include "pir/cpp/utils.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
 #include "util/status_macros.h"
 #include "util/statusor.h"
-#include "utils.h"
 
 namespace pir {
 
 using ::private_join_and_compute::InternalError;
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
-using seal::Ciphertext;
-using seal::Plaintext;
+using ::seal::Ciphertext;
+using ::seal::GaloisKeys;
+using ::seal::Plaintext;
 
 PIRClient::PIRClient(std::unique_ptr<PIRContext> context)
     : context_(std::move(context)) {
@@ -57,7 +58,7 @@ StatusOr<uint64_t> InvertMod(uint64_t m, const seal::Modulus& mod) {
   return inverse;
 }
 
-StatusOr<PIRPayload> PIRClient::CreateRequest(std::size_t desired_index) const {
+StatusOr<Request> PIRClient::CreateRequest(std::size_t desired_index) const {
   const auto poly_modulus_degree =
       context_->Parameters()->GetEncryptionParams().poly_modulus_degree();
   if (desired_index >= DBSize()) {
@@ -97,17 +98,26 @@ StatusOr<PIRPayload> PIRClient::CreateRequest(std::size_t desired_index) const {
   } catch (const std::exception& e) {
     return InternalError(e.what());
   }
-  return PIRPayload::Load(query, gal_keys);
+
+  Request request_proto;
+
+  RETURN_IF_ERROR(SaveCiphertexts(query, request_proto.mutable_query()));
+  RETURN_IF_ERROR(
+      SEALSerialize<GaloisKeys>(gal_keys, request_proto.mutable_keys()));
+
+  return request_proto;
 }
 
-StatusOr<int64_t> PIRClient::ProcessResponse(const PIRPayload& response) const {
-  if (response.Get().size() != 1) {
+StatusOr<int64_t> PIRClient::ProcessResponse(
+    const Response& response_proto) const {
+  ASSIGN_OR_RETURN(auto response, LoadCiphertexts(context_->SEALContext(),
+                                                  response_proto.reply()));
+  if (response.size() != 1) {
     return InvalidArgumentError("Number of ciphertexts in response must be 1");
   }
-
   seal::Plaintext plaintext;
   try {
-    decryptor_->decrypt(response.Get()[0], plaintext);
+    decryptor_->decrypt(response[0], plaintext);
     // have to divide the integer result by the the next power of 2 greater than
     // number of items in oblivious expansion.
     return context_->Encoder()->decode_int64(plaintext);

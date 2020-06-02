@@ -13,16 +13,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-#include "server.h"
+#include "pir/cpp/server.h"
 
 #include "absl/memory/memory.h"
-#include "payload.h"
+#include "pir/cpp/utils.h"
 #include "seal/seal.h"
 #include "seal/util/polyarithsmallmod.h"
 #include "util/canonical_errors.h"
 #include "util/status_macros.h"
 #include "util/statusor.h"
-#include "utils.h"
 
 namespace pir {
 
@@ -30,6 +29,7 @@ using ::private_join_and_compute::InternalError;
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::Status;
 using ::private_join_and_compute::StatusOr;
+using ::seal::GaloisKeys;
 
 PIRServer::PIRServer(std::unique_ptr<PIRContext> context,
                      std::shared_ptr<PIRDatabase> db)
@@ -49,22 +49,27 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
   return PIRServer::Create(db, PIRParameters::Create(db->size()));
 }
 
-StatusOr<PIRPayload> PIRServer::ProcessRequest(
-    const PIRPayload& payload) const {
-  if (!payload.GetKeys()) {
-    return InvalidArgumentError("Must have Galois Keys in request");
-  }
+StatusOr<Response> PIRServer::ProcessRequest(
+    const Request& request_proto) const {
+  ASSIGN_OR_RETURN(auto query, LoadCiphertexts(context_->SEALContext(),
+                                               request_proto.query()));
+  ASSIGN_OR_RETURN(auto keys,
+                   SEALDeserialize<GaloisKeys>(context_->SEALContext(),
+                                               request_proto.keys()));
 
-  ASSIGN_OR_RETURN(
-      auto selection_vector,
-      oblivious_expansion(payload.Get(), DBSize(), *payload.GetKeys()));
+  ASSIGN_OR_RETURN(auto selection_vector,
+                   oblivious_expansion(query, DBSize(), keys));
 
   ASSIGN_OR_RETURN(auto mult_results, db_->multiply(selection_vector));
 
   seal::Ciphertext result;
   context_->Evaluator()->add_many(mult_results, result);
 
-  return PIRPayload::Load(vector<seal::Ciphertext>{result});
+  Response response;
+  RETURN_IF_ERROR(SaveCiphertexts(vector<seal::Ciphertext>{result},
+                                  response.mutable_reply()));
+
+  return response;
 }
 
 Status PIRServer::substitute_power_x_inplace(

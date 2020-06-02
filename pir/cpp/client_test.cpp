@@ -14,27 +14,29 @@
 // limitations under the License.
 //
 
-#include "client.h"
+#include "pir/cpp/client.h"
 
 #include "gtest/gtest.h"
-#include "utils.h"
+#include "pir/cpp/server.h"
+#include "pir/cpp/utils.h"
 
 namespace pir {
 
-using seal::Ciphertext;
-using seal::Plaintext;
+using namespace seal;
 using std::get;
 using std::make_tuple;
+using std::make_unique;
 using std::tuple;
 
 class PIRClientTest : public ::testing::Test {
  protected:
-  static constexpr std::size_t DB_SIZE = 10;
+  static constexpr std::size_t DB_SIZE = 100;
   void SetUp() { SetUpDB(DB_SIZE); }
 
   void SetUpDB(size_t dbsize) {
     pir_params_ = PIRParameters::Create(dbsize);
     client_ = PIRClient::Create(pir_params_).ValueOrDie();
+
     ASSERT_TRUE(client_ != nullptr);
   }
 
@@ -49,10 +51,13 @@ class PIRClientTest : public ::testing::Test {
 TEST_F(PIRClientTest, TestCreateRequest) {
   const size_t desired_index = 5;
 
-  auto payload = client_->CreateRequest(desired_index).ValueOrDie();
+  auto req_proto = client_->CreateRequest(desired_index).ValueOrDie();
+  auto req =
+      LoadCiphertexts(Context()->SEALContext(), req_proto.query()).ValueOrDie();
+
   Plaintext pt;
-  ASSERT_EQ(payload.Get().size(), 1);
-  Decryptor()->decrypt(payload.Get()[0], pt);
+  ASSERT_EQ(req.size(), 1);
+  Decryptor()->decrypt(req[0], pt);
 
   const auto plain_mod =
       pir_params_->GetEncryptionParams().plain_modulus().value();
@@ -72,15 +77,17 @@ TEST_F(PIRClientTest, TestProcessResponse) {
   Context()->Encoder()->encode(value, pt);
   vector<Ciphertext> ct(1);
   Encryptor()->encrypt(pt, ct[0]);
-  PIRPayload payload = PIRPayload::Load(ct);
 
-  auto result = client_->ProcessResponse(payload).ValueOrDie();
+  Response response;
+  SaveCiphertexts(ct, response.mutable_reply());
+
+  auto result = client_->ProcessResponse(response).ValueOrDie();
   ASSERT_EQ(result, value);
 }
 
 TEST_F(PIRClientTest, TestCreateRequest_InvalidIndex) {
-  auto payload_or = client_->CreateRequest(DB_SIZE + 1);
-  ASSERT_EQ(payload_or.status().code(),
+  auto request_or = client_->CreateRequest(DB_SIZE + 1);
+  ASSERT_EQ(request_or.status().code(),
             private_join_and_compute::StatusCode::kInvalidArgument);
 }
 
@@ -98,13 +105,15 @@ TEST_P(CreateRequestTest, TestCreateRequest_MoreThanOneCT) {
   const auto plain_mod =
       pir_params_->GetEncryptionParams().plain_modulus().value();
 
-  auto payload_or = client_->CreateRequest(desired_index);
-  ASSERT_TRUE(payload_or.ok())
-      << "Status is: " << payload_or.status().ToString();
-  auto payload = payload_or.ValueOrDie();
-  ASSERT_EQ(payload.Get().size(), dbsize / poly_modulus_degree + 1);
+  auto request_or = client_->CreateRequest(desired_index);
+  ASSERT_TRUE(request_or.ok())
+      << "Status is: " << request_or.status().ToString();
+  auto query =
+      LoadCiphertexts(Context()->SEALContext(), request_or.ValueOrDie().query())
+          .ValueOrDie();
+  ASSERT_EQ(query.size(), dbsize / poly_modulus_degree + 1);
 
-  for (const auto& ct : payload.Get()) {
+  for (const auto& ct : query) {
     Plaintext pt;
     Decryptor()->decrypt(ct, pt);
     for (size_t i = 0; i < pt.coeff_count(); ++i) {
