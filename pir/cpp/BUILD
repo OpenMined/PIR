@@ -18,49 +18,63 @@ package(default_visibility = ["//visibility:public"])
 
 PIR_DEFAULT_INCLUDES = ["."]
 
-PIR_DEFAULT_COPTS =  ["-std=c++17"]
+PIR_DEFAULT_COPTS = ["-std=c++17"]
 
 cc_library(
     name = "pir",
-    srcs = ["client.cpp", "server.cpp", 
-            "context.cpp", "context.h", 
-            "parameters.h", "parameters.cpp",
-            "serialization.h", "serialization.cpp",
-            "database.cpp", "database.h",
-            "utils.cpp", "utils.h",
-            ],
-    hdrs = ["client.h", "server.h"],
+    srcs = [
+        "client.cpp",
+        "context.cpp",
+        "context.h",
+        "database.cpp",
+        "database.h",
+        "parameters.cpp",
+        "parameters.h",
+        "serialization.cpp",
+        "serialization.h",
+        "server.cpp",
+        "utils.cpp",
+        "utils.h",
+    ],
+    hdrs = [
+        "client.h",
+        "server.h",
+    ],
+    copts = PIR_DEFAULT_COPTS,
     includes = PIR_DEFAULT_INCLUDES,
     deps = [
         "//pir/proto:payload_cc_proto",
-        "@com_microsoft_seal//:seal",
         "@com_google_absl//absl/memory",
+        "@com_microsoft_seal//:seal",
         "@private_join_and_compute//util:status",
     ],
-   copts = PIR_DEFAULT_COPTS,
 )
 
 cc_test(
     name = "pir_test",
-    srcs = ["client_test.cpp", "server_test.cpp", "serialization_test.cpp"],
+    srcs = [
+        "client_test.cpp",
+        "serialization_test.cpp",
+        "server_test.cpp",
+    ],
+    copts = PIR_DEFAULT_COPTS,
     includes = PIR_DEFAULT_INCLUDES,
+    linkstatic = True,
     deps = [
         ":pir",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
-    
     ],
-   copts = PIR_DEFAULT_COPTS,
-   linkstatic = True,
 )
+
 cc_binary(
     name = "benchmark",
     srcs = ["benchmark.cpp"],
+    copts = PIR_DEFAULT_COPTS,
+    includes = PIR_DEFAULT_INCLUDES,
+    linkstatic = True,
     deps = [
         ":pir",
         "@com_google_benchmark//:benchmark_main",
     ],
-    includes = PIR_DEFAULT_INCLUDES,
-    copts = PIR_DEFAULT_COPTS,
-    linkstatic = True,
 )
