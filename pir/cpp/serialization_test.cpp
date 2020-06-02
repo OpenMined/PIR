@@ -53,11 +53,12 @@ TEST_F(PIRSerializationTest, TestResponseSerialization) {
   vector<Ciphertext> ct(1);
   Encryptor()->encrypt(pt, ct[0]);
 
-  Response reply_proto;
-  SaveCiphertexts(ct, reply_proto.mutable_reply());
+  Response response_proto;
+  SaveCiphertexts(ct, response_proto.mutable_response());
 
-  auto reloaded = LoadCiphertexts(Context()->SEALContext(), reply_proto.reply())
-                      .ValueOrDie();
+  auto reloaded =
+      LoadCiphertexts(Context()->SEALContext(), response_proto.response())
+          .ValueOrDie();
 
   ASSERT_EQ(reloaded.size(), 1);
 }
@@ -73,16 +74,17 @@ TEST_F(PIRSerializationTest, TestRequestSerialization) {
   auto elts = generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE);
   GaloisKeys gal_keys = keygen_->galois_keys_local(elts);
 
-  Request proto_query;
-  SaveCiphertexts(ct, proto_query.mutable_query());
+  Request request_proto;
+  SaveCiphertexts(ct, request_proto.mutable_query());
   auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
-  proto_query.set_keys(encoded_keys);
+  request_proto.set_keys(encoded_keys);
 
-  auto request = LoadCiphertexts(Context()->SEALContext(), proto_query.query())
-                     .ValueOrDie();
-  auto keys =
-      SEALDeserialize<GaloisKeys>(Context()->SEALContext(), proto_query.keys())
+  auto request =
+      LoadCiphertexts(Context()->SEALContext(), request_proto.query())
           .ValueOrDie();
+  auto keys = SEALDeserialize<GaloisKeys>(Context()->SEALContext(),
+                                          request_proto.keys())
+                  .ValueOrDie();
 
   ASSERT_EQ(request.size(), 1);
   for (auto& elt : elts) {

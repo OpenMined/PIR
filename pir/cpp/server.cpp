@@ -51,25 +51,25 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
 
 StatusOr<Response> PIRServer::ProcessRequest(
     const Request& request_proto) const {
-  ASSIGN_OR_RETURN(auto request, LoadCiphertexts(context_->SEALContext(),
-                                                 request_proto.query()));
+  ASSIGN_OR_RETURN(auto query, LoadCiphertexts(context_->SEALContext(),
+                                               request_proto.query()));
   ASSIGN_OR_RETURN(auto keys,
                    SEALDeserialize<GaloisKeys>(context_->SEALContext(),
                                                request_proto.keys()));
 
   ASSIGN_OR_RETURN(auto selection_vector,
-                   oblivious_expansion(request, DBSize(), keys));
+                   oblivious_expansion(query, DBSize(), keys));
 
   ASSIGN_OR_RETURN(auto mult_results, db_->multiply(selection_vector));
 
   seal::Ciphertext result;
   context_->Evaluator()->add_many(mult_results, result);
 
-  Response reply;
-  RETURN_IF_ERROR(
-      SaveCiphertexts(vector<seal::Ciphertext>{result}, reply.mutable_reply()));
+  Response response;
+  RETURN_IF_ERROR(SaveCiphertexts(vector<seal::Ciphertext>{result},
+                                  response.mutable_reply()));
 
-  return reply;
+  return response;
 }
 
 Status PIRServer::substitute_power_x_inplace(

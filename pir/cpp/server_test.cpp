@@ -98,8 +98,8 @@ class PIRServerTest : public ::testing::Test {
 TEST_F(PIRServerTest, TestCorrectness) {
   auto client = PIRClient::Create(pir_params_).ValueOrDie();
   const size_t desired_index = 5;
-  auto payload = client->CreateRequest(desired_index).ValueOrDie();
-  auto response = server_->ProcessRequest(payload).ValueOrDie();
+  auto request = client->CreateRequest(desired_index).ValueOrDie();
+  auto response = server_->ProcessRequest(request).ValueOrDie();
   auto result = client->ProcessResponse(response).ValueOrDie();
 
   ASSERT_EQ(result, db_[desired_index]);
@@ -111,15 +111,15 @@ TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
   pt.set_zero();
   pt[desired_index] = 1;
 
-  vector<Ciphertext> request(1);
-  encryptor_->encrypt(pt, request[0]);
+  vector<Ciphertext> query(1);
+  encryptor_->encrypt(pt, query[0]);
   GaloisKeys gal_keys =
       keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
 
-  auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
-
   Request proto_request;
-  SaveCiphertexts(request, proto_request.mutable_query());
+  SaveCiphertexts(query, proto_request.mutable_query());
+
+  auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
   proto_request.set_keys(encoded_keys);
 
   auto result_or = server_->ProcessRequest(proto_request);
@@ -143,17 +143,17 @@ TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
   Plaintext pt(POLY_MODULUS_DEGREE);
   pt.set_zero();
 
-  vector<Ciphertext> request(2);
-  encryptor_->encrypt(pt, request[0]);
+  vector<Ciphertext> query(2);
+  encryptor_->encrypt(pt, query[0]);
   pt[desired_index - POLY_MODULUS_DEGREE] = 1;
-  encryptor_->encrypt(pt, request[1]);
+  encryptor_->encrypt(pt, query[1]);
   GaloisKeys gal_keys =
       keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
 
   auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
 
   Request proto_request;
-  SaveCiphertexts(request, proto_request.mutable_query());
+  SaveCiphertexts(query, proto_request.mutable_query());
   proto_request.set_keys(encoded_keys);
 
   auto result_or = server_->ProcessRequest(proto_request);
@@ -179,15 +179,15 @@ TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
   Plaintext pt(POLY_MODULUS_DEGREE);
   pt.set_zero();
 
-  vector<Ciphertext> request(1);
-  encryptor_->encrypt(pt, request[0]);
+  vector<Ciphertext> query(1);
+  encryptor_->encrypt(pt, query[0]);
   GaloisKeys gal_keys =
       keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
 
   auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
 
   Request proto_request;
-  SaveCiphertexts(request, proto_request.mutable_query());
+  SaveCiphertexts(query, proto_request.mutable_query());
   proto_request.set_keys(encoded_keys);
 
   auto result_or = server_->ProcessRequest(proto_request);

@@ -78,16 +78,16 @@ TEST_F(PIRClientTest, TestProcessResponse) {
   vector<Ciphertext> ct(1);
   Encryptor()->encrypt(pt, ct[0]);
 
-  Response reply;
-  SaveCiphertexts(ct, reply.mutable_reply());
+  Response response;
+  SaveCiphertexts(ct, response.mutable_reply());
 
-  auto result = client_->ProcessResponse(reply).ValueOrDie();
+  auto result = client_->ProcessResponse(response).ValueOrDie();
   ASSERT_EQ(result, value);
 }
 
 TEST_F(PIRClientTest, TestCreateRequest_InvalidIndex) {
-  auto payload_or = client_->CreateRequest(DB_SIZE + 1);
-  ASSERT_EQ(payload_or.status().code(),
+  auto request_or = client_->CreateRequest(DB_SIZE + 1);
+  ASSERT_EQ(request_or.status().code(),
             private_join_and_compute::StatusCode::kInvalidArgument);
 }
 
@@ -105,15 +105,15 @@ TEST_P(CreateRequestTest, TestCreateRequest_MoreThanOneCT) {
   const auto plain_mod =
       pir_params_->GetEncryptionParams().plain_modulus().value();
 
-  auto payload_or = client_->CreateRequest(desired_index);
-  ASSERT_TRUE(payload_or.ok())
-      << "Status is: " << payload_or.status().ToString();
-  auto payload =
-      LoadCiphertexts(Context()->SEALContext(), payload_or.ValueOrDie().query())
+  auto request_or = client_->CreateRequest(desired_index);
+  ASSERT_TRUE(request_or.ok())
+      << "Status is: " << request_or.status().ToString();
+  auto query =
+      LoadCiphertexts(Context()->SEALContext(), request_or.ValueOrDie().query())
           .ValueOrDie();
-  ASSERT_EQ(payload.size(), dbsize / poly_modulus_degree + 1);
+  ASSERT_EQ(query.size(), dbsize / poly_modulus_degree + 1);
 
-  for (const auto& ct : payload) {
+  for (const auto& ct : query) {
     Plaintext pt;
     Decryptor()->decrypt(ct, pt);
     for (size_t i = 0; i < pt.coeff_count(); ++i) {

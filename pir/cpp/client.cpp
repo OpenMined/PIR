@@ -95,19 +95,18 @@ StatusOr<Request> PIRClient::CreateRequest(std::size_t desired_index) const {
   try {
     gal_keys =
         keygen_->galois_keys_local(generate_galois_elts(poly_modulus_degree));
-
   } catch (const std::exception& e) {
     return InternalError(e.what());
   }
 
-  Request proto_query;
+  Request request_proto;
 
-  RETURN_IF_ERROR(SaveCiphertexts(query, proto_query.mutable_query()));
+  RETURN_IF_ERROR(SaveCiphertexts(query, request_proto.mutable_query()));
   ASSIGN_OR_RETURN(auto encoded_keys, SEALSerialize<GaloisKeys>(gal_keys));
 
-  proto_query.set_keys(encoded_keys);
+  request_proto.set_keys(encoded_keys);
 
-  return proto_query;
+  return request_proto;
 }
 
 StatusOr<int64_t> PIRClient::ProcessResponse(
