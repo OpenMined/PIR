@@ -21,8 +21,8 @@
 
 #include "context.h"
 #include "database.h"
-#include "payload.h"
 #include "seal/seal.h"
+#include "serialization.h"
 #include "util/statusor.h"
 
 namespace pir {

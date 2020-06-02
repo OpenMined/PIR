@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-#include "payload.h"
+#include "serialization.h"
 
 #include "seal/seal.h"
 #include "util/canonical_errors.h"

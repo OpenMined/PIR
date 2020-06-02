@@ -18,7 +18,7 @@
 #define PIR_CLIENT_H_
 
 #include "context.h"
-#include "payload.h"
+#include "serialization.h"
 #include "util/statusor.h"
 
 namespace pir {

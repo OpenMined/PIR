@@ -85,42 +85,6 @@ TEST_F(PIRClientTest, TestProcessResponse) {
   ASSERT_EQ(result, value);
 }
 
-TEST_F(PIRClientTest, TestRequestSerialization) {
-  int64_t value = 987654321;
-  Plaintext pt;
-  Context()->Encoder()->encode(value, pt);
-  vector<Ciphertext> ct(1);
-  Encryptor()->encrypt(pt, ct[0]);
-
-  Response reply_proto;
-  SaveCiphertexts(ct, reply_proto.mutable_reply());
-
-  auto reloaded = LoadCiphertexts(Context()->SEALContext(), reply_proto.reply())
-                      .ValueOrDie();
-
-  ASSERT_EQ(reloaded.size(), 1);
-
-  auto keygen_ = make_unique<KeyGenerator>(Context()->SEALContext());
-  auto elts = generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE);
-  GaloisKeys gal_keys = keygen_->galois_keys_local(elts);
-
-  Request proto_query;
-  SaveCiphertexts(ct, proto_query.mutable_query());
-  auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
-  proto_query.set_keys(encoded_keys);
-
-  auto request = LoadCiphertexts(Context()->SEALContext(), proto_query.query())
-                     .ValueOrDie();
-  auto keys =
-      SEALDeserialize<GaloisKeys>(Context()->SEALContext(), proto_query.keys())
-          .ValueOrDie();
-
-  ASSERT_EQ(request.size(), 1);
-  for (auto& elt : elts) {
-    ASSERT_TRUE(keys.has_key(elt));
-  }
-}
-
 TEST_F(PIRClientTest, TestCreateRequest_InvalidIndex) {
   auto payload_or = client_->CreateRequest(DB_SIZE + 1);
   ASSERT_EQ(payload_or.status().code(),

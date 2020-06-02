@@ -16,7 +16,6 @@
 #include "server.h"
 
 #include "absl/memory/memory.h"
-#include "payload.h"
 #include "seal/seal.h"
 #include "seal/util/polyarithsmallmod.h"
 #include "util/canonical_errors.h"

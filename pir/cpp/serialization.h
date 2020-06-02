@@ -14,8 +14,8 @@
 // limitations under the License.
 //
 
-#ifndef PIR_PAYLOAD_H_
-#define PIR_PAYLOAD_H_
+#ifndef PIR_SERIALIZATION_H_
+#define PIR_SERIALIZATION_H_
 
 #include <string>
 
@@ -89,4 +89,4 @@ StatusOr<T> SEALDeserialize(const std::shared_ptr<seal::SEALContext>& sealctx,
 }
 }  // namespace pir
 
-#endif  // PIR_PAYLOAD_H_
+#endif  // PIR_SERIALIZATION_H_

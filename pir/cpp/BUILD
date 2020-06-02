@@ -25,7 +25,7 @@ cc_library(
     srcs = ["client.cpp", "server.cpp", 
             "context.cpp", "context.h", 
             "parameters.h", "parameters.cpp",
-            "payload.h", "payload.cpp",
+            "serialization.h", "serialization.cpp",
             "database.cpp", "database.h",
             "utils.cpp", "utils.h",
             ],
@@ -42,7 +42,7 @@ cc_library(
 
 cc_test(
     name = "pir_test",
-    srcs = ["client_test.cpp", "server_test.cpp"],
+    srcs = ["client_test.cpp", "server_test.cpp", "serialization.cpp"],
     includes = PIR_DEFAULT_INCLUDES,
     deps = [
         ":pir",
