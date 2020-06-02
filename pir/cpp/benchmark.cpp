@@ -1,7 +1,7 @@
 #include "benchmark/benchmark.h"
 
-#include "client.h"
-#include "server.h"
+#include "pir/cpp/client.h"
+#include "pir/cpp/server.h"
 
 namespace pir {
 

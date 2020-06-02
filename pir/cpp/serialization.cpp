@@ -13,8 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-#include "serialization.h"
+#include "pir/cpp/serialization.h"
 
+#include "pir/cpp/utils.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
 #include "util/status_macros.h"
@@ -46,9 +47,8 @@ Status SaveCiphertexts(const std::vector<seal::Ciphertext>& ciphertexts,
   }
 
   for (size_t idx = 0; idx < ciphertexts.size(); ++idx) {
-    ASSIGN_OR_RETURN(auto ciphertext_str,
-                     SEALSerialize<Ciphertext>(ciphertexts[idx]));
-    output->add_ct(ciphertext_str);
+    RETURN_IF_ERROR(
+        SEALSerialize<Ciphertext>(ciphertexts[idx], output->add_ct()));
   }
   return Status::OK;
 }

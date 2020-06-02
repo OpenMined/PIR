@@ -13,15 +13,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-#include "server.h"
+#include "pir/cpp/server.h"
 
 #include "absl/memory/memory.h"
+#include "pir/cpp/utils.h"
 #include "seal/seal.h"
 #include "seal/util/polyarithsmallmod.h"
 #include "util/canonical_errors.h"
 #include "util/status_macros.h"
 #include "util/statusor.h"
-#include "utils.h"
 
 namespace pir {
 

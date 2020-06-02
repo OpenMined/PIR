@@ -19,10 +19,10 @@
 
 #include <vector>
 
-#include "context.h"
-#include "database.h"
+#include "pir/cpp/context.h"
+#include "pir/cpp/database.h"
+#include "pir/cpp/serialization.h"
 #include "seal/seal.h"
-#include "serialization.h"
 #include "util/statusor.h"
 
 namespace pir {

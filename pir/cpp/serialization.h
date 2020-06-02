@@ -54,7 +54,10 @@ Status SaveCiphertexts(const std::vector<seal::Ciphertext>& buff,
  * @returns InternalError if the encoding fails.
  **/
 template <class T>
-StatusOr<std::string> SEALSerialize(const T& sealobj) {
+Status SEALSerialize(const T& sealobj, std::string* output) {
+  if (output == nullptr) {
+    return InvalidArgumentError("output nullptr");
+  }
   std::stringstream stream;
 
   try {
@@ -63,7 +66,8 @@ StatusOr<std::string> SEALSerialize(const T& sealobj) {
     return InternalError(e.what());
   }
 
-  return stream.str();
+  *output = stream.str();
+  return Status::OK;
 }
 
 /**

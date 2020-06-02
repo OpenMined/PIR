@@ -14,10 +14,10 @@
 // limitations under the License.
 //
 
-#include "serialization.h"
+#include "pir/cpp/serialization.h"
 
 #include "gtest/gtest.h"
-#include "utils.h"
+#include "pir/cpp/utils.h"
 
 namespace pir {
 
@@ -77,8 +77,7 @@ TEST_F(PIRSerializationTest, TestRequestSerialization) {
 
   Request request_proto;
   SaveCiphertexts(ct, request_proto.mutable_query());
-  auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
-  request_proto.set_keys(encoded_keys);
+  SEALSerialize<GaloisKeys>(gal_keys, request_proto.mutable_keys());
 
   auto request =
       LoadCiphertexts(Context()->SEALContext(), request_proto.query())

@@ -13,14 +13,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-#include "client.h"
+#include "pir/cpp/client.h"
 
 #include "absl/memory/memory.h"
+#include "pir/cpp/utils.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
 #include "util/status_macros.h"
 #include "util/statusor.h"
-#include "utils.h"
 
 namespace pir {
 
@@ -102,9 +102,8 @@ StatusOr<Request> PIRClient::CreateRequest(std::size_t desired_index) const {
   Request request_proto;
 
   RETURN_IF_ERROR(SaveCiphertexts(query, request_proto.mutable_query()));
-  ASSIGN_OR_RETURN(auto encoded_keys, SEALSerialize<GaloisKeys>(gal_keys));
-
-  request_proto.set_keys(encoded_keys);
+  RETURN_IF_ERROR(
+      SEALSerialize<GaloisKeys>(gal_keys, request_proto.mutable_keys()));
 
   return request_proto;
 }

@@ -14,16 +14,16 @@
 // limitations under the License.
 //
 
-#include "server.h"
+#include "pir/cpp/server.h"
 
 #include <algorithm>
 #include <iostream>
 #include <vector>
 
-#include "client.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "utils.h"
+#include "pir/cpp/client.h"
+#include "pir/cpp/utils.h"
 
 namespace pir {
 namespace {
@@ -118,9 +118,7 @@ TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
 
   Request request_proto;
   SaveCiphertexts(query, request_proto.mutable_query());
-
-  auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
-  request_proto.set_keys(encoded_keys);
+  SEALSerialize<GaloisKeys>(gal_keys, request_proto.mutable_keys());
 
   auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue())
@@ -150,11 +148,9 @@ TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
   GaloisKeys gal_keys =
       keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
 
-  auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
-
   Request request_proto;
   SaveCiphertexts(query, request_proto.mutable_query());
-  request_proto.set_keys(encoded_keys);
+  SEALSerialize<GaloisKeys>(gal_keys, request_proto.mutable_keys());
 
   auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue())
@@ -184,11 +180,9 @@ TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
   GaloisKeys gal_keys =
       keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
 
-  auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
-
   Request request_proto;
   SaveCiphertexts(query, request_proto.mutable_query());
-  request_proto.set_keys(encoded_keys);
+  SEALSerialize<GaloisKeys>(gal_keys, request_proto.mutable_keys());
 
   auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue());

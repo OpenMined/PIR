@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-#include "utils.h"
+#include "pir/cpp/utils.h"
 
 #include "gtest/gtest.h"
 
