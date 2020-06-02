@@ -1,8 +1,6 @@
 #!/bin/sh
 set -e
 
-go get github.com/bazelbuild/buildtools/buildifier
-
 # Lint files (all BUILD) inplace.
 find ./pir/  \( -iname BUILD \) | xargs buildifier
 if [ $? -ne 0 ]

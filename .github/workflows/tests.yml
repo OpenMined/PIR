@@ -20,6 +20,13 @@ jobs:
   Linters:
     runs-on: ubuntu-latest
     steps:
+      - name: Install toolchains
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.13.3
+        id: go
+      - name: Install linters
+        run: go get github.com/bazelbuild/buildtools/buildifier
       - uses: actions/checkout@v2
       - name: C++ Build
         run: .github/workflows/scripts/build_cpp.sh
@@ -27,3 +34,4 @@ jobs:
         run: .github/workflows/scripts/lint_cpp.sh
       - name: Bazel linters
         run: .github/workflows/scripts/lint_bazel.sh
+      
