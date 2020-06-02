@@ -61,6 +61,7 @@ TEST_F(PIRSerializationTest, TestResponseSerialization) {
           .ValueOrDie();
 
   ASSERT_EQ(reloaded.size(), 1);
+  EXPECT_THAT(reloaded, ElementsAreArray(ct));
 }
 
 TEST_F(PIRSerializationTest, TestRequestSerialization) {
@@ -87,6 +88,7 @@ TEST_F(PIRSerializationTest, TestRequestSerialization) {
                   .ValueOrDie();
 
   ASSERT_EQ(request.size(), 1);
+  EXPECT_THAT(reloaded, ElementsAreArray(ct));
   for (auto& elt : elts) {
     ASSERT_TRUE(keys.has_key(elt));
   }

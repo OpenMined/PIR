@@ -116,13 +116,13 @@ TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
   GaloisKeys gal_keys =
       keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
 
-  Request proto_request;
-  SaveCiphertexts(query, proto_request.mutable_query());
+  Request request_proto;
+  SaveCiphertexts(query, request_proto.mutable_query());
 
   auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
-  proto_request.set_keys(encoded_keys);
+  request_proto.set_keys(encoded_keys);
 
-  auto result_or = server_->ProcessRequest(proto_request);
+  auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue())
       << "Error: " << result_or.status().ToString();
   auto result = LoadCiphertexts(server_->Context()->SEALContext(),
@@ -152,11 +152,11 @@ TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
 
   auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
 
-  Request proto_request;
-  SaveCiphertexts(query, proto_request.mutable_query());
-  proto_request.set_keys(encoded_keys);
+  Request request_proto;
+  SaveCiphertexts(query, request_proto.mutable_query());
+  request_proto.set_keys(encoded_keys);
 
-  auto result_or = server_->ProcessRequest(proto_request);
+  auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue())
       << "Error: " << result_or.status().ToString();
   auto result = LoadCiphertexts(server_->Context()->SEALContext(),
@@ -186,11 +186,11 @@ TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
 
   auto encoded_keys = SEALSerialize<GaloisKeys>(gal_keys).ValueOrDie();
 
-  Request proto_request;
-  SaveCiphertexts(query, proto_request.mutable_query());
-  proto_request.set_keys(encoded_keys);
+  Request request_proto;
+  SaveCiphertexts(query, request_proto.mutable_query());
+  request_proto.set_keys(encoded_keys);
 
-  auto result_or = server_->ProcessRequest(proto_request);
+  auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue());
   auto result = LoadCiphertexts(server_->Context()->SEALContext(),
                                 result_or.ValueOrDie().reply())
