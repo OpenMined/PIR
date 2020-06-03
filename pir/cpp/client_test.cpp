@@ -34,8 +34,7 @@ constexpr uint32_t POLY_MODULUS_DEGREE = 4096;
 
 class PIRClientTest : public ::testing::Test {
  protected:
-  static constexpr std::size_t DB_SIZE = 100;
-  void SetUp() { SetUpDB(DB_SIZE); }
+  void SetUp() { SetUpDB(100); }
 
   void SetUpDB(size_t dbsize, size_t dimensions = 1) {
     db_size_ = dbsize;
