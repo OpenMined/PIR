@@ -17,7 +17,7 @@
 #ifndef PIR_CONTEXT_H_
 #define PIR_CONTEXT_H_
 
-#include "parameters.h"
+#include "pir/cpp/parameters.h"
 #include "seal/seal.h"
 #include "util/statusor.h"
 

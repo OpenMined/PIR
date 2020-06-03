@@ -1,3 +1,10 @@
+![om-logo](https://github.com/OpenMined/design-assets/blob/master/logos/OM/horizontal-primary-trans.png)
+
+[![Tests](https://github.com/OpenMined/PSI/workflows/Tests/badge.svg?branch=master&event=push)](https://github.com/OpenMined/PSI/actions?query=workflow%3ATests+branch%3Amaster+event%3Apush)
+![License](https://img.shields.io/github/license/OpenMined/PIR)
+![OpenCollective](https://img.shields.io/opencollective/all/openmined)
+
+
 # Private Information Retrieval
 
 ## Requirements
@@ -23,7 +30,7 @@ pir/<target language>/<sources>
 
 See the [C++ README.md](pir/cpp/README.md)
 
-## Using the Library
+## Usage
 
 To use this library in another Bazel project, add the following in your WORKSPACE file:
 
@@ -46,3 +53,15 @@ load("@org_openmined_pir//pir:deps.bzl", "pir_deps")
 pir_deps()
 
 ```
+
+## Contributing
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
+Please make sure to update tests as appropriate.
+
+## Contributors
+
+See [CONTRIBUTORS.md](CONTRIBUTORS.md).
+
+## License
+[Apache License 2.0](https://choosealicense.com/licenses/apache-2.0/)

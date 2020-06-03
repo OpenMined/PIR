@@ -19,9 +19,9 @@
 
 #include <vector>
 
-#include "context.h"
-#include "database.h"
-#include "payload.h"
+#include "pir/cpp/context.h"
+#include "pir/cpp/database.h"
+#include "pir/cpp/serialization.h"
 #include "seal/seal.h"
 #include "util/statusor.h"
 
@@ -55,7 +55,7 @@ class PIRServer {
    * @returns InvalidArgument if the deserialization or encrypted operations
    *fail
    **/
-  StatusOr<PIRPayload> ProcessRequest(const PIRPayload& request) const;
+  StatusOr<Response> ProcessRequest(const Request& request) const;
 
   /**
    * Returns the database size.

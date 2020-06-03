@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 
-#include "context.h"
+#include "pir/cpp/context.h"
 #include "seal/seal.h"
 #include "util/statusor.h"
 

@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-#include "parameters.h"
+#include "pir/cpp/parameters.h"
 
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
