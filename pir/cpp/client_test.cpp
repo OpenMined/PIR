@@ -63,6 +63,7 @@ TEST_F(PIRClientTest, TestCreateRequest) {
 
   Plaintext pt;
   ASSERT_EQ(req.size(), 1);
+  EXPECT_THAT(req_proto.galois_keys(), Not(IsEmpty()));
   Decryptor()->decrypt(req[0], pt);
 
   const auto plain_mod =
@@ -90,6 +91,9 @@ TEST_F(PIRClientTest, TestCreateRequestD2) {
           .ValueOrDie();
   Plaintext pt;
   ASSERT_EQ(request.size(), 1);
+  EXPECT_THAT(request_proto.galois_keys(), Not(IsEmpty()));
+  EXPECT_THAT(request_proto.relin_keys(), Not(IsEmpty()));
+
   Decryptor()->decrypt(request[0], pt);
 
   const size_t expected_row = 4;
@@ -124,6 +128,8 @@ TEST_F(PIRClientTest, TestCreateRequestD3) {
           .ValueOrDie();
   Plaintext pt;
   ASSERT_EQ(request.size(), 1);
+  EXPECT_THAT(request_proto.galois_keys(), Not(IsEmpty()));
+  EXPECT_THAT(request_proto.relin_keys(), Not(IsEmpty()));
   Decryptor()->decrypt(request[0], pt);
 
   const size_t expected_row = 2;
@@ -160,6 +166,8 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT1) {
       LoadCiphertexts(Context()->SEALContext(), request_proto.query())
           .ValueOrDie();
   ASSERT_EQ(request.size(), 3);
+  EXPECT_THAT(request_proto.galois_keys(), Not(IsEmpty()));
+  EXPECT_THAT(request_proto.relin_keys(), Not(IsEmpty()));
 
   const size_t expected_row = 2760;
   const size_t expected_col = 2959;
@@ -208,6 +216,8 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT2) {
       LoadCiphertexts(Context()->SEALContext(), request_proto.query())
           .ValueOrDie();
   ASSERT_EQ(request.size(), 3);
+  EXPECT_THAT(request_proto.galois_keys(), Not(IsEmpty()));
+  EXPECT_THAT(request_proto.relin_keys(), Not(IsEmpty()));
 
   const size_t expected_row = 2760;
   const size_t expected_col = 3959;
@@ -286,6 +296,7 @@ TEST_P(CreateRequestTest, TestCreateRequest_MoreThanOneCT) {
       LoadCiphertexts(Context()->SEALContext(), request_or.ValueOrDie().query())
           .ValueOrDie();
   ASSERT_EQ(query.size(), dbsize / poly_modulus_degree + 1);
+  EXPECT_THAT(request_or.ValueOrDie().galois_keys(), Not(IsEmpty()));
 
   for (const auto& ct : query) {
     Plaintext pt;

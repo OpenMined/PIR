@@ -31,6 +31,7 @@ using ::private_join_and_compute::StatusOr;
 using ::seal::Ciphertext;
 using ::seal::GaloisKeys;
 using ::seal::Plaintext;
+using ::seal::RelinKeys;
 
 PIRClient::PIRClient(std::unique_ptr<PIRContext> context)
     : context_(std::move(context)) {
@@ -111,18 +112,17 @@ StatusOr<Request> PIRClient::CreateRequest(std::size_t desired_index) const {
   }
 
   GaloisKeys gal_keys;
+  RelinKeys relin_keys;
   try {
     gal_keys =
         keygen_->galois_keys_local(generate_galois_elts(poly_modulus_degree));
+    relin_keys = keygen_->relin_keys_local();
   } catch (const std::exception& e) {
     return InternalError(e.what());
   }
 
   Request request_proto;
-
-  RETURN_IF_ERROR(SaveCiphertexts(query, request_proto.mutable_query()));
-  RETURN_IF_ERROR(
-      SEALSerialize<GaloisKeys>(gal_keys, request_proto.mutable_keys()));
+  RETURN_IF_ERROR(SaveRequest(query, gal_keys, relin_keys, &request_proto));
 
   return request_proto;
 }

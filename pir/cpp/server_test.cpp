@@ -42,6 +42,7 @@ using std::vector;
 using seal::Ciphertext;
 using seal::GaloisKeys;
 using seal::Plaintext;
+using seal::RelinKeys;
 
 using namespace seal;
 using namespace ::testing;
@@ -82,6 +83,7 @@ class PIRServerTest : public ::testing::Test {
     keygen_ = make_unique<KeyGenerator>(context);
     gal_keys_ =
         keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
+    relin_keys_ = keygen_->relin_keys_local();
     encryptor_ = make_unique<Encryptor>(context, keygen_->public_key());
     evaluator_ = make_unique<Evaluator>(context);
     decryptor_ = make_unique<Decryptor>(context, keygen_->secret_key());
@@ -90,6 +92,7 @@ class PIRServerTest : public ::testing::Test {
   size_t db_size_;
   vector<std::int64_t> db_;
   GaloisKeys gal_keys_;
+  RelinKeys relin_keys_;
   shared_ptr<PIRParameters> pir_params_;
   unique_ptr<PIRServer> server_;
   unique_ptr<KeyGenerator> keygen_;
@@ -118,8 +121,7 @@ TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
   encryptor_->encrypt(pt, query[0]);
 
   Request request_proto;
-  SaveCiphertexts(query, request_proto.mutable_query());
-  SEALSerialize<GaloisKeys>(gal_keys_, request_proto.mutable_keys());
+  SaveRequest(query, gal_keys_, relin_keys_, &request_proto);
 
   auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue())
@@ -148,8 +150,7 @@ TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
   encryptor_->encrypt(pt, query[1]);
 
   Request request_proto;
-  SaveCiphertexts(query, request_proto.mutable_query());
-  SEALSerialize<GaloisKeys>(gal_keys_, request_proto.mutable_keys());
+  SaveRequest(query, gal_keys_, relin_keys_, &request_proto);
 
   auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue())
@@ -178,8 +179,7 @@ TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
   encryptor_->encrypt(pt, query[0]);
 
   Request request_proto;
-  SaveCiphertexts(query, request_proto.mutable_query());
-  SEALSerialize<GaloisKeys>(gal_keys_, request_proto.mutable_keys());
+  SaveRequest(query, gal_keys_, relin_keys_, &request_proto);
 
   auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue());
@@ -209,8 +209,7 @@ TEST_F(PIRServerTest, TestProcessRequest_2Dim) {
   encryptor_->encrypt(pt, query[0]);
 
   Request request_proto;
-  SaveCiphertexts(query, request_proto.mutable_query());
-  SEALSerialize<GaloisKeys>(gal_keys_, request_proto.mutable_keys());
+  SaveRequest(query, gal_keys_, relin_keys_, &request_proto);
 
   auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue())
@@ -220,6 +219,8 @@ TEST_F(PIRServerTest, TestProcessRequest_2Dim) {
                                 result_or.ValueOrDie().reply())
                     .ValueOrDie();
   ASSERT_THAT(result, SizeIs(1));
+  EXPECT_THAT(result[0].size(), Eq(2))
+      << "Ciphertext larger than expected. Were relin keys used?";
 
   Plaintext result_pt;
   decryptor_->decrypt(result[0], result_pt);

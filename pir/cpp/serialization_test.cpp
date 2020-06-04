@@ -77,7 +77,49 @@ TEST_F(PIRSerializationTest, TestResponseSerialization) {
   EXPECT_THAT(reloaded_pt, pt);
 }
 
-TEST_F(PIRSerializationTest, TestRequestSerialization) {
+TEST_F(PIRSerializationTest, TestRequestSerialization_IndividualMethods) {
+  int64_t value = 987654321;
+  Plaintext pt, reloaded_pt;
+  context_->Encoder()->encode(value, pt);
+  vector<Ciphertext> ct(1);
+  encryptor_->encrypt(pt, ct[0]);
+
+  auto keygen_ = make_unique<KeyGenerator>(context_->SEALContext());
+  auto elts = generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE);
+  GaloisKeys gal_keys = keygen_->galois_keys_local(elts);
+  RelinKeys relin_keys = keygen_->relin_keys_local();
+
+  Request request_proto;
+  SaveCiphertexts(ct, request_proto.mutable_query());
+  SEALSerialize<GaloisKeys>(gal_keys, request_proto.mutable_galois_keys());
+  SEALSerialize<RelinKeys>(relin_keys, request_proto.mutable_relin_keys());
+
+  auto request_or =
+      LoadCiphertexts(context_->SEALContext(), request_proto.query());
+  ASSERT_TRUE(request_or.ok())
+      << "Status is: " << request_or.status().ToString();
+
+  auto request = request_or.ValueOrDie();
+  ASSERT_EQ(request.size(), 1);
+  decryptor_->decrypt(request[0], reloaded_pt);
+
+  auto gal_keys_or = SEALDeserialize<GaloisKeys>(context_->SEALContext(),
+                                                 request_proto.galois_keys());
+  ASSERT_TRUE(gal_keys_or.ok())
+      << "Status is: " << gal_keys_or.status().ToString();
+  for (const auto& e : elts) {
+    // Can't really test equality of the keys, so just check that they exists.
+    ASSERT_TRUE(gal_keys_or.ValueOrDie().has_key(e));
+  }
+
+  auto relin_keys_or = SEALDeserialize<RelinKeys>(context_->SEALContext(),
+                                                  request_proto.relin_keys());
+  ASSERT_TRUE(relin_keys_or.ok())
+      << "Status is: " << relin_keys_or.status().ToString();
+  // Can't really check if the relin keys are valid. Just assume it's ok here.
+}
+
+TEST_F(PIRSerializationTest, TestRequestSerialization_Shortcut) {
   int64_t value = 987654321;
   Plaintext pt, reloaded_pt;
   context_->Encoder()->encode(value, pt);
@@ -89,8 +131,7 @@ TEST_F(PIRSerializationTest, TestRequestSerialization) {
   GaloisKeys gal_keys = keygen_->galois_keys_local(elts);
 
   Request request_proto;
-  SaveCiphertexts(ct, request_proto.mutable_query());
-  SEALSerialize<GaloisKeys>(gal_keys, request_proto.mutable_keys());
+  SaveRequest(ct, gal_keys, &request_proto);
 
   auto request_or =
       LoadCiphertexts(context_->SEALContext(), request_proto.query());
@@ -98,16 +139,59 @@ TEST_F(PIRSerializationTest, TestRequestSerialization) {
       << "Status is: " << request_or.status().ToString();
 
   auto request = request_or.ValueOrDie();
-  auto keys_or = SEALDeserialize<GaloisKeys>(context_->SEALContext(),
-                                             request_proto.keys());
-  ASSERT_TRUE(keys_or.ok()) << "Status is: " << keys_or.status().ToString();
-  auto keys = keys_or.ValueOrDie();
-
   ASSERT_EQ(request.size(), 1);
   decryptor_->decrypt(request[0], reloaded_pt);
-  ASSERT_EQ(reloaded_pt, pt);
 
-  for (auto &elt : elts) ASSERT_TRUE(keys.has_key(elt));
+  auto gal_keys_or = SEALDeserialize<GaloisKeys>(context_->SEALContext(),
+                                                 request_proto.galois_keys());
+  ASSERT_TRUE(gal_keys_or.ok())
+      << "Status is: " << gal_keys_or.status().ToString();
+  for (const auto& e : elts) {
+    // Can't really test equality of the keys, so just check that they exists.
+    ASSERT_TRUE(gal_keys_or.ValueOrDie().has_key(e));
+  }
+
+  ASSERT_THAT(request_proto.relin_keys(), testing::IsEmpty());
+}
+
+TEST_F(PIRSerializationTest, TestRequestSerialization_ShortcutWithRelin) {
+  int64_t value = 987654321;
+  Plaintext pt, reloaded_pt;
+  context_->Encoder()->encode(value, pt);
+  vector<Ciphertext> ct(1);
+  encryptor_->encrypt(pt, ct[0]);
+
+  auto keygen_ = make_unique<KeyGenerator>(context_->SEALContext());
+  auto elts = generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE);
+  GaloisKeys gal_keys = keygen_->galois_keys_local(elts);
+  RelinKeys relin_keys = keygen_->relin_keys_local();
+
+  Request request_proto;
+  SaveRequest(ct, gal_keys, relin_keys, &request_proto);
+
+  auto request_or =
+      LoadCiphertexts(context_->SEALContext(), request_proto.query());
+  ASSERT_TRUE(request_or.ok())
+      << "Status is: " << request_or.status().ToString();
+
+  auto request = request_or.ValueOrDie();
+  ASSERT_EQ(request.size(), 1);
+  decryptor_->decrypt(request[0], reloaded_pt);
+
+  auto gal_keys_or = SEALDeserialize<GaloisKeys>(context_->SEALContext(),
+                                                 request_proto.galois_keys());
+  ASSERT_TRUE(gal_keys_or.ok())
+      << "Status is: " << gal_keys_or.status().ToString();
+  for (const auto& e : elts) {
+    // Can't really test equality of the keys, so just check that they exists.
+    ASSERT_TRUE(gal_keys_or.ValueOrDie().has_key(e));
+  }
+
+  auto relin_keys_or = SEALDeserialize<RelinKeys>(context_->SEALContext(),
+                                                  request_proto.relin_keys());
+  ASSERT_TRUE(relin_keys_or.ok())
+      << "Status is: " << relin_keys_or.status().ToString();
+  // Can't really check if the relin keys are valid. Just assume it's ok here.
 }
 
 }  // namespace pir

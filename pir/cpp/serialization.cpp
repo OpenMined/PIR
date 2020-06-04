@@ -25,13 +25,16 @@ namespace pir {
 
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
-
 using seal::Ciphertext;
+using seal::GaloisKeys;
+using seal::RelinKeys;
+using std::string;
+using std::vector;
 
-StatusOr<std::vector<seal::Ciphertext>> LoadCiphertexts(
+StatusOr<vector<Ciphertext>> LoadCiphertexts(
     const std::shared_ptr<seal::SEALContext>& sealctx,
     const Ciphertexts& input) {
-  std::vector<seal::Ciphertext> output(input.ct_size());
+  vector<Ciphertext> output(input.ct_size());
   for (int idx = 0; idx < input.ct_size(); ++idx) {
     ASSIGN_OR_RETURN(output[idx],
                      SEALDeserialize<Ciphertext>(sealctx, input.ct(idx)));
@@ -40,7 +43,7 @@ StatusOr<std::vector<seal::Ciphertext>> LoadCiphertexts(
   return output;
 }
 
-Status SaveCiphertexts(const std::vector<seal::Ciphertext>& ciphertexts,
+Status SaveCiphertexts(const vector<Ciphertext>& ciphertexts,
                        Ciphertexts* output) {
   if (output == nullptr) {
     return InvalidArgumentError("output nullptr");
@@ -50,6 +53,22 @@ Status SaveCiphertexts(const std::vector<seal::Ciphertext>& ciphertexts,
     RETURN_IF_ERROR(
         SEALSerialize<Ciphertext>(ciphertexts[idx], output->add_ct()));
   }
+  return Status::OK;
+}
+
+Status SaveRequest(const vector<Ciphertext>& cts, const GaloisKeys& galois_keys,
+                   Request* request) {
+  RETURN_IF_ERROR(SaveCiphertexts(cts, request->mutable_query()));
+  RETURN_IF_ERROR(
+      SEALSerialize<GaloisKeys>(galois_keys, request->mutable_galois_keys()));
+  return Status::OK;
+}
+
+Status SaveRequest(const vector<Ciphertext>& cts, const GaloisKeys& galois_keys,
+                   const RelinKeys& relin_keys, Request* request) {
+  RETURN_IF_ERROR(SaveRequest(cts, galois_keys, request));
+  RETURN_IF_ERROR(
+      SEALSerialize<RelinKeys>(relin_keys, request->mutable_relin_keys()));
   return Status::OK;
 }
 

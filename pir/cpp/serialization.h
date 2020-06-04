@@ -31,6 +31,11 @@ using ::private_join_and_compute::InternalError;
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::Status;
 using ::private_join_and_compute::StatusOr;
+using seal::Ciphertext;
+using seal::SEALContext;
+using std::shared_ptr;
+using std::string;
+using std::vector;
 
 /**
  * Decodes and loads a PIR Ciphertext.
@@ -38,14 +43,38 @@ using ::private_join_and_compute::StatusOr;
  * @param[in] The encoded ciphertext.
  * @returns InvalidArgument if the decoding fails.
  **/
-StatusOr<std::vector<seal::Ciphertext>> LoadCiphertexts(
-    const std::shared_ptr<seal::SEALContext>& ctx, const Ciphertexts& encoded);
+StatusOr<vector<Ciphertext>> LoadCiphertexts(const shared_ptr<SEALContext>& ctx,
+                                             const Ciphertexts& encoded);
+
 /**
  * Saves the Ciphertexts to a protobuffer.
  * @returns InvalidArgument if the encoding fails
  **/
-Status SaveCiphertexts(const std::vector<seal::Ciphertext>& buff,
-                       Ciphertexts* output);
+Status SaveCiphertexts(const vector<Ciphertext>& buff, Ciphertexts* output);
+
+/**
+ * Shortcut to save response data to a protocol buffer based on a list of
+ * Ciphertexts and a set of GaloisKeys.
+ * @param[in] cts The list of Ciphertexts in the query.
+ * @param[in] galois_keys The Galois Keys to encode in the protocol buffer.
+ * @param[out] request Point to the request protocol buffer to fill in.
+ * @returns InvalidArgument if the encoding fails.
+ */
+Status SaveRequest(const vector<Ciphertext>& cts,
+                   const seal::GaloisKeys& galois_keys, Request* request);
+
+/**
+ * Shortcut to save response data to a protocol buffer based on a list of
+ * Ciphertexts, a set of GaloisKeys, and a set or relinearization keys.
+ * @param[in] cts The list of Ciphertexts in the query.
+ * @param[in] galois_keys The Galois Keys to encode in the protocol buffer.
+ * @param[in] relin_keys The relinearization keys to encode.
+ * @param[out] request Point to the request protocol buffer to fill in.
+ * @returns InvalidArgument if the encoding fails.
+ */
+Status SaveRequest(const vector<Ciphertext>& cts,
+                   const seal::GaloisKeys& galois_keys,
+                   const seal::RelinKeys& relin_keys, Request* request);
 
 /**
  * Saves a SEAL object to a string.
@@ -54,7 +83,7 @@ Status SaveCiphertexts(const std::vector<seal::Ciphertext>& buff,
  * @returns InternalError if the encoding fails.
  **/
 template <class T>
-Status SEALSerialize(const T& sealobj, std::string* output) {
+Status SEALSerialize(const T& sealobj, string* output) {
   if (output == nullptr) {
     return InvalidArgumentError("output nullptr");
   }
@@ -77,8 +106,8 @@ Status SEALSerialize(const T& sealobj, std::string* output) {
  * @returns InvalidArgument if the decoding fails.
  **/
 template <class T>
-StatusOr<T> SEALDeserialize(const std::shared_ptr<seal::SEALContext>& sealctx,
-                            const std::string& in) {
+StatusOr<T> SEALDeserialize(const shared_ptr<SEALContext>& sealctx,
+                            const string& in) {
   T out;
 
   try {
@@ -91,6 +120,7 @@ StatusOr<T> SEALDeserialize(const std::shared_ptr<seal::SEALContext>& sealctx,
 
   return out;
 }
+
 }  // namespace pir
 
 #endif  // PIR_SERIALIZATION_H_
