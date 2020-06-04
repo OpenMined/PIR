@@ -58,10 +58,8 @@ StatusOr<Response> PIRServer::ProcessRequest(
                                                request_proto.keys()));
 
   const auto dimensions = context_->Parameters()->Dimensions();
-  size_t dim_sum = 0;
-  for (const auto d : dimensions) {
-    dim_sum += d;
-  }
+  const size_t dim_sum = std::accumulate(dimensions.begin(), dimensions.end(),
+                                         decltype(dimensions)::value_type(0));
 
   ASSIGN_OR_RETURN(auto selection_vector,
                    oblivious_expansion(query, dim_sum, keys));

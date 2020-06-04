@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-#include "parameters.h"
+#include "pir/cpp/parameters.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

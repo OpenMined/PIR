@@ -16,7 +16,7 @@
 #include "pir/cpp/client.h"
 
 #include "absl/memory/memory.h"
-#include "database.h"
+#include "pir/cpp/database.h"
 #include "pir/cpp/utils.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"

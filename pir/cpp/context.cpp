@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-#include "context.h"
+#include "pir/cpp/context.h"
 
 #include "absl/memory/memory.h"
 #include "seal/seal.h"

@@ -18,11 +18,11 @@
 #include <iostream>
 #include <vector>
 
-#include "client.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "server.h"
-#include "utils.h"
+#include "pir/cpp/client.h"
+#include "pir/cpp/server.h"
+#include "pir/cpp/utils.h"
 
 namespace pir {
 namespace {
