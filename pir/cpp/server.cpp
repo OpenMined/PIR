@@ -30,6 +30,7 @@ using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::Status;
 using ::private_join_and_compute::StatusOr;
 using ::seal::GaloisKeys;
+using ::seal::RelinKeys;
 
 PIRServer::PIRServer(std::unique_ptr<PIRContext> context,
                      std::shared_ptr<PIRDatabase> db)
@@ -53,17 +54,26 @@ StatusOr<Response> PIRServer::ProcessRequest(
     const Request& request_proto) const {
   ASSIGN_OR_RETURN(auto query, LoadCiphertexts(context_->SEALContext(),
                                                request_proto.query()));
-  ASSIGN_OR_RETURN(auto keys,
+  ASSIGN_OR_RETURN(auto galois_keys,
                    SEALDeserialize<GaloisKeys>(context_->SEALContext(),
-                                               request_proto.keys()));
+                                               request_proto.galois_keys()));
+
+  const auto dimensions = context_->Parameters()->Dimensions();
+  const size_t dim_sum = std::accumulate(dimensions.begin(), dimensions.end(),
+                                         decltype(dimensions)::value_type(0));
 
   ASSIGN_OR_RETURN(auto selection_vector,
-                   oblivious_expansion(query, DBSize(), keys));
-
-  ASSIGN_OR_RETURN(auto mult_results, db_->multiply(selection_vector));
+                   oblivious_expansion(query, dim_sum, galois_keys));
 
   seal::Ciphertext result;
-  context_->Evaluator()->add_many(mult_results, result);
+  if (request_proto.relin_keys().empty()) {
+    ASSIGN_OR_RETURN(result, db_->multiply(selection_vector));
+  } else {
+    ASSIGN_OR_RETURN(auto relin_keys,
+                     SEALDeserialize<RelinKeys>(context_->SEALContext(),
+                                                request_proto.relin_keys()));
+    ASSIGN_OR_RETURN(result, db_->multiply(selection_vector, &relin_keys));
+  }
 
   Response response;
   RETURN_IF_ERROR(SaveCiphertexts(vector<seal::Ciphertext>{result},
@@ -177,4 +187,5 @@ StatusOr<std::vector<seal::Ciphertext>> PIRServer::oblivious_expansion(
   }
   return results;
 }
+
 }  // namespace pir

@@ -16,6 +16,7 @@
 #include "pir/cpp/client.h"
 
 #include "absl/memory/memory.h"
+#include "pir/cpp/database.h"
 #include "pir/cpp/utils.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
@@ -30,6 +31,7 @@ using ::private_join_and_compute::StatusOr;
 using ::seal::Ciphertext;
 using ::seal::GaloisKeys;
 using ::seal::Plaintext;
+using ::seal::RelinKeys;
 
 PIRClient::PIRClient(std::unique_ptr<PIRContext> context)
     : context_(std::move(context)) {
@@ -68,42 +70,59 @@ StatusOr<Request> PIRClient::CreateRequest(std::size_t desired_index) const {
   const auto& plain_mod =
       context_->Parameters()->GetEncryptionParams().plain_modulus();
 
-  int index = desired_index;
-  vector<Ciphertext> query(DBSize() / poly_modulus_degree + 1);
-  for (size_t i = 0; i < query.size(); ++i) {
+  auto dims = context_->Parameters()->Dimensions();
+  auto indices = PIRDatabase::calculate_indices(dims, desired_index);
+
+  const size_t dim_sum =
+      std::accumulate(dims.begin(), dims.end(), decltype(dims)::value_type(0));
+
+  size_t offset = 0;
+  vector<Ciphertext> query(dim_sum / poly_modulus_degree + 1);
+  for (size_t c = 0; c < query.size(); ++c) {
     Plaintext pt(poly_modulus_degree);
     pt.set_zero();
-    if (index < 0) {
-      // already passed
-    } else if (static_cast<size_t>(index) < poly_modulus_degree) {
-      uint64_t m = (i < query.size() - 1)
+
+    while (!indices.empty()) {
+      if (indices[0] + offset >= poly_modulus_degree) {
+        // no more slots in this poly
+        indices[0] -= (poly_modulus_degree - offset);
+        dims[0] -= (poly_modulus_degree - offset);
+        offset = 0;
+        break;
+      }
+      uint64_t m = (c < query.size() - 1)
                        ? poly_modulus_degree
-                       : next_power_two(DBSize() % poly_modulus_degree);
-      ASSIGN_OR_RETURN(pt[index], InvertMod(m, plain_mod));
-      index = -1;
-    } else {
-      index -= poly_modulus_degree;
+                       : next_power_two(dim_sum % poly_modulus_degree);
+      ASSIGN_OR_RETURN(pt[indices[0] + offset], InvertMod(m, plain_mod));
+      offset += dims[0];
+      indices.erase(indices.begin());
+      dims.erase(dims.begin());
+
+      if (offset >= poly_modulus_degree) {
+        offset -= poly_modulus_degree;
+        break;
+      }
     }
+
     try {
-      encryptor_->encrypt(pt, query[i]);
+      encryptor_->encrypt(pt, query[c]);
     } catch (const std::exception& e) {
       return InternalError(e.what());
     }
   }
 
   GaloisKeys gal_keys;
+  RelinKeys relin_keys;
   try {
     gal_keys =
         keygen_->galois_keys_local(generate_galois_elts(poly_modulus_degree));
+    relin_keys = keygen_->relin_keys_local();
   } catch (const std::exception& e) {
     return InternalError(e.what());
   }
 
   Request request_proto;
-
-  RETURN_IF_ERROR(SaveCiphertexts(query, request_proto.mutable_query()));
-  RETURN_IF_ERROR(
-      SEALSerialize<GaloisKeys>(gal_keys, request_proto.mutable_keys()));
+  RETURN_IF_ERROR(SaveRequest(query, gal_keys, relin_keys, &request_proto));
 
   return request_proto;
 }

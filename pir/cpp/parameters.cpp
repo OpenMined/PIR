@@ -69,4 +69,14 @@ seal::EncryptionParameters generateEncryptionParams(
   return parms;
 }
 
+std::vector<uint32_t> PIRParameters::calculate_dimensions(
+    uint32_t db_size, uint32_t num_dimensions) {
+  std::vector<uint32_t> results;
+  for (int i = num_dimensions; i > 0; --i) {
+    results.push_back(std::ceil(std::pow(db_size, 1.0 / i)));
+    db_size = std::ceil(static_cast<double>(db_size) / results.back());
+  }
+  return results;
+}
+
 }  // namespace pir

@@ -37,7 +37,12 @@ class PIRClient {
   static StatusOr<std::unique_ptr<PIRClient>> Create(
       std::shared_ptr<PIRParameters> params);
   /**
-   * Creates a new payload request
+   * Creates a new request to query the database for the given index. Note that
+   * if more than one dimension is specified in context, then the request
+   * generated will include multiple selection vectors concatenated into one set
+   * of ciphertexts. It is expected that the server will first expand the
+   * request ciphertexts, and then split them into vectors by the dimensions
+   * given in context.
    * @param[in] desiredIndex Expected database value from an index
    * @returns InvalidArgument if the index is invalid or if the encryption fails
    **/
@@ -54,6 +59,7 @@ class PIRClient {
    * Returns the database size.
    **/
   std::size_t DBSize() const { return context_->DBSize(); }
+
   PIRClient() = delete;
 
  private:

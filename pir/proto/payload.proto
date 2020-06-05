@@ -28,8 +28,11 @@ message Request {
   // Each query may have 1 or more ciphertexts.
   Ciphertexts query = 1;
 
-  // Galois keys
-  bytes keys = 2;
+  // Galois keys, needed to compute substitution operation on ciphertexts.
+  bytes galois_keys = 2;
+
+  // Relinearization keys, only needed for recursion depths more than 1.
+  bytes relin_keys = 3;
 }
 
 // Response to a query, a set of ciphertexts.

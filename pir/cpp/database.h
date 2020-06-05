@@ -42,18 +42,32 @@ class PIRDatabase {
       const raw_db_type& /*database*/, std::shared_ptr<PIRParameters> params);
 
   /**
-   * Multiplies the database with a ciphertext and returns a new ciphertext.
-   * @param[in] Evaluator instance
-   * @param[in] vector of Ciphertexts
-   * @returns InvalidArgument if the multiplication fails
-   **/
-  StatusOr<std::vector<seal::Ciphertext>> multiply(
-      const std::vector<seal::Ciphertext>& op);
+   * Multiplies the database represented as a multi-dimensional hypercube with
+   * a selection vector. Selection vector is split into sub vectors based on
+   * dimensions fetched from PIRParameters in the current context.
+   * @param[in] selection_vector Selection vector to multiply against
+   * @returns Ciphertext resulting from multiplication, or error
+   */
+  StatusOr<seal::Ciphertext> multiply(
+      const std::vector<seal::Ciphertext>& selection_vector,
+      const seal::RelinKeys* const relin_keys = nullptr,
+      seal::Decryptor* const decryptor = nullptr) const;
 
   /**
    * Database size.
    **/
   std::size_t size() const { return db_.size(); }
+
+  /**
+   * Helper function to calculate indices within the multi-dimensional
+   * representation of the database for a given index in the flat
+   * representation.
+   * @param[in] dims The dimensions to use in multi-dimensional rep.
+   * @param[in] index Index in the flat representation.
+   * @returns Vector of indices.
+   */
+  static vector<uint32_t> calculate_indices(const vector<uint32_t>& dims,
+                                            uint32_t index);
 
   PIRDatabase(db_type db, std::unique_ptr<PIRContext> context)
       : db_(db), context_(std::move(context)) {}
