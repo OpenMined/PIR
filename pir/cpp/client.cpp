@@ -67,7 +67,7 @@ StatusOr<Request> PIRClient::CreateRequest(std::size_t desired_index) const {
     return InvalidArgumentError("invalid index");
   }
 
-  const auto& plain_mod =
+  auto plain_mod =
       context_->Parameters()->GetEncryptionParams().plain_modulus();
 
   auto dims = context_->Parameters()->Dimensions();

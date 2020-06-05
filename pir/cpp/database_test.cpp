@@ -63,9 +63,8 @@ class PIRDatabaseTest : public ::testing::Test {
       return 4 * n + 2600;
     });
 
-    pir_params_ =
-        PIRParameters::Create(rawdb_.size(), dimensions,
-                              generateEncryptionParams(poly_modulus_degree));
+    pir_params_ = PIRParameters::Create(rawdb_.size(), dimensions,
+                                        generateHEParams(poly_modulus_degree));
     pirdb_ = PIRDatabase::Create(rawdb_, pir_params_).ValueOrDie();
 
     seal_context_ =

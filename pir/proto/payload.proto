@@ -40,3 +40,17 @@ message Response {
   // Reply to query as a set of 1 or more serialized ciphertexts.
   Ciphertexts reply = 1;
 }
+
+message HEParameters {
+    uint32 poly_modulus_degree = 1;
+    uint64 plain_modulus = 2;
+    repeated uint64 coeff_modulus = 3;
+    uint32 scheme = 4;
+}
+
+// Setup parameters.
+message Parameters {
+    repeated uint32 dimensions = 1;
+    uint64 database_size = 2;
+    HEParameters he_parameters = 3;
+}

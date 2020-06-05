@@ -66,7 +66,7 @@ TEST(PIRParametersTest, CreateMultiDim) {
 
 TEST(PIRParametersTest, EncryptionParamsSerialization) {
   // use something other than defaults
-  auto params = generateEncryptionParams(8192);
+  auto params = generateEncryptionParams(generateHEParams(8192));
   std::string serial;
   auto status = SEALSerialize<EncryptionParameters>(params, &serial);
   ASSERT_THAT(status.ok(), IsTrue())

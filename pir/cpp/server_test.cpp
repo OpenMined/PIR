@@ -69,8 +69,8 @@ class PIRServerTest : public ::testing::Test {
       return 4 * n + 2600;
     });
 
-    pir_params_ = PIRParameters::Create(
-        db_.size(), dimensions, generateEncryptionParams(POLY_MODULUS_DEGREE));
+    pir_params_ = PIRParameters::Create(db_.size(), dimensions,
+                                        generateHEParams(POLY_MODULUS_DEGREE));
     auto pirdb = PIRDatabase::Create(db_, pir_params_).ValueOrDie();
     server_ = PIRServer::Create(pirdb, pir_params_).ValueOrDie();
     ASSERT_THAT(server_, NotNull());

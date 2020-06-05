@@ -38,8 +38,8 @@ class PIRClientTest : public ::testing::Test {
 
   void SetUpDB(size_t dbsize, size_t dimensions = 1) {
     db_size_ = dbsize;
-    pir_params_ = PIRParameters::Create(
-        dbsize, dimensions, generateEncryptionParams(POLY_MODULUS_DEGREE));
+    pir_params_ = PIRParameters::Create(dbsize, dimensions,
+                                        generateHEParams(POLY_MODULUS_DEGREE));
     client_ = PIRClient::Create(pir_params_).ValueOrDie();
 
     ASSERT_TRUE(client_ != nullptr);

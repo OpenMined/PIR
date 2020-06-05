@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "absl/memory/memory.h"
+#include "pir/proto/payload.pb.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
 #include "util/statusor.h"
@@ -38,11 +39,13 @@ using ::private_join_and_compute::StatusOr;
 
 constexpr uint32_t DEFAULT_POLY_MODULUS_DEGREE = 4096;
 
-seal::EncryptionParameters generateEncryptionParams(
+HEParameters generateHEParams(
     std::optional<uint32_t> poly_mod_opt = {},
     std::optional<Modulus> plain_mod_opt = {},
     std::optional<std::vector<Modulus>> coeff_opt = {},
     std::optional<seal::scheme_type> scheme = {});
+
+seal::EncryptionParameters generateEncryptionParams(const HEParameters& params);
 
 class PIRParameters {
  public:
@@ -54,7 +57,7 @@ class PIRParameters {
    */
   static std::shared_ptr<PIRParameters> Create(
       size_t dbsize, size_t dimensions = 1,
-      seal::EncryptionParameters sealParams = generateEncryptionParams()) {
+      HEParameters sealParams = generateHEParams()) {
     return absl::WrapUnique(new PIRParameters(
         dbsize, calculate_dimensions(dbsize, dimensions), sealParams));
   }
@@ -62,18 +65,23 @@ class PIRParameters {
   /**
    * Returns the database size.
    */
-  size_t DBSize() const { return database_size_; }
+  size_t DBSize() const { return parameters_.database_size(); }
 
   /**
    * Returns a vector with the size of each dimension of the multi-dimensional
    * representation of the database.
    */
-  const vector<uint32_t>& Dimensions() const { return dimensions_; }
+  vector<uint32_t> Dimensions() const {
+    return std::vector<uint32_t>(parameters_.dimensions().begin(),
+                                 parameters_.dimensions().end());
+  }
 
   /**
    * Returns the encryption parameters.
    */
-  const EncryptionParameters& GetEncryptionParams() const { return parms_; }
+  EncryptionParameters GetEncryptionParams() const {
+    return generateEncryptionParams(parameters_.he_parameters());
+  }
 
   PIRParameters() = delete;
 
@@ -89,17 +97,13 @@ class PIRParameters {
 
  private:
   PIRParameters(size_t dbsize, const vector<uint32_t>& dimensions,
-                seal::EncryptionParameters sealParams)
-      : database_size_(dbsize), dimensions_(dimensions), parms_(sealParams) {}
+                HEParameters heParams) {
+    parameters_.set_database_size(dbsize);
+    *parameters_.mutable_he_parameters() = heParams;
+    for (auto& dim : dimensions) parameters_.add_dimensions(dim);
+  }
 
-  // Database parameters
-  size_t database_size_;
-
-  // Size of each dimension in the database representation
-  vector<uint32_t> dimensions_;
-
-  // Encryption parameters&helpers
-  EncryptionParameters parms_;
+  Parameters parameters_;
 };
 
 }  // namespace pir
