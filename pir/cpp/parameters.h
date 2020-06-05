@@ -38,14 +38,6 @@ using ::private_join_and_compute::StatusOr;
 
 constexpr uint32_t DEFAULT_POLY_MODULUS_DEGREE = 4096;
 
-// Utility function to serialize encryption parameters to a string.
-StatusOr<std::string> serializeEncryptionParams(
-    const seal::EncryptionParameters& parms);
-
-// Utility function to deserialize encryption parameters from a string.
-StatusOr<seal::EncryptionParameters> deserializeEncryptionParams(
-    const std::string& input);
-
 seal::EncryptionParameters generateEncryptionParams(
     std::optional<uint32_t> poly_mod_opt = {},
     std::optional<Modulus> plain_mod_opt = {},

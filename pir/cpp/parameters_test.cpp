@@ -18,6 +18,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "pir/cpp/serialization.h"
 
 namespace pir {
 namespace {
@@ -66,10 +67,11 @@ TEST(PIRParametersTest, CreateMultiDim) {
 TEST(PIRParametersTest, EncryptionParamsSerialization) {
   // use something other than defaults
   auto params = generateEncryptionParams(8192);
-  auto s_or = serializeEncryptionParams(params);
-  ASSERT_THAT(s_or.ok(), IsTrue())
-      << "Error serializing encryption params: " << s_or.status().ToString();
-  auto new_params_or = deserializeEncryptionParams(s_or.ValueOrDie());
+  std::string serial;
+  auto status = SEALSerialize<EncryptionParameters>(params, &serial);
+  ASSERT_THAT(status.ok(), IsTrue())
+      << "Error serializing encryption params: " << status.ToString();
+  auto new_params_or = SEALDeserialize<EncryptionParameters>(serial);
   ASSERT_THAT(new_params_or.ok(), IsTrue())
       << "Error deserializing encryption params: "
       << new_params_or.status().ToString();

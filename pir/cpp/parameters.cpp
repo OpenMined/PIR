@@ -24,34 +24,6 @@ namespace pir {
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
 
-StatusOr<std::string> serializeEncryptionParams(
-    const seal::EncryptionParameters& parms) {
-  std::stringstream stream;
-
-  try {
-    parms.save(stream);
-  } catch (const std::exception& e) {
-    return InvalidArgumentError(e.what());
-  }
-  return stream.str();
-}
-
-StatusOr<seal::EncryptionParameters> deserializeEncryptionParams(
-    const std::string& input) {
-  seal::EncryptionParameters parms;
-
-  std::stringstream stream;
-  stream << input;
-
-  try {
-    parms.load(stream);
-  } catch (const std::exception& e) {
-    return InvalidArgumentError(e.what());
-  }
-
-  return parms;
-}
-
 seal::EncryptionParameters generateEncryptionParams(
     std::optional<uint32_t> poly_mod_opt, std::optional<Modulus> plain_mod_opt,
     std::optional<std::vector<Modulus>> coeff_opt,

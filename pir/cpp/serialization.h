@@ -121,6 +121,21 @@ StatusOr<T> SEALDeserialize(const shared_ptr<SEALContext>& sealctx,
   return out;
 }
 
+template <class T>
+StatusOr<T> SEALDeserialize(const string& in) {
+  T out;
+
+  try {
+    std::stringstream stream;
+    stream << in;
+    out.load(stream);
+  } catch (const std::exception& e) {
+    return InvalidArgumentError(e.what());
+  }
+
+  return out;
+}
+
 }  // namespace pir
 
 #endif  // PIR_SERIALIZATION_H_
