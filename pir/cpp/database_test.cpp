@@ -63,12 +63,13 @@ class PIRDatabaseTest : public ::testing::Test {
       return 4 * n + 2600;
     });
 
-    pir_params_ = PIRParameters::Create(rawdb_.size(), dimensions,
-                                        generateHEParams(poly_modulus_degree));
+    pir_params_ = CreatePIRParameters(rawdb_.size(), dimensions,
+                                      GenerateHEParams(poly_modulus_degree));
     pirdb_ = PIRDatabase::Create(rawdb_, pir_params_).ValueOrDie();
 
-    seal_context_ =
-        seal::SEALContext::Create(pir_params_->GetEncryptionParams());
+    auto encryptionParams =
+        GenerateEncryptionParams(pir_params_.he_parameters());
+    seal_context_ = seal::SEALContext::Create(encryptionParams);
     if (!seal_context_->parameters_set()) {
       FAIL() << "Error setting encryption parameters: "
              << seal_context_->parameter_error_message();
@@ -84,7 +85,7 @@ class PIRDatabaseTest : public ::testing::Test {
   uint32_t poly_modulus_degree_;
   vector<std::int64_t> rawdb_;
   std::shared_ptr<PIRDatabase> pirdb_;
-  shared_ptr<PIRParameters> pir_params_;
+  Parameters pir_params_;
   shared_ptr<SEALContext> seal_context_;
   unique_ptr<seal::IntegerEncoder> encoder_;
   unique_ptr<KeyGenerator> keygen_;
@@ -123,7 +124,7 @@ TEST_F(PIRDatabaseTest, TestMultiply) {
 TEST_F(PIRDatabaseTest, TestMultiplySelectionVectorTooSmall) {
   SetUpDB(100, 2);
   const uint32_t desired_index = 42;
-  const auto dims = PIRParameters::calculate_dimensions(db_size_, 2);
+  const auto dims = CalculateDimensions(db_size_, 2);
   const auto indices = PIRDatabase::calculate_indices(dims, desired_index);
 
   vector<Ciphertext> cts;
@@ -144,7 +145,7 @@ TEST_F(PIRDatabaseTest, TestMultiplySelectionVectorTooSmall) {
 TEST_F(PIRDatabaseTest, TestMultiplySelectionVectorTooBig) {
   SetUpDB(100, 2);
   const uint32_t desired_index = 42;
-  const auto dims = PIRParameters::calculate_dimensions(db_size_, 2);
+  const auto dims = CalculateDimensions(db_size_, 2);
   const auto indices = PIRDatabase::calculate_indices(dims, desired_index);
 
   vector<Ciphertext> cts;
@@ -172,7 +173,7 @@ TEST_P(MultiplyMultiDimTest, TestMultiply) {
   const auto d = get<2>(GetParam());
   const auto desired_index = get<3>(GetParam());
   SetUpDB(dbsize, d, poly_modulus_degree);
-  const auto dims = PIRParameters::calculate_dimensions(dbsize, d);
+  const auto dims = CalculateDimensions(dbsize, d);
   const auto indices = PIRDatabase::calculate_indices(dims, desired_index);
 
   vector<Ciphertext> cts;
@@ -221,7 +222,7 @@ TEST_P(CalculateIndicesTest, IndicesExamples) {
   const auto desired_index = get<2>(GetParam());
   const auto& expected_indices = get<3>(GetParam());
   ASSERT_THAT(expected_indices, SizeIs(d));
-  auto dims = PIRParameters::calculate_dimensions(num_items, d);
+  auto dims = CalculateDimensions(num_items, d);
   auto indices = PIRDatabase::calculate_indices(dims, desired_index);
   EXPECT_THAT(indices, ContainerEq(expected_indices));
 }

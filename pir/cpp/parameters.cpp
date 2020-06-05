@@ -24,7 +24,7 @@ namespace pir {
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
 
-HEParameters generateHEParams(std::optional<uint32_t> poly_mod_opt,
+HEParameters GenerateHEParams(std::optional<uint32_t> poly_mod_opt,
                               std::optional<Modulus> plain_mod_opt,
                               std::optional<std::vector<Modulus>> coeff_opt,
                               std::optional<seal::scheme_type> scheme_opt) {
@@ -43,7 +43,7 @@ HEParameters generateHEParams(std::optional<uint32_t> poly_mod_opt,
   return parms;
 }
 
-seal::EncryptionParameters generateEncryptionParams(
+seal::EncryptionParameters GenerateEncryptionParams(
     const HEParameters& he_params) {
   seal::EncryptionParameters parms(he_params.scheme());
   parms.set_poly_modulus_degree(he_params.poly_modulus_degree());
@@ -53,8 +53,19 @@ seal::EncryptionParameters generateEncryptionParams(
   return parms;
 }
 
-std::vector<uint32_t> PIRParameters::calculate_dimensions(
-    uint32_t db_size, uint32_t num_dimensions) {
+Parameters CreatePIRParameters(size_t dbsize, size_t dimensions,
+                               HEParameters heParams) {
+  Parameters parameters;
+  parameters.set_database_size(dbsize);
+  *parameters.mutable_he_parameters() = heParams;
+  for (auto& dim : CalculateDimensions(dbsize, dimensions))
+    parameters.add_dimensions(dim);
+
+  return parameters;
+}
+
+std::vector<uint32_t> CalculateDimensions(uint32_t db_size,
+                                          uint32_t num_dimensions) {
   std::vector<uint32_t> results;
   for (int i = num_dimensions; i > 0; --i) {
     results.push_back(std::ceil(std::pow(db_size, 1.0 / i)));

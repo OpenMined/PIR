@@ -69,8 +69,8 @@ class PIRServerTest : public ::testing::Test {
       return 4 * n + 2600;
     });
 
-    pir_params_ = PIRParameters::Create(db_.size(), dimensions,
-                                        generateHEParams(POLY_MODULUS_DEGREE));
+    pir_params_ = CreatePIRParameters(db_.size(), dimensions,
+                                      GenerateHEParams(POLY_MODULUS_DEGREE));
     auto pirdb = PIRDatabase::Create(db_, pir_params_).ValueOrDie();
     server_ = PIRServer::Create(pirdb, pir_params_).ValueOrDie();
     ASSERT_THAT(server_, NotNull());
@@ -93,7 +93,7 @@ class PIRServerTest : public ::testing::Test {
   vector<std::int64_t> db_;
   GaloisKeys gal_keys_;
   RelinKeys relin_keys_;
-  shared_ptr<PIRParameters> pir_params_;
+  Parameters pir_params_;
   unique_ptr<PIRServer> server_;
   unique_ptr<KeyGenerator> keygen_;
   unique_ptr<Encryptor> encryptor_;

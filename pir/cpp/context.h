@@ -38,7 +38,7 @@ class PIRContext {
    * @returns InvalidArgument if the SEAL parameter deserialization fails
    **/
   static StatusOr<std::unique_ptr<PIRContext>> Create(
-      std::shared_ptr<PIRParameters> /*params*/);
+      const Parameters& /*params*/);
   /**
    * Returns an Evaluator instance
    **/
@@ -47,12 +47,12 @@ class PIRContext {
   /**
    * Returns the PIR parameters
    **/
-  std::shared_ptr<PIRParameters>& Parameters() { return parameters_; }
+  const Parameters& Params() { return parameters_; }
 
   /**
    * Returns the database size
    **/
-  size_t DBSize() { return parameters_->DBSize(); }
+  size_t DBSize() { return parameters_.database_size(); }
 
   /**
    * Returns the SEAL context
@@ -65,9 +65,9 @@ class PIRContext {
   std::shared_ptr<seal::IntegerEncoder>& Encoder() { return encoder_; }
 
  private:
-  PIRContext(std::shared_ptr<PIRParameters> /*params*/);
+  PIRContext(const Parameters& /*params*/);
 
-  shared_ptr<PIRParameters> parameters_;
+  Parameters parameters_;
   shared_ptr<seal::SEALContext> context_;
   shared_ptr<seal::Evaluator> evaluator_;
   shared_ptr<seal::IntegerEncoder> encoder_;

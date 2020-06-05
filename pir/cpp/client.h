@@ -34,8 +34,7 @@ class PIRClient {
    * @param[in] params PIR parameters
    * @returns InvalidArgument if the parameters cannot be loaded
    **/
-  static StatusOr<std::unique_ptr<PIRClient>> Create(
-      std::shared_ptr<PIRParameters> params);
+  static StatusOr<std::unique_ptr<PIRClient>> Create(const Parameters& params);
   /**
    * Creates a new request to query the database for the given index. Note that
    * if more than one dimension is specified in context, then the request

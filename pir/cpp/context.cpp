@@ -25,15 +25,16 @@ namespace pir {
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
 
-PIRContext::PIRContext(std::shared_ptr<PIRParameters> params)
-    : parameters_(params),
-      context_(seal::SEALContext::Create(params->GetEncryptionParams())) {
+PIRContext::PIRContext(const Parameters& params) : parameters_(params) {
+  auto encryptionParams = GenerateEncryptionParams(params.he_parameters());
+  context_ = seal::SEALContext::Create(encryptionParams);
+
   encoder_ = std::make_shared<seal::IntegerEncoder>(this->context_);
   evaluator_ = std::make_shared<seal::Evaluator>(context_);
 }
 
 StatusOr<std::unique_ptr<PIRContext>> PIRContext::Create(
-    std::shared_ptr<PIRParameters> param) {
+    const Parameters& param) {
   return absl::WrapUnique(new PIRContext(param));
 }
 

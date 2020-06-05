@@ -39,7 +39,7 @@ class PIRDatabase {
    * @param[in] PIR parameters
    **/
   static StatusOr<std::shared_ptr<PIRDatabase>> Create(
-      const raw_db_type& /*database*/, std::shared_ptr<PIRParameters> params);
+      const raw_db_type& /*database*/, const Parameters& params);
 
   /**
    * Multiplies the database represented as a multi-dimensional hypercube with

@@ -39,72 +39,18 @@ using ::private_join_and_compute::StatusOr;
 
 constexpr uint32_t DEFAULT_POLY_MODULUS_DEGREE = 4096;
 
-HEParameters generateHEParams(
-    std::optional<uint32_t> poly_mod_opt = {},
-    std::optional<Modulus> plain_mod_opt = {},
-    std::optional<std::vector<Modulus>> coeff_opt = {},
-    std::optional<seal::scheme_type> scheme = {});
+HEParameters GenerateHEParams(optional<uint32_t> poly_mod_opt = {},
+                              optional<Modulus> plain_mod_opt = {},
+                              optional<std::vector<Modulus>> coeff_opt = {},
+                              optional<seal::scheme_type> scheme = {});
 
-seal::EncryptionParameters generateEncryptionParams(const HEParameters& params);
+seal::EncryptionParameters GenerateEncryptionParams(const HEParameters& params);
 
-class PIRParameters {
- public:
-  /**
-   * Creates a new PIR Parameters container.
-   * @param[in] Database size
-   * @param[in] Number of dimensions in database representation.
-   * @param[in] SEAL Paramenters
-   */
-  static std::shared_ptr<PIRParameters> Create(
-      size_t dbsize, size_t dimensions = 1,
-      HEParameters sealParams = generateHEParams()) {
-    return absl::WrapUnique(new PIRParameters(
-        dbsize, calculate_dimensions(dbsize, dimensions), sealParams));
-  }
+Parameters CreatePIRParameters(size_t dbsize, size_t dimensions = 1,
+                               HEParameters heParams = GenerateHEParams());
 
-  /**
-   * Returns the database size.
-   */
-  size_t DBSize() const { return parameters_.database_size(); }
-
-  /**
-   * Returns a vector with the size of each dimension of the multi-dimensional
-   * representation of the database.
-   */
-  vector<uint32_t> Dimensions() const {
-    return std::vector<uint32_t>(parameters_.dimensions().begin(),
-                                 parameters_.dimensions().end());
-  }
-
-  /**
-   * Returns the encryption parameters.
-   */
-  EncryptionParameters GetEncryptionParams() const {
-    return generateEncryptionParams(parameters_.he_parameters());
-  }
-
-  PIRParameters() = delete;
-
-  /**
-   * Helper function to calculate the dimensions for representing a database of
-   * db_size elements as a hypercube with num_dimensions dimensions.
-   * @param[in] db_size Number of elements in the database
-   * @param[in] num_dimensions Number of dimensions
-   * @returns vector of dimension sizes
-   */
-  static std::vector<uint32_t> calculate_dimensions(uint32_t db_size,
-                                                    uint32_t num_dimensions);
-
- private:
-  PIRParameters(size_t dbsize, const vector<uint32_t>& dimensions,
-                HEParameters heParams) {
-    parameters_.set_database_size(dbsize);
-    *parameters_.mutable_he_parameters() = heParams;
-    for (auto& dim : dimensions) parameters_.add_dimensions(dim);
-  }
-
-  Parameters parameters_;
-};
+std::vector<uint32_t> CalculateDimensions(uint32_t db_size,
+                                          uint32_t num_dimensions);
 
 }  // namespace pir
 

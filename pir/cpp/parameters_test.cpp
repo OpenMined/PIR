@@ -45,20 +45,22 @@ using std::vector;
 
 TEST(PIRParametersTest, SanityCheck) {
   // make sure we can actually initialize SEAL and that defaults are sane
-  auto pir_params = PIRParameters::Create(100);
-  EXPECT_THAT(pir_params->DBSize(), Eq(100));
-  EXPECT_THAT(pir_params->Dimensions(), ElementsAre(100));
-  auto context = seal::SEALContext::Create(pir_params->GetEncryptionParams());
+  auto pir_params = CreatePIRParameters(100);
+  EXPECT_THAT(pir_params.database_size(), Eq(100));
+  EXPECT_THAT(pir_params.dimensions(), ElementsAre(100));
+  auto encryptionParams = GenerateEncryptionParams(pir_params.he_parameters());
+  auto context = seal::SEALContext::Create(encryptionParams);
   EXPECT_THAT(context->parameters_set(), IsTrue())
       << "Error setting encryption parameters: "
       << context->parameter_error_message();
 }
 
 TEST(PIRParametersTest, CreateMultiDim) {
-  auto pir_params = PIRParameters::Create(1001, 3);
-  EXPECT_THAT(pir_params->DBSize(), Eq(1001));
-  EXPECT_THAT(pir_params->Dimensions(), ElementsAre(11, 10, 10));
-  auto context = seal::SEALContext::Create(pir_params->GetEncryptionParams());
+  auto pir_params = CreatePIRParameters(1001, 3);
+  EXPECT_THAT(pir_params.database_size(), Eq(1001));
+  EXPECT_THAT(pir_params.dimensions(), ElementsAre(11, 10, 10));
+  auto encryptionParams = GenerateEncryptionParams(pir_params.he_parameters());
+  auto context = seal::SEALContext::Create(encryptionParams);
   EXPECT_THAT(context->parameters_set(), IsTrue())
       << "Error setting encryption parameters: "
       << context->parameter_error_message();
@@ -66,7 +68,7 @@ TEST(PIRParametersTest, CreateMultiDim) {
 
 TEST(PIRParametersTest, EncryptionParamsSerialization) {
   // use something other than defaults
-  auto params = generateEncryptionParams(generateHEParams(8192));
+  auto params = GenerateEncryptionParams(GenerateHEParams(8192));
   std::string serial;
   auto status = SEALSerialize<EncryptionParameters>(params, &serial);
   ASSERT_THAT(status.ok(), IsTrue())
@@ -82,9 +84,8 @@ class CalculateDimensionsTest
     : public testing::TestWithParam<
           tuple<uint32_t, uint32_t, vector<uint32_t>>> {};
 
-TEST_P(CalculateDimensionsTest, DimensionsExamples) {
-  EXPECT_THAT(PIRParameters::calculate_dimensions(get<0>(GetParam()),
-                                                  get<1>(GetParam())),
+TEST_P(CalculateDimensionsTest, dimensionsExamples) {
+  EXPECT_THAT(CalculateDimensions(get<0>(GetParam()), get<1>(GetParam())),
               ContainerEq(get<2>(GetParam())));
 }
 

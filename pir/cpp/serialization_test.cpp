@@ -39,8 +39,8 @@ class PIRSerializationTest : public ::testing::Test {
   void SetUp() { SetUpDB(DB_SIZE); }
 
   void SetUpDB(size_t dbsize) {
-    pir_params_ = PIRParameters::Create(dbsize);
-    context_ = std::move(PIRContext::Create(pir_params_).ValueOrDie());
+    auto pir_params = CreatePIRParameters(dbsize);
+    context_ = std::move(PIRContext::Create(pir_params).ValueOrDie());
 
     auto keygen_ =
         std::make_unique<seal::KeyGenerator>(context_->SEALContext());
@@ -50,7 +50,6 @@ class PIRSerializationTest : public ::testing::Test {
                                                    keygen_->secret_key());
   }
 
-  std::shared_ptr<PIRParameters> pir_params_;
   std::shared_ptr<PIRContext> context_;
   std::shared_ptr<seal::Encryptor> encryptor_;
   std::shared_ptr<seal::Decryptor> decryptor_;
