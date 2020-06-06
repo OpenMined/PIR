@@ -68,7 +68,7 @@ class DatabaseMultiplier {
    */
   DatabaseMultiplier(const vector<Plaintext>& database,
                      const vector<Ciphertext>& selection_vector,
-                     Evaluator& evaluator,
+                     shared_ptr<Evaluator> evaluator,
                      const seal::RelinKeys* const relin_keys,
                      seal::Decryptor* const decryptor)
       : database_(database),
@@ -117,7 +117,7 @@ class DatabaseMultiplier {
       Ciphertext temp_ct;
       if (remaining_dimensions.empty()) {
         // base case: have to multiply against DB
-        evaluator_.multiply_plain(*(selection_vector_it + i), *(database_it_++),
+        evaluator_->multiply_plain(*(selection_vector_it + i), *(database_it_++),
                                   temp_ct);
         print_noise(depth, i, "base", temp_ct);
 
@@ -126,11 +126,11 @@ class DatabaseMultiplier {
                            selection_vector_it + this_dimension, depth + 1);
         print_noise(depth, i, "recurse", temp_ct);
 
-        evaluator_.multiply_inplace(temp_ct, *(selection_vector_it + i));
+        evaluator_->multiply_inplace(temp_ct, *(selection_vector_it + i));
         print_noise(depth, i, "mult", temp_ct);
 
         if (relin_keys_ != nullptr) {
-          evaluator_.relinearize_inplace(temp_ct, *relin_keys_);
+          evaluator_->relinearize_inplace(temp_ct, *relin_keys_);
           print_noise(depth, i, "relin", temp_ct);
         }
       }
@@ -139,7 +139,7 @@ class DatabaseMultiplier {
         result = temp_ct;
         first_pass = false;
       } else {
-        evaluator_.add_inplace(result, temp_ct);
+        evaluator_->add_inplace(result, temp_ct);
         print_noise(depth, i, "result", temp_ct);
       }
     }
@@ -162,7 +162,7 @@ class DatabaseMultiplier {
 
   const vector<Plaintext>& database_;
   const vector<Ciphertext>& selection_vector_;
-  Evaluator& evaluator_;
+  shared_ptr<Evaluator> evaluator_;
 
   // If not null, relinearization keys are applied after each HE op
   const seal::RelinKeys* const relin_keys_;
@@ -189,7 +189,7 @@ StatusOr<Ciphertext> PIRDatabase::multiply(
   }
 
   try {
-    DatabaseMultiplier dbm(db_, selection_vector, *(context_->Evaluator()),
+    DatabaseMultiplier dbm(db_, selection_vector, context_->Evaluator(),
                            relin_keys, decryptor);
     return dbm.multiply(dimensions);
   } catch (std::exception& e) {
