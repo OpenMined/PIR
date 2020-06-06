@@ -31,6 +31,8 @@ using ::private_join_and_compute::StatusOr;
 using raw_db_type = std::vector<std::int64_t>;
 using db_type = std::vector<seal::Plaintext>;
 
+using google::protobuf::RepeatedField;
+
 class PIRDatabase {
  public:
   /**

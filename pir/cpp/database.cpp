@@ -57,7 +57,7 @@ using std::vector;
 // NB: the database iterator is passed by reference so we keep track of where
 // we are in the database. Be very careful with that iterator!
 Ciphertext multiply_dims(
-    Evaluator& evaluator, vector<uint32_t> dimensions,
+    Evaluator& evaluator, const RepeatedField<uint32_t>& dimensions,
     vector<Ciphertext>::const_iterator selection_vector_it,
     const vector<Ciphertext>::const_iterator selection_vector_end,
     vector<Plaintext>::const_iterator& database_it,
@@ -66,7 +66,7 @@ Ciphertext multiply_dims(
     size_t depth) {
   const size_t this_dimension = dimensions[0];
   auto remaining_dimensions =
-      vector<uint32_t>(dimensions.begin() + 1, dimensions.end());
+      RepeatedField<uint32_t>(dimensions.begin() + 1, dimensions.end());
 
   string depth_string(depth, ' ');
 
@@ -133,11 +133,9 @@ StatusOr<Ciphertext> PIRDatabase::multiply(
     const vector<Ciphertext>& selection_vector,
     const seal::RelinKeys* const relin_keys,
     seal::Decryptor* const decryptor) const {
-  auto dimensions =
-      std::vector<uint32_t>(context_->Params().dimensions().begin(),
-                            context_->Params().dimensions().end());
-  const size_t dim_sum = std::accumulate(dimensions.begin(), dimensions.end(),
-                                         decltype(dimensions)::value_type(0));
+  auto& dimensions = context_->Params().dimensions();
+  const size_t dim_sum =
+      std::accumulate(dimensions.begin(), dimensions.end(), 0);
 
   if (selection_vector.size() != dim_sum) {
     return InvalidArgumentError(
