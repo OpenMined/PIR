@@ -41,8 +41,7 @@ constexpr uint32_t DEFAULT_POLY_MODULUS_DEGREE = 4096;
 
 HEParameters GenerateHEParams(optional<uint32_t> poly_mod_opt = {},
                               optional<Modulus> plain_mod_opt = {},
-                              optional<std::vector<Modulus>> coeff_opt = {},
-                              optional<seal::scheme_type> scheme = {});
+                              optional<std::vector<Modulus>> coeff_opt = {});
 
 seal::EncryptionParameters GenerateEncryptionParams(const HEParameters& params);
 

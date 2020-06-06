@@ -26,17 +26,14 @@ using ::private_join_and_compute::StatusOr;
 
 HEParameters GenerateHEParams(std::optional<uint32_t> poly_mod_opt,
                               std::optional<Modulus> plain_mod_opt,
-                              std::optional<std::vector<Modulus>> coeff_opt,
-                              std::optional<seal::scheme_type> scheme_opt) {
+                              std::optional<std::vector<Modulus>> coeff_opt) {
   auto poly_modulus_degree = poly_mod_opt.value_or(DEFAULT_POLY_MODULUS_DEGREE);
   auto plain_modulus = plain_mod_opt.value_or(
       seal::PlainModulus::Batching(poly_modulus_degree, 20));
   auto coeff =
       coeff_opt.value_or(seal::CoeffModulus::BFVDefault(poly_modulus_degree));
-  auto scheme = scheme_opt.value_or(seal::scheme_type::BFV);
 
   HEParameters parms;
-  parms.set_scheme(static_cast<uint32_t>(scheme));
   parms.set_poly_modulus_degree(poly_modulus_degree);
   parms.set_plain_modulus(plain_modulus.value());
   for (auto& v : coeff) parms.add_coeff_modulus(v.value());
@@ -45,7 +42,7 @@ HEParameters GenerateHEParams(std::optional<uint32_t> poly_mod_opt,
 
 seal::EncryptionParameters GenerateEncryptionParams(
     const HEParameters& he_params) {
-  seal::EncryptionParameters parms(he_params.scheme());
+  seal::EncryptionParameters parms(seal::scheme_type::BFV);
   parms.set_poly_modulus_degree(he_params.poly_modulus_degree());
   parms.set_plain_modulus(he_params.plain_modulus());
   parms.set_coeff_modulus(vector<Modulus>(he_params.coeff_modulus().begin(),

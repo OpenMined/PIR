@@ -43,8 +43,6 @@ message Response {
 
 // Required parameters for settings up the homomorphic encryption scheme and context.
 message HEParameters {
-    // The encryption scheme to be used
-    uint32 scheme = 1;
     // The polynomial modulus degree
     uint32 poly_modulus_degree = 2;
     // The plaintext modulus
