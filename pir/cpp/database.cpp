@@ -117,8 +117,8 @@ class DatabaseMultiplier {
       Ciphertext temp_ct;
       if (remaining_dimensions.empty()) {
         // base case: have to multiply against DB
-        evaluator_->multiply_plain(*(selection_vector_it + i), *(database_it_++),
-                                  temp_ct);
+        evaluator_->multiply_plain(*(selection_vector_it + i),
+                                   *(database_it_++), temp_ct);
         print_noise(depth, i, "base", temp_ct);
 
       } else {
