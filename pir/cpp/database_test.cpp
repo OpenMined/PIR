@@ -85,7 +85,7 @@ class PIRDatabaseTest : public ::testing::Test {
   uint32_t poly_modulus_degree_;
   vector<std::int64_t> rawdb_;
   std::shared_ptr<PIRDatabase> pirdb_;
-  Parameters pir_params_;
+  PIRParameters pir_params_;
   shared_ptr<SEALContext> seal_context_;
   unique_ptr<seal::IntegerEncoder> encoder_;
   unique_ptr<KeyGenerator> keygen_;

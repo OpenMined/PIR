@@ -50,9 +50,9 @@ seal::EncryptionParameters GenerateEncryptionParams(
   return parms;
 }
 
-Parameters CreatePIRParameters(size_t dbsize, size_t dimensions,
-                               HEParameters heParams) {
-  Parameters parameters;
+PIRParameters CreatePIRParameters(size_t dbsize, size_t dimensions,
+                                  HEParameters heParams) {
+  PIRParameters parameters;
   parameters.set_database_size(dbsize);
   *parameters.mutable_he_parameters() = heParams;
   for (auto& dim : CalculateDimensions(dbsize, dimensions))

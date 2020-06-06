@@ -30,7 +30,7 @@ using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
 
 StatusOr<std::shared_ptr<PIRDatabase>> PIRDatabase::Create(
-    const raw_db_type& rawdb, const Parameters& params) {
+    const raw_db_type& rawdb, const PIRParameters& params) {
   db_type db(rawdb.size());
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
 

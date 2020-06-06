@@ -45,8 +45,8 @@ HEParameters GenerateHEParams(optional<uint32_t> poly_mod_opt = {},
 
 seal::EncryptionParameters GenerateEncryptionParams(const HEParameters& params);
 
-Parameters CreatePIRParameters(size_t dbsize, size_t dimensions = 1,
-                               HEParameters heParams = GenerateHEParams());
+PIRParameters CreatePIRParameters(size_t dbsize, size_t dimensions = 1,
+                                  HEParameters heParams = GenerateHEParams());
 
 std::vector<uint32_t> CalculateDimensions(uint32_t db_size,
                                           uint32_t num_dimensions);

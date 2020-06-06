@@ -93,7 +93,7 @@ class PIRServerTest : public ::testing::Test {
   vector<std::int64_t> db_;
   GaloisKeys gal_keys_;
   RelinKeys relin_keys_;
-  Parameters pir_params_;
+  PIRParameters pir_params_;
   unique_ptr<PIRServer> server_;
   unique_ptr<KeyGenerator> keygen_;
   unique_ptr<Encryptor> encryptor_;

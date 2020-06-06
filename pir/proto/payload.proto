@@ -52,7 +52,7 @@ message HEParameters {
 }
 
 // Private information retrieval setup parameters
-message Parameters {
+message PIRParameters {
     // The database size
     uint64 database_size = 1;
     // Size of each dimension in the database representation

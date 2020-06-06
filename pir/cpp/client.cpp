@@ -44,7 +44,7 @@ PIRClient::PIRClient(std::unique_ptr<PIRContext> context)
 }
 
 StatusOr<std::unique_ptr<PIRClient>> PIRClient::Create(
-    const Parameters& params) {
+    const PIRParameters& params) {
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
   return absl::WrapUnique(new PIRClient(std::move(context)));
 }

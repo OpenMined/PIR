@@ -37,7 +37,7 @@ PIRServer::PIRServer(std::unique_ptr<PIRContext> context,
     : context_(std::move(context)), db_(db) {}
 
 StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
-    std::shared_ptr<PIRDatabase> db, const Parameters& params) {
+    std::shared_ptr<PIRDatabase> db, const PIRParameters& params) {
   if (params.database_size() != db->size()) {
     return InvalidArgumentError("database size mismatch");
   }

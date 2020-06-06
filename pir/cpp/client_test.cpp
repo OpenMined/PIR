@@ -50,7 +50,7 @@ class PIRClientTest : public ::testing::Test {
   std::shared_ptr<seal::Encryptor> Encryptor() { return client_->encryptor_; }
 
   size_t db_size_;
-  Parameters pir_params_;
+  PIRParameters pir_params_;
   std::unique_ptr<PIRClient> client_;
 };
 
