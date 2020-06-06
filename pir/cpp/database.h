@@ -69,6 +69,16 @@ class PIRDatabase {
   static vector<uint32_t> calculate_indices(const vector<uint32_t>& dims,
                                             uint32_t index);
 
+  /**
+   * Helper function to calculate the multi-dimensional representation of the
+   * database
+   * @param[in] db_size, The database size.
+   * @param[in] num_dimensions The mumber of dimensions.
+   * @returns Vector of dimensions.
+   */
+  static std::vector<uint32_t> calculate_dimensions(uint32_t db_size,
+                                                    uint32_t num_dimensions);
+
   PIRDatabase(db_type db, std::unique_ptr<PIRContext> context)
       : db_(db), context_(std::move(context)) {}
 

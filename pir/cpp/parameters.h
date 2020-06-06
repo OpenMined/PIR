@@ -39,18 +39,31 @@ using ::private_join_and_compute::StatusOr;
 
 constexpr uint32_t DEFAULT_POLY_MODULUS_DEGREE = 4096;
 
+/*
+ * Helper function to generate encryption parameters protobuffer.
+ * @param[in] optional The polynomial modulus degree
+ * @param[in] optional The plaintext modulus
+ * @param[in] optional The coefficient modulus
+ * */
 HEParameters GenerateHEParams(optional<uint32_t> poly_mod_opt = {},
                               optional<Modulus> plain_mod_opt = {},
                               optional<std::vector<Modulus>> coeff_opt = {});
 
+/*
+ * Helper function to convert the encryption parameters protobuffer to
+ * seal::EncryptionParameters
+ * @param[in] the HEParameters protobuffer
+ * */
 seal::EncryptionParameters GenerateEncryptionParams(const HEParameters& params);
 
+/*
+ * Helper function to create the PIRParameters
+ * @param[in] the database size
+ * @param[in] the database dimensions
+ * @param[in] custom encryption parameters
+ * */
 PIRParameters CreatePIRParameters(size_t dbsize, size_t dimensions = 1,
                                   HEParameters heParams = GenerateHEParams());
-
-std::vector<uint32_t> CalculateDimensions(uint32_t db_size,
-                                          uint32_t num_dimensions);
-
 }  // namespace pir
 
 #endif  // PIR_PARAMETERS_H_

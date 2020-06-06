@@ -124,7 +124,7 @@ TEST_F(PIRDatabaseTest, TestMultiply) {
 TEST_F(PIRDatabaseTest, TestMultiplySelectionVectorTooSmall) {
   SetUpDB(100, 2);
   const uint32_t desired_index = 42;
-  const auto dims = CalculateDimensions(db_size_, 2);
+  const auto dims = PIRDatabase::calculate_dimensions(db_size_, 2);
   const auto indices = PIRDatabase::calculate_indices(dims, desired_index);
 
   vector<Ciphertext> cts;
@@ -145,7 +145,7 @@ TEST_F(PIRDatabaseTest, TestMultiplySelectionVectorTooSmall) {
 TEST_F(PIRDatabaseTest, TestMultiplySelectionVectorTooBig) {
   SetUpDB(100, 2);
   const uint32_t desired_index = 42;
-  const auto dims = CalculateDimensions(db_size_, 2);
+  const auto dims = PIRDatabase::calculate_dimensions(db_size_, 2);
   const auto indices = PIRDatabase::calculate_indices(dims, desired_index);
 
   vector<Ciphertext> cts;
@@ -173,7 +173,7 @@ TEST_P(MultiplyMultiDimTest, TestMultiply) {
   const auto d = get<2>(GetParam());
   const auto desired_index = get<3>(GetParam());
   SetUpDB(dbsize, d, poly_modulus_degree);
-  const auto dims = CalculateDimensions(dbsize, d);
+  const auto dims = PIRDatabase::calculate_dimensions(dbsize, d);
   const auto indices = PIRDatabase::calculate_indices(dims, desired_index);
 
   vector<Ciphertext> cts;
@@ -222,7 +222,7 @@ TEST_P(CalculateIndicesTest, IndicesExamples) {
   const auto desired_index = get<2>(GetParam());
   const auto& expected_indices = get<3>(GetParam());
   ASSERT_THAT(expected_indices, SizeIs(d));
-  auto dims = CalculateDimensions(num_items, d);
+  auto dims = PIRDatabase::calculate_dimensions(num_items, d);
   auto indices = PIRDatabase::calculate_indices(dims, desired_index);
   EXPECT_THAT(indices, ContainerEq(expected_indices));
 }
@@ -238,6 +238,26 @@ INSTANTIATE_TEST_SUITE_P(
            make_tuple(82, 3, 3, vector<uint32_t>{0, 0, 3}),
            make_tuple(82, 3, 20, vector<uint32_t>{1, 0, 0}),
            make_tuple(82, 3, 75, vector<uint32_t>{3, 3, 3})));
+
+class CalculateDimensionsTest
+    : public testing::TestWithParam<
+          tuple<uint32_t, uint32_t, vector<uint32_t>>> {};
+
+TEST_P(CalculateDimensionsTest, dimensionsExamples) {
+  EXPECT_THAT(
+      PIRDatabase::calculate_dimensions(get<0>(GetParam()), get<1>(GetParam())),
+      ContainerEq(get<2>(GetParam())));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    CalculateDimensions, CalculateDimensionsTest,
+    testing::Values(make_tuple(100, 1, vector<uint32_t>{100}),
+                    make_tuple(100, 2, vector<uint32_t>{10, 10}),
+                    make_tuple(82, 2, vector<uint32_t>{10, 9}),
+                    make_tuple(975, 2, vector<uint32_t>{32, 31}),
+                    make_tuple(1000, 3, vector<uint32_t>{10, 10, 10}),
+                    make_tuple(1001, 3, vector<uint32_t>{11, 10, 10}),
+                    make_tuple(1000001, 3, vector<uint32_t>{101, 100, 100})));
 
 }  // namespace
 }  // namespace pir
