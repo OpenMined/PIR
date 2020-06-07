@@ -56,6 +56,7 @@ class PIRServer {
    *fail
    **/
   StatusOr<Response> ProcessRequest(const Request& request) const;
+  StatusOr<BatchResponse> ProcessRequest(const BatchRequest& request) const;
 
   /**
    * Returns the database size.
@@ -144,6 +145,9 @@ class PIRServer {
  private:
   PIRServer(std::unique_ptr<PIRContext> /*sealctx*/,
             std::shared_ptr<PIRDatabase> /*db*/);
+
+  Status processQuery(const Ciphertexts& query, const string& galois_keys,
+                      const string& relin_keys, Ciphertexts* output) const;
 
   std::unique_ptr<PIRContext> context_;
   std::shared_ptr<PIRDatabase> db_;

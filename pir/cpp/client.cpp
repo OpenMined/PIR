@@ -63,9 +63,103 @@ StatusOr<uint64_t> InvertMod(uint64_t m, const seal::Modulus& mod) {
 StatusOr<Request> PIRClient::CreateRequest(std::size_t desired_index) const {
   const auto poly_modulus_degree =
       context_->Parameters()->GetEncryptionParams().poly_modulus_degree();
+
+  vector<Ciphertext> query;
+  RETURN_IF_ERROR(createQueryFor(desired_index, query));
+
+  GaloisKeys gal_keys;
+  RelinKeys relin_keys;
+  try {
+    gal_keys =
+        keygen_->galois_keys_local(generate_galois_elts(poly_modulus_degree));
+    relin_keys = keygen_->relin_keys_local();
+  } catch (const std::exception& e) {
+    return InternalError(e.what());
+  }
+
+  Request request_proto;
+  RETURN_IF_ERROR(SaveRequest(query, gal_keys, relin_keys, &request_proto));
+
+  return request_proto;
+}
+
+StatusOr<BatchRequest> PIRClient::CreateRequest(
+    const std::vector<std::size_t>& indexes) const {
+  const auto poly_modulus_degree =
+      context_->Parameters()->GetEncryptionParams().poly_modulus_degree();
+
+  vector<vector<Ciphertext>> queries(indexes.size());
+
+  for (size_t idx = 0; indexes.size(); ++idx) {
+    RETURN_IF_ERROR(createQueryFor(indexes[idx], queries[idx]));
+  }
+
+  GaloisKeys gal_keys;
+  RelinKeys relin_keys;
+  try {
+    gal_keys =
+        keygen_->galois_keys_local(generate_galois_elts(poly_modulus_degree));
+    relin_keys = keygen_->relin_keys_local();
+  } catch (const std::exception& e) {
+    return InternalError(e.what());
+  }
+
+  BatchRequest request_proto;
+  RETURN_IF_ERROR(SaveRequest(queries, gal_keys, relin_keys, &request_proto));
+
+  return request_proto;
+}
+
+StatusOr<int64_t> PIRClient::ProcessResponse(
+    const Response& response_proto) const {
+  ASSIGN_OR_RETURN(auto response, LoadCiphertexts(context_->SEALContext(),
+                                                  response_proto.reply()));
+  if (response.size() != 1) {
+    return InvalidArgumentError("Number of ciphertexts in response must be 1");
+  }
+  seal::Plaintext plaintext;
+  try {
+    decryptor_->decrypt(response[0], plaintext);
+    // have to divide the integer result by the the next power of 2 greater than
+    // number of items in oblivious expansion.
+    return context_->Encoder()->decode_int64(plaintext);
+  } catch (const std::exception& e) {
+    return InternalError(e.what());
+  }
+  return InternalError("Should never get here.");
+}
+
+StatusOr<std::vector<int64_t>> PIRClient::ProcessResponse(
+    const BatchResponse& response_proto) const {
+  vector<int64_t> result(response_proto.reply_size());
+  for (int idx = 0; idx < response_proto.reply_size(); ++idx) {
+    ASSIGN_OR_RETURN(auto response, LoadCiphertexts(context_->SEALContext(),
+                                                    response_proto.reply(idx)));
+    if (response.size() != 1) {
+      return InvalidArgumentError(
+          "Number of ciphertexts in response must be 1");
+    }
+    seal::Plaintext plaintext;
+    try {
+      decryptor_->decrypt(response[0], plaintext);
+      // have to divide the integer result by the the next power of 2 greater
+      // than number of items in oblivious expansion.
+      result[idx] = context_->Encoder()->decode_int64(plaintext);
+    } catch (const std::exception& e) {
+      return InternalError(e.what());
+    }
+  }
+  return result;
+}
+
+Status PIRClient::createQueryFor(size_t desired_index,
+                                 vector<Ciphertext>& query) const {
   if (desired_index >= DBSize()) {
     return InvalidArgumentError("invalid index");
   }
+
+  const auto poly_modulus_degree =
+      context_->Parameters()->GetEncryptionParams().poly_modulus_degree();
 
   const auto& plain_mod =
       context_->Parameters()->GetEncryptionParams().plain_modulus();
@@ -77,7 +171,7 @@ StatusOr<Request> PIRClient::CreateRequest(std::size_t desired_index) const {
       std::accumulate(dims.begin(), dims.end(), decltype(dims)::value_type(0));
 
   size_t offset = 0;
-  vector<Ciphertext> query(dim_sum / poly_modulus_degree + 1);
+  query.resize(dim_sum / poly_modulus_degree + 1);
   for (size_t c = 0; c < query.size(); ++c) {
     Plaintext pt(poly_modulus_degree);
     pt.set_zero();
@@ -111,39 +205,7 @@ StatusOr<Request> PIRClient::CreateRequest(std::size_t desired_index) const {
     }
   }
 
-  GaloisKeys gal_keys;
-  RelinKeys relin_keys;
-  try {
-    gal_keys =
-        keygen_->galois_keys_local(generate_galois_elts(poly_modulus_degree));
-    relin_keys = keygen_->relin_keys_local();
-  } catch (const std::exception& e) {
-    return InternalError(e.what());
-  }
-
-  Request request_proto;
-  RETURN_IF_ERROR(SaveRequest(query, gal_keys, relin_keys, &request_proto));
-
-  return request_proto;
-}
-
-StatusOr<int64_t> PIRClient::ProcessResponse(
-    const Response& response_proto) const {
-  ASSIGN_OR_RETURN(auto response, LoadCiphertexts(context_->SEALContext(),
-                                                  response_proto.reply()));
-  if (response.size() != 1) {
-    return InvalidArgumentError("Number of ciphertexts in response must be 1");
-  }
-  seal::Plaintext plaintext;
-  try {
-    decryptor_->decrypt(response[0], plaintext);
-    // have to divide the integer result by the the next power of 2 greater than
-    // number of items in oblivious expansion.
-    return context_->Encoder()->decode_int64(plaintext);
-  } catch (const std::exception& e) {
-    return InternalError(e.what());
-  }
-  return InternalError("Should never get here.");
+  return Status::OK;
 }
 
 }  // namespace pir

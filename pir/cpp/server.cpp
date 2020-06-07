@@ -50,35 +50,20 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
   return PIRServer::Create(db, PIRParameters::Create(db->size()));
 }
 
-StatusOr<Response> PIRServer::ProcessRequest(
-    const Request& request_proto) const {
-  ASSIGN_OR_RETURN(auto query, LoadCiphertexts(context_->SEALContext(),
-                                               request_proto.query()));
-  ASSIGN_OR_RETURN(auto galois_keys,
-                   SEALDeserialize<GaloisKeys>(context_->SEALContext(),
-                                               request_proto.galois_keys()));
-
-  const auto dimensions = context_->Parameters()->Dimensions();
-  const size_t dim_sum = std::accumulate(dimensions.begin(), dimensions.end(),
-                                         decltype(dimensions)::value_type(0));
-
-  ASSIGN_OR_RETURN(auto selection_vector,
-                   oblivious_expansion(query, dim_sum, galois_keys));
-
-  seal::Ciphertext result;
-  if (request_proto.relin_keys().empty()) {
-    ASSIGN_OR_RETURN(result, db_->multiply(selection_vector));
-  } else {
-    ASSIGN_OR_RETURN(auto relin_keys,
-                     SEALDeserialize<RelinKeys>(context_->SEALContext(),
-                                                request_proto.relin_keys()));
-    ASSIGN_OR_RETURN(result, db_->multiply(selection_vector, &relin_keys));
-  }
-
+StatusOr<Response> PIRServer::ProcessRequest(const Request& request) const {
   Response response;
-  RETURN_IF_ERROR(SaveCiphertexts(vector<seal::Ciphertext>{result},
-                                  response.mutable_reply()));
+  RETURN_IF_ERROR(processQuery(request.query(), request.galois_keys(),
+                               request.relin_keys(), response.mutable_reply()));
+  return response;
+}
 
+StatusOr<BatchResponse> PIRServer::ProcessRequest(
+    const BatchRequest& request) const {
+  BatchResponse response;
+  for (int idx = 0; idx < request.query_size(); ++idx) {
+    RETURN_IF_ERROR(processQuery(request.query(idx), request.galois_keys(),
+                                 request.relin_keys(), response.add_reply()));
+  }
   return response;
 }
 
@@ -186,6 +171,38 @@ StatusOr<std::vector<seal::Ciphertext>> PIRServer::oblivious_expansion(
     total_items -= poly_modulus_degree;
   }
   return results;
+}
+
+Status PIRServer::processQuery(const Ciphertexts& query_proto,
+                               const string& galois_keys_proto,
+                               const string& relin_keys_proto,
+                               Ciphertexts* output) const {
+  ASSIGN_OR_RETURN(auto query,
+                   LoadCiphertexts(context_->SEALContext(), query_proto));
+  ASSIGN_OR_RETURN(
+      auto galois_keys,
+      SEALDeserialize<GaloisKeys>(context_->SEALContext(), galois_keys_proto));
+
+  const auto dimensions = context_->Parameters()->Dimensions();
+  const size_t dim_sum = std::accumulate(dimensions.begin(), dimensions.end(),
+                                         decltype(dimensions)::value_type(0));
+
+  ASSIGN_OR_RETURN(auto selection_vector,
+                   oblivious_expansion(query, dim_sum, galois_keys));
+
+  seal::Ciphertext result;
+  if (relin_keys_proto.empty()) {
+    ASSIGN_OR_RETURN(result, db_->multiply(selection_vector));
+  } else {
+    ASSIGN_OR_RETURN(
+        auto relin_keys,
+        SEALDeserialize<RelinKeys>(context_->SEALContext(), relin_keys_proto));
+    ASSIGN_OR_RETURN(result, db_->multiply(selection_vector, &relin_keys));
+  }
+
+  RETURN_IF_ERROR(SaveCiphertexts(vector<seal::Ciphertext>{result}, output));
+
+  return Status::OK;
 }
 
 }  // namespace pir

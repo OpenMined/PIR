@@ -72,4 +72,17 @@ Status SaveRequest(const vector<Ciphertext>& cts, const GaloisKeys& galois_keys,
   return Status::OK;
 }
 
+Status SaveRequest(const vector<vector<Ciphertext>>& cts,
+                   const seal::GaloisKeys& galois_keys,
+                   const seal::RelinKeys& relin_keys, BatchRequest* request) {
+  for (size_t idx = 0; idx < cts.size(); ++idx) {
+    RETURN_IF_ERROR(SaveCiphertexts(cts[idx], request->add_query()));
+  }
+  RETURN_IF_ERROR(
+      SEALSerialize<GaloisKeys>(galois_keys, request->mutable_galois_keys()));
+  RETURN_IF_ERROR(
+      SEALSerialize<RelinKeys>(relin_keys, request->mutable_relin_keys()));
+  return Status::OK;
+}
+
 };  // namespace pir

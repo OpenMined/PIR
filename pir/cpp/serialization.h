@@ -76,6 +76,10 @@ Status SaveRequest(const vector<Ciphertext>& cts,
                    const seal::GaloisKeys& galois_keys,
                    const seal::RelinKeys& relin_keys, Request* request);
 
+Status SaveRequest(const vector<vector<Ciphertext>>& cts,
+                   const seal::GaloisKeys& galois_keys,
+                   const seal::RelinKeys& relin_keys, BatchRequest* request);
+
 /**
  * Saves a SEAL object to a string.
  * Compatible SEAL types: Ciphertext, Plaintext, SecretKey, PublicKey,

@@ -40,3 +40,22 @@ message Response {
   // Reply to query as a set of 1 or more serialized ciphertexts.
   Ciphertexts reply = 1;
 }
+
+// BatchRequest sent from the client to the server. Includes an array of
+// ciphertexts, a set of galois keys and relinearization keys to be used.
+message BatchRequest {
+  // Each query may have 1 or more ciphertexts.
+  repeated Ciphertexts query = 1;
+
+  // Galois keys, needed to compute substitution operation on ciphertexts.
+  bytes galois_keys = 2;
+
+  // Relinearization keys, only needed for recursion depths more than 1.
+  bytes relin_keys = 3;
+}
+
+// BatchResponse to a batch request, a set of ciphertexts.
+message BatchResponse {
+  // Reply to query as a set of 1 or more serialized ciphertexts.
+  repeated Ciphertexts reply = 1;
+}
