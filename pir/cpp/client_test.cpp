@@ -269,6 +269,22 @@ TEST_F(PIRClientTest, TestProcessResponse) {
   ASSERT_EQ(result, value);
 }
 
+TEST_F(PIRClientTest, TestProcessResponseBatch) {
+  int64_t value = 1234;
+
+  Plaintext pt;
+  Context()->Encoder()->encode(value, pt);
+  vector<Ciphertext> ct(1);
+  Encryptor()->encrypt(pt, ct[0]);
+
+  BatchResponse response;
+  SaveCiphertexts(ct, response.add_reply());
+  SaveCiphertexts(ct, response.add_reply());
+
+  auto result = client_->ProcessResponse(response).ValueOrDie();
+  EXPECT_THAT(result, ElementsAre(value, value));
+}
+
 TEST_F(PIRClientTest, TestCreateRequest_InvalidIndex) {
   auto request_or = client_->CreateRequest(db_size_ + 1);
   ASSERT_EQ(request_or.status().code(),
@@ -336,5 +352,68 @@ INSTANTIATE_TEST_SUITE_P(
         make_tuple(4096, 0, 4096), make_tuple(4096, 4095, 4096),
         make_tuple(16384, 12288, 4096), make_tuple(16384, 12289, 4096),
         make_tuple(16384, 16383, 4096)));
+
+class CreateBatchRequestTest : public PIRClientTest,
+                               public testing::WithParamInterface<
+                                   tuple<size_t, vector<size_t>, uint64_t>> {};
+
+TEST_P(CreateBatchRequestTest, TestCreateBatchRequest) {
+  const auto dbsize = get<0>(GetParam());
+  vector<size_t> indexes = get<1>(GetParam());
+  SetUpDB(dbsize);
+
+  const auto poly_modulus_degree =
+      pir_params_->GetEncryptionParams().poly_modulus_degree();
+  const auto plain_mod =
+      pir_params_->GetEncryptionParams().plain_modulus().value();
+
+  auto request_or = client_->CreateRequest(indexes);
+  ASSERT_TRUE(request_or.ok())
+      << "Status is: " << request_or.status().ToString();
+
+  auto request = request_or.ValueOrDie();
+  ASSERT_EQ(request.query_size(), indexes.size());
+  EXPECT_THAT(request.galois_keys(), Not(IsEmpty()));
+
+  auto m = get<2>(GetParam());
+
+  for (size_t idx = 0; idx < indexes.size(); ++idx) {
+    auto query = LoadCiphertexts(Context()->SEALContext(), request.query(idx))
+                     .ValueOrDie();
+    ASSERT_EQ(query.size(), dbsize / poly_modulus_degree + 1);
+    int desired_index = indexes[idx];
+
+    for (const auto& ct : query) {
+      Plaintext pt;
+      Decryptor()->decrypt(ct, pt);
+      for (size_t i = 0; i < pt.coeff_count(); ++i) {
+        if (i != static_cast<size_t>(desired_index)) {
+          EXPECT_EQ(pt[i], 0);
+        }
+      }
+      if (desired_index < 0 ||
+          static_cast<size_t>(desired_index) >= poly_modulus_degree) {
+        desired_index -= poly_modulus_degree;
+        for (size_t i = 0; i < pt.coeff_count(); ++i) {
+          EXPECT_EQ(pt[i], 0);
+        }
+      } else {
+        EXPECT_EQ((pt[desired_index] * m) % plain_mod, 1);
+        desired_index = -1;
+      }
+    }
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    BatchRequests, CreateBatchRequestTest,
+    testing::Values(
+        make_tuple(10000, vector<size_t>({5005}), POLY_MODULUS_DEGREE),
+        make_tuple(10000, vector<size_t>({0}), POLY_MODULUS_DEGREE),
+        make_tuple(10000, vector<size_t>({8191}), POLY_MODULUS_DEGREE),
+        make_tuple(10000, vector<size_t>({0, 8191}), POLY_MODULUS_DEGREE),
+        make_tuple(10000, vector<size_t>({0, 5005, 8191}), POLY_MODULUS_DEGREE),
+        make_tuple(10000, vector<size_t>({0, 1, 2, 3, 4, 5}),
+                   POLY_MODULUS_DEGREE)));
 
 }  // namespace pir

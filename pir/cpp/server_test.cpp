@@ -170,6 +170,59 @@ TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
       Eq(db_[desired_index] * next_power_two(db_size_ - POLY_MODULUS_DEGREE)));
 }
 
+TEST_F(PIRServerTest, TestProcessBatchRequest) {
+  const vector<size_t> indexes = {3,4,5};
+  vector<vector<Ciphertext>> queries(indexes.size());
+
+  for (size_t idx = 0; idx < indexes.size(); ++idx) {
+    Plaintext pt(POLY_MODULUS_DEGREE);
+    pt.set_zero();
+    pt[indexes[idx]] = 1;
+
+    vector<Ciphertext> query(1);
+    encryptor_->encrypt(pt, query[0]);
+    queries[idx] = query;
+  }
+
+  BatchRequest request_proto;
+  SaveRequest(queries, gal_keys_, relin_keys_, &request_proto);
+
+  auto result_or = server_->ProcessRequest(request_proto);
+  ASSERT_THAT(result_or.ok(), IsTrue())
+      << "Error: " << result_or.status().ToString();
+
+  for (size_t idx = 0; idx < indexes.size(); ++idx) {
+    auto result = LoadCiphertexts(server_->Context()->SEALContext(),
+                                  result_or.ValueOrDie().reply(idx))
+                      .ValueOrDie();
+    ASSERT_THAT(result, SizeIs(1));
+
+    Plaintext result_pt;
+    decryptor_->decrypt(result[0], result_pt);
+    auto encoder = server_->Context()->Encoder();
+    ASSERT_THAT(encoder->decode_int64(result_pt),
+                Eq(db_[indexes[idx]] * next_power_two(db_size_)));
+  }
+}
+
+TEST_F(PIRServerTest, TestProcessBatchRequestClient) {
+  const vector<size_t> indexes = {3,4,5};
+  auto client = PIRClient::Create(pir_params_).ValueOrDie();
+  auto request = client->CreateRequest(indexes).ValueOrDie();
+
+  auto response_or = server_->ProcessRequest(request);
+  ASSERT_THAT(response_or.ok(), IsTrue())
+      << "Error: " << response_or.status().ToString();
+
+  auto response = response_or.ValueOrDie();
+  auto result = client->ProcessResponse(response).ValueOrDie();
+
+  for(size_t idx = 0; idx < indexes.size(); ++idx){
+      ASSERT_EQ(db_[indexes[idx]], result[idx]);
+  }
+}
+
+
 // Make sure that if we get a weird request from client nothing explodes.
 TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
   Plaintext pt(POLY_MODULUS_DEGREE);

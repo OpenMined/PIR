@@ -90,7 +90,7 @@ StatusOr<BatchRequest> PIRClient::CreateRequest(
 
   vector<vector<Ciphertext>> queries(indexes.size());
 
-  for (size_t idx = 0; indexes.size(); ++idx) {
+  for (size_t idx = 0; idx < indexes.size(); ++idx) {
     RETURN_IF_ERROR(createQueryFor(indexes[idx], queries[idx]));
   }
 
@@ -155,7 +155,8 @@ StatusOr<std::vector<int64_t>> PIRClient::ProcessResponse(
 Status PIRClient::createQueryFor(size_t desired_index,
                                  vector<Ciphertext>& query) const {
   if (desired_index >= DBSize()) {
-    return InvalidArgumentError("invalid index");
+    return InvalidArgumentError("invalid index " +
+                                std::to_string(desired_index));
   }
 
   const auto poly_modulus_degree =
