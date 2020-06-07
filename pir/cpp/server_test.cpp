@@ -171,7 +171,7 @@ TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
 }
 
 TEST_F(PIRServerTest, TestProcessBatchRequest) {
-  const vector<size_t> indexes = {3,4,5};
+  const vector<size_t> indexes = {3, 4, 5};
   vector<vector<Ciphertext>> queries(indexes.size());
 
   for (size_t idx = 0; idx < indexes.size(); ++idx) {
@@ -206,7 +206,7 @@ TEST_F(PIRServerTest, TestProcessBatchRequest) {
 }
 
 TEST_F(PIRServerTest, TestProcessBatchRequestClient) {
-  const vector<size_t> indexes = {3,4,5};
+  const vector<size_t> indexes = {3, 4, 5};
   auto client = PIRClient::Create(pir_params_).ValueOrDie();
   auto request = client->CreateRequest(indexes).ValueOrDie();
 
@@ -217,11 +217,10 @@ TEST_F(PIRServerTest, TestProcessBatchRequestClient) {
   auto response = response_or.ValueOrDie();
   auto result = client->ProcessResponse(response).ValueOrDie();
 
-  for(size_t idx = 0; idx < indexes.size(); ++idx){
-      ASSERT_EQ(db_[indexes[idx]], result[idx]);
+  for (size_t idx = 0; idx < indexes.size(); ++idx) {
+    ASSERT_EQ(db_[indexes[idx]], result[idx]);
   }
 }
-
 
 // Make sure that if we get a weird request from client nothing explodes.
 TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
