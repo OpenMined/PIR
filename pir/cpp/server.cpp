@@ -47,7 +47,8 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
 
 StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
     std::shared_ptr<PIRDatabase> db) {
-  return PIRServer::Create(db, CreatePIRParameters(db->size()));
+  ASSIGN_OR_RETURN(auto params, CreatePIRParameters(db->size()));
+  return PIRServer::Create(db, params);
 }
 
 StatusOr<Response> PIRServer::ProcessRequest(
@@ -124,7 +125,7 @@ StatusOr<std::vector<seal::Ciphertext>> PIRServer::oblivious_expansion(
     const seal::Ciphertext& ct, const size_t num_items,
     const seal::GaloisKeys& gal_keys) const {
   const auto poly_modulus_degree =
-      context_->Params().he_parameters().poly_modulus_degree();
+      context_->EncryptionParams().poly_modulus_degree();
 
   if (num_items > poly_modulus_degree) {
     return InvalidArgumentError(
@@ -167,7 +168,7 @@ StatusOr<std::vector<seal::Ciphertext>> PIRServer::oblivious_expansion(
     const std::vector<seal::Ciphertext>& cts, size_t total_items,
     const seal::GaloisKeys& gal_keys) const {
   size_t poly_modulus_degree =
-      context_->Params().he_parameters().poly_modulus_degree();
+      context_->EncryptionParams().poly_modulus_degree();
 
   if (cts.size() != total_items / poly_modulus_degree + 1) {
     return InvalidArgumentError(

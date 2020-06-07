@@ -16,6 +16,8 @@
 #include "pir/cpp/parameters.h"
 
 #include "pir/cpp/database.h"
+#include "pir/cpp/serialization.h"
+#include "pir/cpp/utils.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
 #include "util/statusor.h"
@@ -24,38 +26,37 @@ namespace pir {
 
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
+using seal::EncryptionParameters;
 
-HEParameters GenerateHEParams(std::optional<uint32_t> poly_mod_opt,
-                              std::optional<Modulus> plain_mod_opt,
-                              std::optional<std::vector<Modulus>> coeff_opt) {
+EncryptionParameters GenerateEncryptionParams(
+    std::optional<uint32_t> poly_mod_opt, std::optional<Modulus> plain_mod_opt,
+    std::optional<std::vector<Modulus>> coeff_opt) {
   auto poly_modulus_degree = poly_mod_opt.value_or(DEFAULT_POLY_MODULUS_DEGREE);
   auto plain_modulus = plain_mod_opt.value_or(
       seal::PlainModulus::Batching(poly_modulus_degree, 20));
   auto coeff =
       coeff_opt.value_or(seal::CoeffModulus::BFVDefault(poly_modulus_degree));
 
-  HEParameters parms;
+  EncryptionParameters parms(seal::scheme_type::BFV);
   parms.set_poly_modulus_degree(poly_modulus_degree);
-  parms.set_plain_modulus(plain_modulus.value());
-  for (auto& v : coeff) parms.add_coeff_modulus(v.value());
+  parms.set_plain_modulus(plain_modulus);
+  parms.set_coeff_modulus(coeff);
   return parms;
 }
 
-seal::EncryptionParameters GenerateEncryptionParams(
-    const HEParameters& he_params) {
-  seal::EncryptionParameters parms(seal::scheme_type::BFV);
-  parms.set_poly_modulus_degree(he_params.poly_modulus_degree());
-  parms.set_plain_modulus(he_params.plain_modulus());
-  parms.set_coeff_modulus(vector<Modulus>(he_params.coeff_modulus().begin(),
-                                          he_params.coeff_modulus().end()));
-  return parms;
+StatusOr<EncryptionParameters> GenerateEncryptionParams(
+    const PIRParameters& params) {
+  return SEALDeserialize<EncryptionParameters>(params.he_parameters());
 }
 
-PIRParameters CreatePIRParameters(size_t dbsize, size_t dimensions,
-                                  HEParameters heParams) {
+StatusOr<PIRParameters> CreatePIRParameters(size_t dbsize, size_t dimensions,
+                                            EncryptionParameters heParams) {
   PIRParameters parameters;
   parameters.set_database_size(dbsize);
-  *parameters.mutable_he_parameters() = heParams;
+
+  RETURN_IF_ERROR(SEALSerialize<EncryptionParameters>(
+      heParams, parameters.mutable_he_parameters()));
+
   for (auto& dim : PIRDatabase::calculate_dimensions(dbsize, dimensions))
     parameters.add_dimensions(dim);
 

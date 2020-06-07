@@ -39,7 +39,7 @@ class PIRSerializationTest : public ::testing::Test {
   void SetUp() { SetUpDB(DB_SIZE); }
 
   void SetUpDB(size_t dbsize) {
-    auto pir_params = CreatePIRParameters(dbsize);
+    auto pir_params = CreatePIRParameters(dbsize).ValueOrDie();
     context_ = std::move(PIRContext::Create(pir_params).ValueOrDie());
 
     auto keygen_ =

@@ -30,6 +30,8 @@ using ::std::shared_ptr;
 using ::std::string;
 using ::std::vector;
 
+using seal::EncryptionParameters;
+
 class PIRContext {
  public:
   /**
@@ -55,6 +57,11 @@ class PIRContext {
   std::shared_ptr<seal::SEALContext>& SEALContext() { return context_; }
 
   /**
+   * Returns the encryption parameters
+   **/
+  const EncryptionParameters& EncryptionParams() { return encryption_params_; }
+
+  /**
    * Returns the encoder
    **/
   std::shared_ptr<seal::IntegerEncoder>& Encoder() { return encoder_; }
@@ -63,6 +70,7 @@ class PIRContext {
   PIRContext(const PIRParameters& /*params*/);
 
   PIRParameters parameters_;
+  EncryptionParameters encryption_params_;
   shared_ptr<seal::SEALContext> context_;
   shared_ptr<seal::Evaluator> evaluator_;
   shared_ptr<seal::IntegerEncoder> encoder_;

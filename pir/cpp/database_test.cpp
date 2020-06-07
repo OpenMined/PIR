@@ -63,13 +63,13 @@ class PIRDatabaseTest : public ::testing::Test {
       return 4 * n + 2600;
     });
 
-    pir_params_ = CreatePIRParameters(rawdb_.size(), dimensions,
-                                      GenerateHEParams(poly_modulus_degree));
+    encryption_params_ = GenerateEncryptionParams(poly_modulus_degree);
+    pir_params_ =
+        CreatePIRParameters(rawdb_.size(), dimensions, encryption_params_)
+            .ValueOrDie();
     pirdb_ = PIRDatabase::Create(rawdb_, pir_params_).ValueOrDie();
 
-    auto encryptionParams =
-        GenerateEncryptionParams(pir_params_.he_parameters());
-    seal_context_ = seal::SEALContext::Create(encryptionParams);
+    seal_context_ = seal::SEALContext::Create(encryption_params_);
     if (!seal_context_->parameters_set()) {
       FAIL() << "Error setting encryption parameters: "
              << seal_context_->parameter_error_message();
@@ -86,6 +86,7 @@ class PIRDatabaseTest : public ::testing::Test {
   vector<std::int64_t> rawdb_;
   std::shared_ptr<PIRDatabase> pirdb_;
   PIRParameters pir_params_;
+  EncryptionParameters encryption_params_;
   shared_ptr<SEALContext> seal_context_;
   unique_ptr<seal::IntegerEncoder> encoder_;
   unique_ptr<KeyGenerator> keygen_;

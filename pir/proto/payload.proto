@@ -41,22 +41,12 @@ message Response {
   Ciphertexts reply = 1;
 }
 
-// Required parameters for settings up the homomorphic encryption scheme and context.
-message HEParameters {
-    // The polynomial modulus degree
-    uint32 poly_modulus_degree = 2;
-    // The plaintext modulus
-    uint64 plain_modulus = 3;
-    // The coefficient modulus
-    repeated uint64 coeff_modulus = 4;
-}
-
 // Private information retrieval setup parameters
 message PIRParameters {
     // The database size
     uint64 database_size = 1;
     // Size of each dimension in the database representation
     repeated uint32 dimensions = 2;
-    // Homomorphic encryption parameters
-    HEParameters he_parameters = 3;
+    // Serialized homomorphic encryption parameters
+    bytes he_parameters = 3;
 }

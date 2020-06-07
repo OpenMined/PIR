@@ -62,12 +62,12 @@ StatusOr<uint64_t> InvertMod(uint64_t m, const seal::Modulus& mod) {
 
 StatusOr<Request> PIRClient::CreateRequest(std::size_t desired_index) const {
   const auto poly_modulus_degree =
-      context_->Params().he_parameters().poly_modulus_degree();
+      context_->EncryptionParams().poly_modulus_degree();
   if (desired_index >= DBSize()) {
     return InvalidArgumentError("invalid index");
   }
 
-  auto plain_mod = context_->Params().he_parameters().plain_modulus();
+  auto plain_mod = context_->EncryptionParams().plain_modulus();
 
   auto dims = std::vector<uint32_t>(context_->Params().dimensions().begin(),
                                     context_->Params().dimensions().end());
