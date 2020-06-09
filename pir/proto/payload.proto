@@ -48,5 +48,5 @@ message PIRParameters {
     // Size of each dimension in the database representation
     repeated uint32 dimensions = 2;
     // Serialized homomorphic encryption parameters
-    bytes he_parameters = 3;
+    bytes encryption_parameters = 3;
 }
