@@ -44,11 +44,6 @@ EncryptionParameters GenerateEncryptionParams(
   return parms;
 }
 
-StatusOr<EncryptionParameters> GenerateEncryptionParams(
-    const PIRParameters& params) {
-  return SEALDeserialize<EncryptionParameters>(params.encryption_parameters());
-}
-
 StatusOr<PIRParameters> CreatePIRParameters(size_t dbsize, size_t dimensions,
                                             EncryptionParameters encParams) {
   PIRParameters parameters;
