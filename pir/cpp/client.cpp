@@ -44,7 +44,7 @@ PIRClient::PIRClient(std::unique_ptr<PIRContext> context)
 }
 
 StatusOr<std::unique_ptr<PIRClient>> PIRClient::Create(
-    const PIRParameters& params) {
+    shared_ptr<PIRParameters> params) {
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
   return absl::WrapUnique(new PIRClient(std::move(context)));
 }
@@ -69,8 +69,8 @@ StatusOr<Request> PIRClient::CreateRequest(std::size_t desired_index) const {
 
   auto plain_mod = context_->EncryptionParams().plain_modulus();
 
-  auto dims = std::vector<uint32_t>(context_->Params().dimensions().begin(),
-                                    context_->Params().dimensions().end());
+  auto dims = std::vector<uint32_t>(context_->Params()->dimensions().begin(),
+                                    context_->Params()->dimensions().end());
   auto indices = PIRDatabase::calculate_indices(dims, desired_index);
 
   const size_t dim_sum =

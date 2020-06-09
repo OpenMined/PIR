@@ -27,6 +27,7 @@ using namespace seal;
 using std::get;
 using std::make_tuple;
 using std::make_unique;
+using std::shared_ptr;
 using std::tuple;
 using namespace ::testing;
 
@@ -51,7 +52,7 @@ class PIRClientTest : public ::testing::Test {
   std::shared_ptr<seal::Encryptor> Encryptor() { return client_->encryptor_; }
 
   size_t db_size_;
-  PIRParameters pir_params_;
+  shared_ptr<PIRParameters> pir_params_;
   EncryptionParameters encryption_params_;
   std::unique_ptr<PIRClient> client_;
 };
@@ -83,7 +84,7 @@ TEST_F(PIRClientTest, TestCreateRequestD2) {
   const size_t num_rows = 10;
   const size_t num_cols = 9;
   const size_t total_s_items = num_rows + num_cols;
-  ASSERT_THAT(Context()->Params().dimensions(),
+  ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols));
 
   auto request_proto = client_->CreateRequest(desired_index).ValueOrDie();
@@ -119,7 +120,7 @@ TEST_F(PIRClientTest, TestCreateRequestD3) {
   const size_t num_cols = 5;
   const size_t num_depth = 4;
   const size_t total_s_items = num_rows + num_cols + num_depth;
-  ASSERT_THAT(Context()->Params().dimensions(),
+  ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols, num_depth));
 
   auto request_proto = client_->CreateRequest(desired_index).ValueOrDie();
@@ -157,7 +158,7 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT1) {
   const size_t desired_index = 12345679;
   const size_t num_rows = 4473;
   const size_t num_cols = 4472;
-  ASSERT_THAT(Context()->Params().dimensions(),
+  ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols));
 
   auto request_proto = client_->CreateRequest(desired_index).ValueOrDie();
@@ -206,7 +207,7 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT2) {
   const size_t desired_index = 12346679;
   const size_t num_rows = 4473;
   const size_t num_cols = 4472;
-  ASSERT_THAT(Context()->Params().dimensions(),
+  ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols));
 
   auto request_proto = client_->CreateRequest(desired_index).ValueOrDie();

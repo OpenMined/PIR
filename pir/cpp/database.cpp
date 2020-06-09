@@ -34,7 +34,7 @@ using seal::Plaintext;
 using std::vector;
 
 StatusOr<std::shared_ptr<PIRDatabase>> PIRDatabase::Create(
-    const raw_db_type& rawdb, const PIRParameters& params) {
+    const raw_db_type& rawdb, shared_ptr<PIRParameters> params) {
   db_type db(rawdb.size());
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
 
@@ -179,7 +179,7 @@ StatusOr<Ciphertext> PIRDatabase::multiply(
     const vector<Ciphertext>& selection_vector,
     const seal::RelinKeys* const relin_keys,
     seal::Decryptor* const decryptor) const {
-  auto& dimensions = context_->Params().dimensions();
+  auto& dimensions = context_->Params()->dimensions();
   const size_t dim_sum =
       std::accumulate(dimensions.begin(), dimensions.end(), 0);
 

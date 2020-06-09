@@ -31,14 +31,15 @@ using ::private_join_and_compute::Status;
 using ::private_join_and_compute::StatusOr;
 using ::seal::GaloisKeys;
 using ::seal::RelinKeys;
+using ::std::shared_ptr;
 
 PIRServer::PIRServer(std::unique_ptr<PIRContext> context,
                      std::shared_ptr<PIRDatabase> db)
     : context_(std::move(context)), db_(db) {}
 
 StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
-    std::shared_ptr<PIRDatabase> db, const PIRParameters& params) {
-  if (params.database_size() != db->size()) {
+    std::shared_ptr<PIRDatabase> db, shared_ptr<PIRParameters> params) {
+  if (params->database_size() != db->size()) {
     return InvalidArgumentError("database size mismatch");
   }
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
@@ -59,7 +60,7 @@ StatusOr<Response> PIRServer::ProcessRequest(
                    SEALDeserialize<GaloisKeys>(context_->SEALContext(),
                                                request_proto.galois_keys()));
 
-  const auto dimensions = context_->Params().dimensions();
+  const auto dimensions = context_->Params()->dimensions();
   const size_t dim_sum = std::accumulate(dimensions.begin(), dimensions.end(),
                                          decltype(dimensions)::value_type(0));
 

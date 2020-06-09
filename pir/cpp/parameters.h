@@ -28,6 +28,7 @@
 namespace pir {
 
 using ::std::optional;
+using ::std::shared_ptr;
 using ::std::size_t;
 using ::std::vector;
 
@@ -55,9 +56,9 @@ EncryptionParameters GenerateEncryptionParams(
  * @param[in] the database dimensions
  * @returns InvalidArgument if EncryptionParameters serialization fails.
  * */
-StatusOr<PIRParameters> CreatePIRParameters(
+StatusOr<std::shared_ptr<PIRParameters>> CreatePIRParameters(
     size_t dbsize, size_t dimensions = 1,
-    EncryptionParameters heParams = GenerateEncryptionParams());
+    EncryptionParameters enc_params = GenerateEncryptionParams());
 }  // namespace pir
 
 #endif  // PIR_PARAMETERS_H_

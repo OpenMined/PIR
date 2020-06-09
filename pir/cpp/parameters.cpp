@@ -26,7 +26,9 @@ namespace pir {
 
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
-using seal::EncryptionParameters;
+using ::seal::EncryptionParameters;
+using ::std::make_shared;
+using ::std::shared_ptr;
 
 EncryptionParameters GenerateEncryptionParams(
     std::optional<uint32_t> poly_mod_opt, std::optional<Modulus> plain_mod_opt,
@@ -44,16 +46,16 @@ EncryptionParameters GenerateEncryptionParams(
   return parms;
 }
 
-StatusOr<PIRParameters> CreatePIRParameters(size_t dbsize, size_t dimensions,
-                                            EncryptionParameters encParams) {
-  PIRParameters parameters;
-  parameters.set_database_size(dbsize);
+StatusOr<shared_ptr<PIRParameters>> CreatePIRParameters(
+    size_t dbsize, size_t dimensions, EncryptionParameters encParams) {
+  auto parameters = std::make_shared<PIRParameters>();
+  parameters->set_database_size(dbsize);
 
   RETURN_IF_ERROR(SEALSerialize<EncryptionParameters>(
-      encParams, parameters.mutable_encryption_parameters()));
+      encParams, parameters->mutable_encryption_parameters()));
 
   for (auto& dim : PIRDatabase::calculate_dimensions(dbsize, dimensions))
-    parameters.add_dimensions(dim);
+    parameters->add_dimensions(dim);
 
   return parameters;
 }

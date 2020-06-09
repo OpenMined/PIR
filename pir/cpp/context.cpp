@@ -28,7 +28,7 @@ using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
 using seal::EncryptionParameters;
 
-PIRContext::PIRContext(const PIRParameters& params,
+PIRContext::PIRContext(shared_ptr<PIRParameters> params,
                        const EncryptionParameters& enc_params)
     : parameters_(params), encryption_params_(enc_params) {
   context_ = seal::SEALContext::Create(encryption_params_);
@@ -37,9 +37,9 @@ PIRContext::PIRContext(const PIRParameters& params,
 }
 
 StatusOr<std::unique_ptr<PIRContext>> PIRContext::Create(
-    const PIRParameters& params) {
+    shared_ptr<PIRParameters> params) {
   ASSIGN_OR_RETURN(auto enc_params, SEALDeserialize<EncryptionParameters>(
-                                        params.encryption_parameters()));
+                                        params->encryption_parameters()));
   return absl::WrapUnique(new PIRContext(params, enc_params));
 }
 
