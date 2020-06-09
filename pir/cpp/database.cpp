@@ -119,19 +119,19 @@ class DatabaseMultiplier {
         // base case: have to multiply against DB
         evaluator_->multiply_plain(*(selection_vector_it + i),
                                    *(database_it_++), temp_ct);
-        print_noise(depth, i, "base", temp_ct);
+        print_noise(depth, "base", temp_ct, i);
 
       } else {
         temp_ct = multiply(remaining_dimensions,
                            selection_vector_it + this_dimension, depth + 1);
-        print_noise(depth, i, "recurse", temp_ct);
+        print_noise(depth, "recurse", temp_ct, i);
 
         evaluator_->multiply_inplace(temp_ct, *(selection_vector_it + i));
-        print_noise(depth, i, "mult", temp_ct);
+        print_noise(depth, "mult", temp_ct, i);
 
         if (relin_keys_ != nullptr) {
           evaluator_->relinearize_inplace(temp_ct, *relin_keys_);
-          print_noise(depth, i, "relin", temp_ct);
+          print_noise(depth, "relin", temp_ct, i);
         }
       }
 
@@ -140,23 +140,23 @@ class DatabaseMultiplier {
         first_pass = false;
       } else {
         evaluator_->add_inplace(result, temp_ct);
-        print_noise(depth, i, "result", temp_ct);
+        print_noise(depth, "result", temp_ct, i);
       }
     }
-    if (decryptor_ != nullptr) {
-      std::cout << depth_string << "final result noise budget "
-                << decryptor_->invariant_noise_budget(result) << std::endl;
-    }
 
+    print_noise(depth, "final", result);
     return result;
   }
 
-  void print_noise(size_t depth, size_t i, const string& desc,
-                   const Ciphertext& ct) {
+  void print_noise(size_t depth, const string& desc, const Ciphertext& ct,
+                   std::optional<size_t> i_opt = {}) {
     if (decryptor_ != nullptr) {
-      std::cout << string(depth, ' ') << "i = " << i << " " << desc
-                << " noise budget " << decryptor_->invariant_noise_budget(ct)
-                << std::endl;
+      std::cout << string(depth, ' ');
+      if (i_opt) {
+        std::cout << "i = " << (*i_opt) << " ";
+      }
+      std::cout << desc << " noise budget "
+                << decryptor_->invariant_noise_budget(ct) << std::endl;
     }
   }
 
