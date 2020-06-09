@@ -45,19 +45,18 @@ class PIRContext {
    * Returns an Evaluator instance
    **/
   std::shared_ptr<seal::Evaluator>& Evaluator() { return evaluator_; }
-
-  /**
-   * Returns the PIR parameters
-   **/
-  const PIRParameters& Params() { return parameters_; }
-
   /**
    * Returns the SEAL context
    **/
   std::shared_ptr<seal::SEALContext>& SEALContext() { return context_; }
-
   /**
-   * Returns the encryption parameters
+   * Returns the PIR parameters protobuffer.
+   * The parameters include: database size, dimensions and encoded encryption
+   *parameters.
+   **/
+  const PIRParameters& Params() { return parameters_; }
+  /**
+   * Returns the decoded encryption parameters.
    **/
   const EncryptionParameters& EncryptionParams() { return encryption_params_; }
 

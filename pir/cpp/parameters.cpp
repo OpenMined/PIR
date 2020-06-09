@@ -50,12 +50,12 @@ StatusOr<EncryptionParameters> GenerateEncryptionParams(
 }
 
 StatusOr<PIRParameters> CreatePIRParameters(size_t dbsize, size_t dimensions,
-                                            EncryptionParameters heParams) {
+                                            EncryptionParameters encParams) {
   PIRParameters parameters;
   parameters.set_database_size(dbsize);
 
   RETURN_IF_ERROR(SEALSerialize<EncryptionParameters>(
-      heParams, parameters.mutable_encryption_parameters()));
+      encParams, parameters.mutable_encryption_parameters()));
 
   for (auto& dim : PIRDatabase::calculate_dimensions(dbsize, dimensions))
     parameters.add_dimensions(dim);

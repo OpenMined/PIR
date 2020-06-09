@@ -193,4 +193,17 @@ TEST_F(PIRSerializationTest, TestRequestSerialization_ShortcutWithRelin) {
   // Can't really check if the relin keys are valid. Just assume it's ok here.
 }
 
+TEST_F(PIRSerializationTest, TestEncryptionParamsSerialization) {
+  auto params = GenerateEncryptionParams();
+  std::string serial;
+  auto status = SEALSerialize<EncryptionParameters>(params, &serial);
+  ASSERT_TRUE(status.ok()) << "Status is: " << status.ToString();
+  auto decoded_params_or = SEALDeserialize<EncryptionParameters>(serial);
+  ASSERT_TRUE(decoded_params_or.ok())
+      << "Status is: " << decoded_params_or.status().ToString();
+  auto decoded_params = decoded_params_or.ValueOrDie();
+
+  ASSERT_EQ(params.plain_modulus(), decoded_params.plain_modulus());
+  ASSERT_EQ(params.poly_modulus_degree(), decoded_params.poly_modulus_degree());
+}
 }  // namespace pir
