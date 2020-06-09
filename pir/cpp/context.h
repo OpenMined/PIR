@@ -67,7 +67,8 @@ class PIRContext {
   std::shared_ptr<seal::IntegerEncoder>& Encoder() { return encoder_; }
 
  private:
-  PIRContext(const PIRParameters& /*params*/);
+  PIRContext(const PIRParameters& /*params*/,
+             const EncryptionParameters& /*enc_params*/);
 
   PIRParameters parameters_;
   EncryptionParameters encryption_params_;

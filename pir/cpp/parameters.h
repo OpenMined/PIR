@@ -48,10 +48,6 @@ constexpr uint32_t DEFAULT_POLY_MODULUS_DEGREE = 4096;
 EncryptionParameters GenerateEncryptionParams(
     optional<uint32_t> poly_mod_opt = {}, optional<Modulus> plain_mod_opt = {},
     optional<std::vector<Modulus>> coeff_opt = {});
-
-StatusOr<EncryptionParameters> GenerateEncryptionParams(
-    const PIRParameters& params);
-
 /*
  * Helper function to create the PIRParameters
  * @param[in] the database size

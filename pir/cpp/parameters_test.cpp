@@ -51,7 +51,9 @@ TEST(PIRParametersTest, SanityCheck) {
   auto pir_params = pir_params_or.ValueOrDie();
   EXPECT_THAT(pir_params.database_size(), Eq(100));
   EXPECT_THAT(pir_params.dimensions(), ElementsAre(100));
-  auto encryptionParams = GenerateEncryptionParams(pir_params).ValueOrDie();
+  auto encryptionParams =
+      SEALDeserialize<EncryptionParameters>(pir_params.encryption_parameters())
+          .ValueOrDie();
   auto context = seal::SEALContext::Create(encryptionParams);
   EXPECT_THAT(context->parameters_set(), IsTrue())
       << "Error setting encryption parameters: "
@@ -62,7 +64,8 @@ TEST(PIRParametersTest, CreateMultiDim) {
   auto pir_params = CreatePIRParameters(1001, 3).ValueOrDie();
   EXPECT_THAT(pir_params.database_size(), Eq(1001));
   EXPECT_THAT(pir_params.dimensions(), ElementsAre(11, 10, 10));
-  auto encryption_params_or = GenerateEncryptionParams(pir_params);
+  auto encryption_params_or =
+      SEALDeserialize<EncryptionParameters>(pir_params.encryption_parameters());
   ASSERT_THAT(encryption_params_or.ok(), IsTrue())
       << "Error creating encryption params: "
       << encryption_params_or.status().ToString();

@@ -16,21 +16,21 @@
 #include "pir/cpp/context.h"
 
 #include "absl/memory/memory.h"
+#include "pir/cpp/serialization.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
+#include "util/status_macros.h"
 #include "util/statusor.h"
 
 namespace pir {
 
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
+using seal::EncryptionParameters;
 
-PIRContext::PIRContext(const PIRParameters& params) : parameters_(params) {
-  auto encryption_params_or = GenerateEncryptionParams(params);
-  if (encryption_params_or.ok())
-    encryption_params_ = encryption_params_or.ValueOrDie();
-  else
-    encryption_params_ = GenerateEncryptionParams();
+PIRContext::PIRContext(const PIRParameters& params,
+                       const EncryptionParameters& enc_params)
+    : parameters_(params), encryption_params_(enc_params) {
   context_ = seal::SEALContext::Create(encryption_params_);
   encoder_ = std::make_shared<seal::IntegerEncoder>(this->context_);
   evaluator_ = std::make_shared<seal::Evaluator>(context_);
@@ -38,7 +38,9 @@ PIRContext::PIRContext(const PIRParameters& params) : parameters_(params) {
 
 StatusOr<std::unique_ptr<PIRContext>> PIRContext::Create(
     const PIRParameters& params) {
-  return absl::WrapUnique(new PIRContext(params));
+  ASSIGN_OR_RETURN(auto enc_params, SEALDeserialize<EncryptionParameters>(
+                                        params.encryption_parameters()));
+  return absl::WrapUnique(new PIRContext(params, enc_params));
 }
 
 }  // namespace pir
