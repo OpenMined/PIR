@@ -121,6 +121,11 @@ StatusOr<T> SEALDeserialize(const shared_ptr<SEALContext>& sealctx,
   return out;
 }
 
+/**
+ * Loads a SEAL object from a string.
+ * Compatible SEAL types: EncryptionParameters, Modulus, BigUInt, IntArray
+ * @returns InvalidArgument if the decoding fails.
+ **/
 template <class T>
 StatusOr<T> SEALDeserialize(const string& in) {
   T out;
