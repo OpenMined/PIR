@@ -15,6 +15,7 @@
 #
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 def pir_preload():
     if "rules_proto" not in native.existing_rules():
@@ -29,9 +30,9 @@ def pir_preload():
         )
 
     if "rules_foreign_cc" not in native.existing_rules():
-        http_archive(
+        git_repository(
             name = "rules_foreign_cc",
-            sha256 = "3e83c1a3f9ddc512eb9b45a9c16df2f6738e8769302b3042826d9443fb57e3fd",
-            strip_prefix = "rules_foreign_cc-master",
-            url = "https://github.com/bazelbuild/rules_foreign_cc/archive/master.zip",
+            remote = "https://github.com/bazelbuild/rules_foreign_cc",
+            init_submodules = True,
+            commit="04c04fe7d2fa09e46c630c37d8f32e56598527ca",
             )
