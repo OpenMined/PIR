@@ -46,8 +46,7 @@ class PIRClient {
    * @param[in] desiredIndex Expected database value from an index
    * @returns InvalidArgument if the index is invalid or if the encryption fails
    **/
-  StatusOr<Request> CreateRequest(std::size_t /*index*/) const;
-  StatusOr<BatchRequest> CreateRequest(
+  StatusOr<Request> CreateRequest(
       const std::vector<std::size_t>& /*indexes*/) const;
 
   /**
@@ -55,9 +54,8 @@ class PIRClient {
    * @param[in] response Server output
    * @returns InvalidArgument if the decryption fails
    **/
-  StatusOr<int64_t> ProcessResponse(const Response& response) const;
   StatusOr<std::vector<int64_t>> ProcessResponse(
-      const BatchResponse& response) const;
+      const Response& response) const;
 
   /**
    * Returns the database size.

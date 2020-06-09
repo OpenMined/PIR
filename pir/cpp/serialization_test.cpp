@@ -64,10 +64,10 @@ TEST_F(PIRSerializationTest, TestResponseSerialization) {
   encryptor_->encrypt(pt, ct[0]);
 
   Response response_proto;
-  SaveCiphertexts(ct, response_proto.mutable_reply());
+  SaveCiphertexts(ct, response_proto.add_reply());
 
   auto reloaded_or =
-      LoadCiphertexts(context_->SEALContext(), response_proto.reply());
+      LoadCiphertexts(context_->SEALContext(), response_proto.reply(0));
   ASSERT_TRUE(reloaded_or.ok())
       << "Status is: " << reloaded_or.status().ToString();
 
@@ -90,12 +90,12 @@ TEST_F(PIRSerializationTest, TestRequestSerialization_IndividualMethods) {
   RelinKeys relin_keys = keygen_->relin_keys_local();
 
   Request request_proto;
-  SaveCiphertexts(ct, request_proto.mutable_query());
+  SaveCiphertexts(ct, request_proto.add_query());
   SEALSerialize<GaloisKeys>(gal_keys, request_proto.mutable_galois_keys());
   SEALSerialize<RelinKeys>(relin_keys, request_proto.mutable_relin_keys());
 
   auto request_or =
-      LoadCiphertexts(context_->SEALContext(), request_proto.query());
+      LoadCiphertexts(context_->SEALContext(), request_proto.query(0));
   ASSERT_TRUE(request_or.ok())
       << "Status is: " << request_or.status().ToString();
 
@@ -131,10 +131,10 @@ TEST_F(PIRSerializationTest, TestRequestSerialization_Shortcut) {
   GaloisKeys gal_keys = keygen_->galois_keys_local(elts);
 
   Request request_proto;
-  SaveRequest(ct, gal_keys, &request_proto);
+  SaveRequest({ct}, gal_keys, &request_proto);
 
   auto request_or =
-      LoadCiphertexts(context_->SEALContext(), request_proto.query());
+      LoadCiphertexts(context_->SEALContext(), request_proto.query(0));
   ASSERT_TRUE(request_or.ok())
       << "Status is: " << request_or.status().ToString();
 
@@ -167,10 +167,10 @@ TEST_F(PIRSerializationTest, TestRequestSerialization_ShortcutWithRelin) {
   RelinKeys relin_keys = keygen_->relin_keys_local();
 
   Request request_proto;
-  SaveRequest(ct, gal_keys, relin_keys, &request_proto);
+  SaveRequest({ct}, gal_keys, relin_keys, &request_proto);
 
   auto request_or =
-      LoadCiphertexts(context_->SEALContext(), request_proto.query());
+      LoadCiphertexts(context_->SEALContext(), request_proto.query(0));
   ASSERT_TRUE(request_or.ok())
       << "Status is: " << request_or.status().ToString();
 

@@ -56,7 +56,6 @@ class PIRServer {
    *fail
    **/
   StatusOr<Response> ProcessRequest(const Request& request) const;
-  StatusOr<BatchResponse> ProcessRequest(const BatchRequest& request) const;
 
   /**
    * Returns the database size.

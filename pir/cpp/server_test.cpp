@@ -104,11 +104,11 @@ class PIRServerTest : public ::testing::Test {
 TEST_F(PIRServerTest, TestCorrectness) {
   auto client = PIRClient::Create(pir_params_).ValueOrDie();
   const size_t desired_index = 5;
-  auto request = client->CreateRequest(desired_index).ValueOrDie();
+  auto request = client->CreateRequest({desired_index}).ValueOrDie();
   auto response = server_->ProcessRequest(request).ValueOrDie();
   auto result = client->ProcessResponse(response).ValueOrDie();
 
-  ASSERT_EQ(result, db_[desired_index]);
+  ASSERT_EQ(result[0], db_[desired_index]);
 }
 
 TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
@@ -121,13 +121,13 @@ TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
   encryptor_->encrypt(pt, query[0]);
 
   Request request_proto;
-  SaveRequest(query, gal_keys_, relin_keys_, &request_proto);
+  SaveRequest({query}, gal_keys_, relin_keys_, &request_proto);
 
   auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue())
       << "Error: " << result_or.status().ToString();
   auto result = LoadCiphertexts(server_->Context()->SEALContext(),
-                                result_or.ValueOrDie().reply())
+                                result_or.ValueOrDie().reply(0))
                     .ValueOrDie();
   ASSERT_THAT(result, SizeIs(1));
 
@@ -150,13 +150,13 @@ TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
   encryptor_->encrypt(pt, query[1]);
 
   Request request_proto;
-  SaveRequest(query, gal_keys_, relin_keys_, &request_proto);
+  SaveRequest({query}, gal_keys_, relin_keys_, &request_proto);
 
   auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue())
       << "Error: " << result_or.status().ToString();
   auto result = LoadCiphertexts(server_->Context()->SEALContext(),
-                                result_or.ValueOrDie().reply())
+                                result_or.ValueOrDie().reply(0))
                     .ValueOrDie();
   ASSERT_THAT(result, SizeIs(1));
 
@@ -184,7 +184,7 @@ TEST_F(PIRServerTest, TestProcessBatchRequest) {
     queries[idx] = query;
   }
 
-  BatchRequest request_proto;
+  Request request_proto;
   SaveRequest(queries, gal_keys_, relin_keys_, &request_proto);
 
   auto result_or = server_->ProcessRequest(request_proto);
@@ -231,12 +231,12 @@ TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
   encryptor_->encrypt(pt, query[0]);
 
   Request request_proto;
-  SaveRequest(query, gal_keys_, relin_keys_, &request_proto);
+  SaveRequest({query}, gal_keys_, relin_keys_, &request_proto);
 
   auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue());
   auto result = LoadCiphertexts(server_->Context()->SEALContext(),
-                                result_or.ValueOrDie().reply())
+                                result_or.ValueOrDie().reply(0))
                     .ValueOrDie();
 
   ASSERT_THAT(result, SizeIs(1));
@@ -261,14 +261,14 @@ TEST_F(PIRServerTest, TestProcessRequest_2Dim) {
   encryptor_->encrypt(pt, query[0]);
 
   Request request_proto;
-  SaveRequest(query, gal_keys_, relin_keys_, &request_proto);
+  SaveRequest({query}, gal_keys_, relin_keys_, &request_proto);
 
   auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue())
       << "Error: " << result_or.status().ToString();
 
   auto result = LoadCiphertexts(server_->Context()->SEALContext(),
-                                result_or.ValueOrDie().reply())
+                                result_or.ValueOrDie().reply(0))
                     .ValueOrDie();
   ASSERT_THAT(result, SizeIs(1));
   EXPECT_THAT(result[0].size(), Eq(2))

@@ -60,7 +60,7 @@ Status SaveCiphertexts(const vector<Ciphertext>& buff, Ciphertexts* output);
  * @param[out] request Point to the request protocol buffer to fill in.
  * @returns InvalidArgument if the encoding fails.
  */
-Status SaveRequest(const vector<Ciphertext>& cts,
+Status SaveRequest(const vector<vector<Ciphertext>>& cts,
                    const seal::GaloisKeys& galois_keys, Request* request);
 
 /**
@@ -72,13 +72,9 @@ Status SaveRequest(const vector<Ciphertext>& cts,
  * @param[out] request Point to the request protocol buffer to fill in.
  * @returns InvalidArgument if the encoding fails.
  */
-Status SaveRequest(const vector<Ciphertext>& cts,
-                   const seal::GaloisKeys& galois_keys,
-                   const seal::RelinKeys& relin_keys, Request* request);
-
 Status SaveRequest(const vector<vector<Ciphertext>>& cts,
                    const seal::GaloisKeys& galois_keys,
-                   const seal::RelinKeys& relin_keys, BatchRequest* request);
+                   const seal::RelinKeys& relin_keys, Request* request);
 
 /**
  * Saves a SEAL object to a string.

@@ -52,14 +52,6 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
 
 StatusOr<Response> PIRServer::ProcessRequest(const Request& request) const {
   Response response;
-  RETURN_IF_ERROR(processQuery(request.query(), request.galois_keys(),
-                               request.relin_keys(), response.mutable_reply()));
-  return response;
-}
-
-StatusOr<BatchResponse> PIRServer::ProcessRequest(
-    const BatchRequest& request) const {
-  BatchResponse response;
   for (int idx = 0; idx < request.query_size(); ++idx) {
     RETURN_IF_ERROR(processQuery(request.query(idx), request.galois_keys(),
                                  request.relin_keys(), response.add_reply()));

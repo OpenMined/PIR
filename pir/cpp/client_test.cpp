@@ -28,6 +28,7 @@ using std::get;
 using std::make_tuple;
 using std::make_unique;
 using std::tuple;
+using std::vector;
 using namespace ::testing;
 
 constexpr uint32_t POLY_MODULUS_DEGREE = 4096;
@@ -56,10 +57,11 @@ class PIRClientTest : public ::testing::Test {
 
 TEST_F(PIRClientTest, TestCreateRequest) {
   const size_t desired_index = 5;
+  const vector<size_t> indexes = {desired_index};
 
-  auto req_proto = client_->CreateRequest(desired_index).ValueOrDie();
-  auto req =
-      LoadCiphertexts(Context()->SEALContext(), req_proto.query()).ValueOrDie();
+  auto req_proto = client_->CreateRequest(indexes).ValueOrDie();
+  auto req = LoadCiphertexts(Context()->SEALContext(), req_proto.query(0))
+                 .ValueOrDie();
 
   Plaintext pt;
   ASSERT_EQ(req.size(), 1);
@@ -79,15 +81,17 @@ TEST_F(PIRClientTest, TestCreateRequest) {
 TEST_F(PIRClientTest, TestCreateRequestD2) {
   SetUpDB(84, 2);
   const size_t desired_index = 42;
+  const vector<size_t> indexes = {desired_index};
+
   const size_t num_rows = 10;
   const size_t num_cols = 9;
   const size_t total_s_items = num_rows + num_cols;
   ASSERT_THAT(Context()->Parameters()->Dimensions(),
               ElementsAre(num_rows, num_cols));
 
-  auto request_proto = client_->CreateRequest(desired_index).ValueOrDie();
+  auto request_proto = client_->CreateRequest(indexes).ValueOrDie();
   auto request =
-      LoadCiphertexts(Context()->SEALContext(), request_proto.query())
+      LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
           .ValueOrDie();
   Plaintext pt;
   ASSERT_EQ(request.size(), 1);
@@ -115,6 +119,8 @@ TEST_F(PIRClientTest, TestCreateRequestD2) {
 TEST_F(PIRClientTest, TestCreateRequestD3) {
   SetUpDB(82, 3);
   const size_t desired_index = 42;
+  const vector<size_t> indexes = {desired_index};
+
   const size_t num_rows = 5;
   const size_t num_cols = 5;
   const size_t num_depth = 4;
@@ -122,9 +128,9 @@ TEST_F(PIRClientTest, TestCreateRequestD3) {
   ASSERT_THAT(Context()->Parameters()->Dimensions(),
               ElementsAre(num_rows, num_cols, num_depth));
 
-  auto request_proto = client_->CreateRequest(desired_index).ValueOrDie();
+  auto request_proto = client_->CreateRequest(indexes).ValueOrDie();
   auto request =
-      LoadCiphertexts(Context()->SEALContext(), request_proto.query())
+      LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
           .ValueOrDie();
   Plaintext pt;
   ASSERT_EQ(request.size(), 1);
@@ -156,14 +162,15 @@ TEST_F(PIRClientTest, TestCreateRequestD3) {
 TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT1) {
   SetUpDB(20000000, 2);
   const size_t desired_index = 12345679;
+  const vector<size_t> indexes = {desired_index};
   const size_t num_rows = 4473;
   const size_t num_cols = 4472;
   ASSERT_THAT(Context()->Parameters()->Dimensions(),
               ElementsAre(num_rows, num_cols));
 
-  auto request_proto = client_->CreateRequest(desired_index).ValueOrDie();
+  auto request_proto = client_->CreateRequest(indexes).ValueOrDie();
   auto request =
-      LoadCiphertexts(Context()->SEALContext(), request_proto.query())
+      LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
           .ValueOrDie();
   ASSERT_EQ(request.size(), 3);
   EXPECT_THAT(request_proto.galois_keys(), Not(IsEmpty()));
@@ -206,14 +213,15 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT1) {
 TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT2) {
   SetUpDB(20000000, 2);
   const size_t desired_index = 12346679;
+  const vector<size_t> indexes = {desired_index};
   const size_t num_rows = 4473;
   const size_t num_cols = 4472;
   ASSERT_THAT(Context()->Parameters()->Dimensions(),
               ElementsAre(num_rows, num_cols));
 
-  auto request_proto = client_->CreateRequest(desired_index).ValueOrDie();
+  auto request_proto = client_->CreateRequest(indexes).ValueOrDie();
   auto request =
-      LoadCiphertexts(Context()->SEALContext(), request_proto.query())
+      LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
           .ValueOrDie();
   ASSERT_EQ(request.size(), 3);
   EXPECT_THAT(request_proto.galois_keys(), Not(IsEmpty()));
@@ -263,10 +271,10 @@ TEST_F(PIRClientTest, TestProcessResponse) {
   Encryptor()->encrypt(pt, ct[0]);
 
   Response response;
-  SaveCiphertexts(ct, response.mutable_reply());
+  SaveCiphertexts({ct}, response.add_reply());
 
   auto result = client_->ProcessResponse(response).ValueOrDie();
-  ASSERT_EQ(result, value);
+  ASSERT_EQ(result[0], value);
 }
 
 TEST_F(PIRClientTest, TestProcessResponseBatch) {
@@ -277,7 +285,7 @@ TEST_F(PIRClientTest, TestProcessResponseBatch) {
   vector<Ciphertext> ct(1);
   Encryptor()->encrypt(pt, ct[0]);
 
-  BatchResponse response;
+  Response response;
   SaveCiphertexts(ct, response.add_reply());
   SaveCiphertexts(ct, response.add_reply());
 
@@ -286,78 +294,16 @@ TEST_F(PIRClientTest, TestProcessResponseBatch) {
 }
 
 TEST_F(PIRClientTest, TestCreateRequest_InvalidIndex) {
-  auto request_or = client_->CreateRequest(db_size_ + 1);
+  auto request_or = client_->CreateRequest({db_size_ + 1});
   ASSERT_EQ(request_or.status().code(),
             private_join_and_compute::StatusCode::kInvalidArgument);
 }
 
-class CreateRequestTest
-    : public PIRClientTest,
-      public testing::WithParamInterface<tuple<size_t, size_t, uint64_t>> {};
+class CreateRequestTest : public PIRClientTest,
+                          public testing::WithParamInterface<
+                              tuple<size_t, vector<size_t>, uint64_t>> {};
 
-TEST_P(CreateRequestTest, TestCreateRequest_MoreThanOneCT) {
-  const auto dbsize = get<0>(GetParam());
-  int desired_index = get<1>(GetParam());
-  SetUpDB(dbsize);
-
-  const auto poly_modulus_degree =
-      pir_params_->GetEncryptionParams().poly_modulus_degree();
-  const auto plain_mod =
-      pir_params_->GetEncryptionParams().plain_modulus().value();
-
-  auto request_or = client_->CreateRequest(desired_index);
-  ASSERT_TRUE(request_or.ok())
-      << "Status is: " << request_or.status().ToString();
-  auto query =
-      LoadCiphertexts(Context()->SEALContext(), request_or.ValueOrDie().query())
-          .ValueOrDie();
-  ASSERT_EQ(query.size(), dbsize / poly_modulus_degree + 1);
-  EXPECT_THAT(request_or.ValueOrDie().galois_keys(), Not(IsEmpty()));
-
-  for (const auto& ct : query) {
-    Plaintext pt;
-    Decryptor()->decrypt(ct, pt);
-    for (size_t i = 0; i < pt.coeff_count(); ++i) {
-      if (i != static_cast<size_t>(desired_index)) {
-        EXPECT_EQ(pt[i], 0);
-      }
-    }
-    if (desired_index < 0 ||
-        static_cast<size_t>(desired_index) >= poly_modulus_degree) {
-      desired_index -= poly_modulus_degree;
-      for (size_t i = 0; i < pt.coeff_count(); ++i) {
-        EXPECT_EQ(pt[i], 0);
-      }
-    } else {
-      auto m = get<2>(GetParam());
-      EXPECT_EQ((pt[desired_index] * m) % plain_mod, 1);
-      desired_index = -1;
-    }
-  }
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    Requests, CreateRequestTest,
-    testing::Values(
-        make_tuple(10000, 5005, POLY_MODULUS_DEGREE),
-        make_tuple(10000, 0, POLY_MODULUS_DEGREE),
-        make_tuple(10000, 1, POLY_MODULUS_DEGREE),
-        make_tuple(10000, 3333, POLY_MODULUS_DEGREE),
-        make_tuple(10000, 4095, POLY_MODULUS_DEGREE),
-        make_tuple(10000, 4096, POLY_MODULUS_DEGREE),
-        make_tuple(10000, 4097, POLY_MODULUS_DEGREE),
-        make_tuple(10000, 8191, POLY_MODULUS_DEGREE),
-        make_tuple(10000, 8192, 2048), make_tuple(10000, 8193, 2048),
-        make_tuple(10000, 9007, 2048), make_tuple(10000, 9999, 2048),
-        make_tuple(4096, 0, 4096), make_tuple(4096, 4095, 4096),
-        make_tuple(16384, 12288, 4096), make_tuple(16384, 12289, 4096),
-        make_tuple(16384, 16383, 4096)));
-
-class CreateBatchRequestTest : public PIRClientTest,
-                               public testing::WithParamInterface<
-                                   tuple<size_t, vector<size_t>, uint64_t>> {};
-
-TEST_P(CreateBatchRequestTest, TestCreateBatchRequest) {
+TEST_P(CreateRequestTest, TestCreateRequest) {
   const auto dbsize = get<0>(GetParam());
   vector<size_t> indexes = get<1>(GetParam());
   SetUpDB(dbsize);
@@ -406,8 +352,26 @@ TEST_P(CreateBatchRequestTest, TestCreateBatchRequest) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    BatchRequests, CreateBatchRequestTest,
+    Requests, CreateRequestTest,
     testing::Values(
+        make_tuple(10000, vector<size_t>({5005}), POLY_MODULUS_DEGREE),
+        make_tuple(10000, vector<size_t>({0}), POLY_MODULUS_DEGREE),
+        make_tuple(10000, vector<size_t>({1}), POLY_MODULUS_DEGREE),
+        make_tuple(10000, vector<size_t>({3333}), POLY_MODULUS_DEGREE),
+        make_tuple(10000, vector<size_t>({4095}), POLY_MODULUS_DEGREE),
+        make_tuple(10000, vector<size_t>({4096}), POLY_MODULUS_DEGREE),
+        make_tuple(10000, vector<size_t>({4097}), POLY_MODULUS_DEGREE),
+        make_tuple(10000, vector<size_t>({8191}), POLY_MODULUS_DEGREE),
+        make_tuple(10000, vector<size_t>({8192}), 2048),
+        make_tuple(10000, vector<size_t>({8193}), 2048),
+        make_tuple(10000, vector<size_t>({9007}), 2048),
+        make_tuple(10000, vector<size_t>({9999}), 2048),
+        make_tuple(4096, vector<size_t>({0}), 4096),
+        make_tuple(4096, vector<size_t>({4095}), 4096),
+        make_tuple(16384, vector<size_t>({12288}), 4096),
+        make_tuple(16384, vector<size_t>({12289}), 4096),
+        make_tuple(16384, vector<size_t>({16383}), 4096),
+
         make_tuple(10000, vector<size_t>({5005}), POLY_MODULUS_DEGREE),
         make_tuple(10000, vector<size_t>({0}), POLY_MODULUS_DEGREE),
         make_tuple(10000, vector<size_t>({8191}), POLY_MODULUS_DEGREE),

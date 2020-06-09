@@ -42,12 +42,12 @@ void BM_ClientCreateRequest(benchmark::State& state) {
   auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
 
   auto client_ = PIRClient::Create(PIRParameters::Create(dbsize)).ValueOrDie();
-  size_t desiredIndex = dbsize - 1;
+  std::vector<size_t> indexes = {dbsize - 1};
 
   int64_t elements_processed = 0;
 
   for (auto _ : state) {
-    auto request = client_->CreateRequest(desiredIndex).ValueOrDie();
+    auto request = client_->CreateRequest(indexes).ValueOrDie();
     ::benchmark::DoNotOptimize(request);
     elements_processed += dbsize;
   }
@@ -66,7 +66,7 @@ void BM_ServerProcessRequest(benchmark::State& state) {
   auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
 
   auto client_ = PIRClient::Create(PIRParameters::Create(dbsize)).ValueOrDie();
-  size_t desiredIndex = dbsize - 1;
+  std::vector<size_t> desiredIndex = {dbsize - 1};
   auto request = client_->CreateRequest(desiredIndex).ValueOrDie();
 
   int64_t elements_processed = 0;
@@ -91,7 +91,7 @@ void BM_ClientProcessResponse(benchmark::State& state) {
   auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
 
   auto client_ = PIRClient::Create(PIRParameters::Create(dbsize)).ValueOrDie();
-  size_t desiredIndex = dbsize - 1;
+  std::vector<size_t> desiredIndex = {dbsize - 1};
   auto request = client_->CreateRequest(desiredIndex).ValueOrDie();
   auto response = server_->ProcessRequest(request).ValueOrDie();
 
@@ -120,7 +120,7 @@ void BM_PayloadSize(benchmark::State& state) {
   int64_t network_bytes = 0;
 
   auto client_ = PIRClient::Create(PIRParameters::Create(dbsize)).ValueOrDie();
-  size_t desiredIndex = dbsize - 1;
+  std::vector<size_t> desiredIndex = {dbsize - 1};
 
   auto request = client_->CreateRequest(desiredIndex).ValueOrDie();
   int64_t raw_request = request.ByteSizeLong();
