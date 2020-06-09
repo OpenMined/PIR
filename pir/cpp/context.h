@@ -69,8 +69,8 @@ class PIRContext {
   PIRContext(shared_ptr<PIRParameters> /*params*/,
              const EncryptionParameters& /*enc_params*/);
 
-  EncryptionParameters encryption_params_;
   shared_ptr<PIRParameters> parameters_;
+  EncryptionParameters encryption_params_;
   shared_ptr<seal::SEALContext> context_;
   shared_ptr<seal::Evaluator> evaluator_;
   shared_ptr<seal::IntegerEncoder> encoder_;
