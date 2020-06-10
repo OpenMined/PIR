@@ -108,6 +108,7 @@ TEST_F(PIRServerTest, TestCorrectness) {
   auto response = server_->ProcessRequest(request).ValueOrDie();
   auto result = client->ProcessResponse(response).ValueOrDie();
 
+  ASSERT_EQ(result.size(), 1);
   ASSERT_EQ(result[0], db_[desired_index]);
 }
 
@@ -126,9 +127,11 @@ TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
   auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue())
       << "Error: " << result_or.status().ToString();
-  auto result = LoadCiphertexts(server_->Context()->SEALContext(),
-                                result_or.ValueOrDie().reply(0))
-                    .ValueOrDie();
+  auto result_raw = result_or.ValueOrDie();
+  ASSERT_EQ(result_raw.reply_size(), 1);
+  auto result =
+      LoadCiphertexts(server_->Context()->SEALContext(), result_raw.reply(0))
+          .ValueOrDie();
   ASSERT_THAT(result, SizeIs(1));
 
   Plaintext result_pt;
@@ -155,9 +158,11 @@ TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
   auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue())
       << "Error: " << result_or.status().ToString();
-  auto result = LoadCiphertexts(server_->Context()->SEALContext(),
-                                result_or.ValueOrDie().reply(0))
-                    .ValueOrDie();
+  auto result_raw = result_or.ValueOrDie();
+  ASSERT_EQ(result_raw.reply_size(), 1);
+  auto result =
+      LoadCiphertexts(server_->Context()->SEALContext(), result_raw.reply(0))
+          .ValueOrDie();
   ASSERT_THAT(result, SizeIs(1));
 
   Plaintext result_pt;
@@ -235,9 +240,11 @@ TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
 
   auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue());
-  auto result = LoadCiphertexts(server_->Context()->SEALContext(),
-                                result_or.ValueOrDie().reply(0))
-                    .ValueOrDie();
+  auto result_raw = result_or.ValueOrDie();
+  ASSERT_EQ(result_raw.reply_size(), 1);
+  auto result =
+      LoadCiphertexts(server_->Context()->SEALContext(), result_raw.reply(0))
+          .ValueOrDie();
 
   ASSERT_THAT(result, SizeIs(1));
 
@@ -266,10 +273,11 @@ TEST_F(PIRServerTest, TestProcessRequest_2Dim) {
   auto result_or = server_->ProcessRequest(request_proto);
   ASSERT_THAT(result_or.ok(), IsTrue())
       << "Error: " << result_or.status().ToString();
-
-  auto result = LoadCiphertexts(server_->Context()->SEALContext(),
-                                result_or.ValueOrDie().reply(0))
-                    .ValueOrDie();
+  auto result_raw = result_or.ValueOrDie();
+  ASSERT_EQ(result_raw.reply_size(), 1);
+  auto result =
+      LoadCiphertexts(server_->Context()->SEALContext(), result_raw.reply(0))
+          .ValueOrDie();
   ASSERT_THAT(result, SizeIs(1));
   EXPECT_THAT(result[0].size(), Eq(2))
       << "Ciphertext larger than expected. Were relin keys used?";

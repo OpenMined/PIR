@@ -60,6 +60,7 @@ TEST_F(PIRClientTest, TestCreateRequest) {
   const vector<size_t> indexes = {desired_index};
 
   auto req_proto = client_->CreateRequest(indexes).ValueOrDie();
+  ASSERT_EQ(req_proto.query_size(), 1);
   auto req = LoadCiphertexts(Context()->SEALContext(), req_proto.query(0))
                  .ValueOrDie();
 
@@ -90,6 +91,7 @@ TEST_F(PIRClientTest, TestCreateRequestD2) {
               ElementsAre(num_rows, num_cols));
 
   auto request_proto = client_->CreateRequest(indexes).ValueOrDie();
+  ASSERT_EQ(request_proto.query_size(), 1);
   auto request =
       LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
           .ValueOrDie();
@@ -129,6 +131,7 @@ TEST_F(PIRClientTest, TestCreateRequestD3) {
               ElementsAre(num_rows, num_cols, num_depth));
 
   auto request_proto = client_->CreateRequest(indexes).ValueOrDie();
+  ASSERT_EQ(request_proto.query_size(), 1);
   auto request =
       LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
           .ValueOrDie();
@@ -169,6 +172,7 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT1) {
               ElementsAre(num_rows, num_cols));
 
   auto request_proto = client_->CreateRequest(indexes).ValueOrDie();
+  ASSERT_EQ(request_proto.query_size(), 1);
   auto request =
       LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
           .ValueOrDie();
@@ -220,6 +224,7 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT2) {
               ElementsAre(num_rows, num_cols));
 
   auto request_proto = client_->CreateRequest(indexes).ValueOrDie();
+  ASSERT_EQ(request_proto.query_size(), 1);
   auto request =
       LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
           .ValueOrDie();
@@ -274,23 +279,25 @@ TEST_F(PIRClientTest, TestProcessResponse) {
   SaveCiphertexts({ct}, response.add_reply());
 
   auto result = client_->ProcessResponse(response).ValueOrDie();
+  ASSERT_EQ(result.size(), 1);
   ASSERT_EQ(result[0], value);
 }
 
 TEST_F(PIRClientTest, TestProcessResponseBatch) {
-  int64_t value = 1234;
-
-  Plaintext pt;
-  Context()->Encoder()->encode(value, pt);
-  vector<Ciphertext> ct(1);
-  Encryptor()->encrypt(pt, ct[0]);
+  vector<int64_t> values = {1234, 2345};
 
   Response response;
-  SaveCiphertexts(ct, response.add_reply());
-  SaveCiphertexts(ct, response.add_reply());
+  for (auto& value : values) {
+    Plaintext pt;
+    Context()->Encoder()->encode(value, pt);
+    vector<Ciphertext> ct(1);
+    Encryptor()->encrypt(pt, ct[0]);
 
+    SaveCiphertexts(ct, response.add_reply());
+  }
   auto result = client_->ProcessResponse(response).ValueOrDie();
-  EXPECT_THAT(result, ElementsAre(value, value));
+  ASSERT_EQ(result.size(), 2);
+  EXPECT_THAT(result, ElementsAreArray(values));
 }
 
 TEST_F(PIRClientTest, TestCreateRequest_InvalidIndex) {
@@ -327,16 +334,12 @@ TEST_P(CreateRequestTest, TestCreateRequest) {
     auto query = LoadCiphertexts(Context()->SEALContext(), request.query(idx))
                      .ValueOrDie();
     ASSERT_EQ(query.size(), dbsize / poly_modulus_degree + 1);
-    int desired_index = indexes[idx];
+    size_t desired_index = indexes[idx];
 
     for (const auto& ct : query) {
       Plaintext pt;
       Decryptor()->decrypt(ct, pt);
-      for (size_t i = 0; i < pt.coeff_count(); ++i) {
-        if (i != static_cast<size_t>(desired_index)) {
-          EXPECT_EQ(pt[i], 0);
-        }
-      }
+
       if (desired_index < 0 ||
           static_cast<size_t>(desired_index) >= poly_modulus_degree) {
         desired_index -= poly_modulus_degree;
@@ -345,6 +348,11 @@ TEST_P(CreateRequestTest, TestCreateRequest) {
         }
       } else {
         EXPECT_EQ((pt[desired_index] * m) % plain_mod, 1);
+        for (size_t i = 0; i < pt.coeff_count(); ++i) {
+          if (i != desired_index) {
+            EXPECT_EQ(pt[i], 0);
+          }
+        }
         desired_index = -1;
       }
     }
