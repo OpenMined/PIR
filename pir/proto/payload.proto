@@ -43,7 +43,7 @@ message Response {
 
 // Private information retrieval setup parameters
 message PIRParameters {
-    // The database size
+    // Number of items in the database
     uint64 database_size = 1;
     // Size of each dimension in the database representation
     repeated uint32 dimensions = 2;

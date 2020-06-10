@@ -55,11 +55,6 @@ class PIRClient {
    **/
   StatusOr<int64_t> ProcessResponse(const Response& response) const;
 
-  /**
-   * Returns the database size.
-   **/
-  std::size_t DBSize() const { return context_->Params()->database_size(); }
-
   PIRClient() = delete;
 
  private:

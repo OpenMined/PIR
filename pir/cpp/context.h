@@ -42,21 +42,19 @@ class PIRContext {
   static StatusOr<std::unique_ptr<PIRContext>> Create(
       shared_ptr<PIRParameters> /*params*/);
   /**
-   * Returns an Evaluator instance
+   * Returns an Evaluator instance.
    **/
   std::shared_ptr<seal::Evaluator>& Evaluator() { return evaluator_; }
   /**
-   * Returns the SEAL context
+   * Returns the SEAL context.
    **/
   std::shared_ptr<seal::SEALContext>& SEALContext() { return context_; }
   /**
    * Returns the PIR parameters protobuffer.
-   * The parameters include: database size, dimensions and encoded encryption
-   *parameters.
    **/
   shared_ptr<PIRParameters> Params() { return parameters_; }
   /**
-   * Returns the decoded encryption parameters.
+   * Returns the encryption parameters used to create SEAL context.
    **/
   const EncryptionParameters& EncryptionParams() { return encryption_params_; }
 
