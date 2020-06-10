@@ -28,13 +28,14 @@ namespace pir {
 using ::private_join_and_compute::InternalError;
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
+using seal::BigUInt;
 using seal::Ciphertext;
 using seal::Evaluator;
 using seal::Plaintext;
 using std::vector;
 
 StatusOr<std::shared_ptr<PIRDatabase>> PIRDatabase::Create(
-    const raw_db_type& rawdb, shared_ptr<PIRParameters> params) {
+    const std::vector<BigUInt>& rawdb, shared_ptr<PIRParameters> params) {
   db_type db(rawdb.size());
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
 

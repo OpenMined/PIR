@@ -126,7 +126,7 @@ StatusOr<Request> PIRClient::CreateRequest(std::size_t desired_index) const {
   return request_proto;
 }
 
-StatusOr<int64_t> PIRClient::ProcessResponse(
+StatusOr<BigUInt> PIRClient::ProcessResponse(
     const Response& response_proto) const {
   ASSIGN_OR_RETURN(auto response, LoadCiphertexts(context_->SEALContext(),
                                                   response_proto.reply()));
@@ -138,7 +138,7 @@ StatusOr<int64_t> PIRClient::ProcessResponse(
     decryptor_->decrypt(response[0], plaintext);
     // have to divide the integer result by the the next power of 2 greater than
     // number of items in oblivious expansion.
-    return context_->Encoder()->decode_int64(plaintext);
+    return context_->Encoder()->decode_biguint(plaintext);
   } catch (const std::exception& e) {
     return InternalError(e.what());
   }

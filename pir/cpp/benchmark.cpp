@@ -5,12 +5,14 @@
 
 namespace pir {
 
-std::vector<std::int64_t> generateDB(std::size_t dbsize) {
-  std::vector<std::int64_t> db(dbsize, 0);
+using seal::BigUInt;
+
+std::vector<BigUInt> generateDB(std::size_t dbsize) {
+  std::vector<BigUInt> db(dbsize, 0);
 
   std::generate(db.begin(), db.end(), [n = 100]() mutable {
     ++n;
-    return 4 * n;
+    return BigUInt(32, 4 * n);
   });
 
   return db;

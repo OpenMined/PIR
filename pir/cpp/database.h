@@ -27,8 +27,7 @@
 namespace pir {
 
 using ::private_join_and_compute::StatusOr;
-
-using raw_db_type = std::vector<std::int64_t>;
+using seal::BigUInt;
 using db_type = std::vector<seal::Plaintext>;
 
 using google::protobuf::RepeatedField;
@@ -41,7 +40,8 @@ class PIRDatabase {
    * @param[in] PIR parameters
    **/
   static StatusOr<std::shared_ptr<PIRDatabase>> Create(
-      const raw_db_type& /*database*/, shared_ptr<PIRParameters> params);
+      const std::vector<BigUInt>& /*database*/,
+      shared_ptr<PIRParameters> params);
 
   /**
    * Multiplies the database represented as a multi-dimensional hypercube with

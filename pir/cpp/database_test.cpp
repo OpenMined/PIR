@@ -60,7 +60,7 @@ class PIRDatabaseTest : public ::testing::Test {
     rawdb_.resize(dbsize);
     std::generate(rawdb_.begin(), rawdb_.end(), [n = 0]() mutable {
       ++n;
-      return 4 * n + 2600;
+      return BigUInt(32, 4 * n + 2600);
     });
 
     encryption_params_ = GenerateEncryptionParams(poly_modulus_degree);
@@ -83,7 +83,7 @@ class PIRDatabaseTest : public ::testing::Test {
 
   size_t db_size_;
   uint32_t poly_modulus_degree_;
-  vector<std::int64_t> rawdb_;
+  vector<BigUInt> rawdb_;
   std::shared_ptr<PIRDatabase> pirdb_;
   shared_ptr<PIRParameters> pir_params_;
   EncryptionParameters encryption_params_;
@@ -96,13 +96,13 @@ class PIRDatabaseTest : public ::testing::Test {
 };
 
 TEST_F(PIRDatabaseTest, TestMultiply) {
-  vector<int32_t> v(db_size_);
+  vector<BigUInt> v(db_size_);
   std::generate(v.begin(), v.end(),
-                [n = -db_size_ / 2]() mutable { return n; });
+                [n = -db_size_ / 2]() mutable { return BigUInt(32, n); });
   ASSERT_THAT(pirdb_->size(), Eq(v.size()));
 
   vector<Ciphertext> cts(v.size());
-  int32_t expected = 0;
+  BigUInt expected = 0;
   for (size_t i = 0; i < cts.size(); ++i) {
     Plaintext pt;
     encoder_->encode(v[i], pt);
@@ -117,7 +117,7 @@ TEST_F(PIRDatabaseTest, TestMultiply) {
 
   Plaintext pt;
   decryptor_->decrypt(result_ct, pt);
-  auto result = encoder_->decode_int32(pt);
+  auto result = encoder_->decode_biguint(pt);
 
   EXPECT_THAT(result, Eq(expected));
 }
@@ -201,7 +201,7 @@ TEST_P(MultiplyMultiDimTest, TestMultiply) {
 
   Plaintext result_pt;
   decryptor_->decrypt(result_ct, result_pt);
-  auto result = encoder_->decode_uint64(result_pt);
+  auto result = encoder_->decode_biguint(result_pt);
   EXPECT_THAT(result, Eq(rawdb_[desired_index]));
 }
 

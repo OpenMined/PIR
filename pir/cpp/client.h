@@ -24,6 +24,7 @@
 namespace pir {
 
 using ::private_join_and_compute::StatusOr;
+using seal::BigUInt;
 
 class PIRClient {
   friend class PIRClientTest;
@@ -53,7 +54,7 @@ class PIRClient {
    * @param[in] response Server output
    * @returns InvalidArgument if the decryption fails
    **/
-  StatusOr<int64_t> ProcessResponse(const Response& response) const;
+  StatusOr<BigUInt> ProcessResponse(const Response& response) const;
 
   PIRClient() = delete;
 

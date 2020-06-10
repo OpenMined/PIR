@@ -66,7 +66,7 @@ class PIRServerTest : public ::testing::Test {
     db_.resize(dbsize);
     std::generate(db_.begin(), db_.end(), [n = 0]() mutable {
       ++n;
-      return 4 * n + 2600;
+      return BigUInt(32, 4 * n + 2600);
     });
 
     encryption_params_ = GenerateEncryptionParams(POLY_MODULUS_DEGREE);
@@ -92,7 +92,7 @@ class PIRServerTest : public ::testing::Test {
   }
 
   size_t db_size_;
-  vector<std::int64_t> db_;
+  vector<BigUInt> db_;
   GaloisKeys gal_keys_;
   RelinKeys relin_keys_;
   shared_ptr<PIRParameters> pir_params_;
@@ -137,7 +137,7 @@ TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
   Plaintext result_pt;
   decryptor_->decrypt(result[0], result_pt);
   auto encoder = server_->Context()->Encoder();
-  ASSERT_THAT(encoder->decode_int64(result_pt),
+  ASSERT_THAT(encoder->decode_biguint(result_pt),
               Eq(db_[desired_index] * next_power_two(db_size_)));
 }
 
@@ -169,7 +169,7 @@ TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
   DEBUG_OUT("Expected DB value " << db_[desired_index]);
   DEBUG_OUT("Expected m " << next_power_two(db_size_ - POLY_MODULUS_DEGREE));
   ASSERT_THAT(
-      encoder->decode_int64(result_pt),
+      encoder->decode_biguint(result_pt),
       Eq(db_[desired_index] * next_power_two(db_size_ - POLY_MODULUS_DEGREE)));
 }
 
@@ -195,7 +195,7 @@ TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
   Plaintext result_pt;
   decryptor_->decrypt(result[0], result_pt);
   auto encoder = server_->Context()->Encoder();
-  ASSERT_THAT(encoder->decode_int64(result_pt), 0);
+  ASSERT_THAT(encoder->decode_biguint(result_pt), 0);
 }
 
 TEST_F(PIRServerTest, TestProcessRequest_2Dim) {
@@ -228,7 +228,7 @@ TEST_F(PIRServerTest, TestProcessRequest_2Dim) {
   Plaintext result_pt;
   decryptor_->decrypt(result[0], result_pt);
   auto encoder = server_->Context()->Encoder();
-  ASSERT_THAT(encoder->decode_int64(result_pt),
+  ASSERT_THAT(encoder->decode_biguint(result_pt),
               Eq(db_[desired_index] * 32 * 32));
 }
 
