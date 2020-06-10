@@ -54,6 +54,13 @@ class PIRContext {
    **/
   shared_ptr<PIRParameters> Params() { return parameters_; }
   /**
+   * Returns the dimensions sum.
+   **/
+  size_t DimensionsSum() {
+    return std::accumulate(Params()->dimensions().begin(),
+                           Params()->dimensions().end(), 0);
+  }
+  /**
    * Returns the encryption parameters used to create SEAL context.
    **/
   const EncryptionParameters& EncryptionParams() { return encryption_params_; }

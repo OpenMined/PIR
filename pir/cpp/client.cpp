@@ -73,8 +73,7 @@ StatusOr<Request> PIRClient::CreateRequest(std::size_t desired_index) const {
                                     context_->Params()->dimensions().end());
   auto indices = PIRDatabase::calculate_indices(dims, desired_index);
 
-  const size_t dim_sum =
-      std::accumulate(dims.begin(), dims.end(), decltype(dims)::value_type(0));
+  const size_t dim_sum = context_->DimensionsSum();
 
   size_t offset = 0;
   vector<Ciphertext> query(dim_sum / poly_modulus_degree + 1);

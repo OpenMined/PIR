@@ -180,8 +180,7 @@ StatusOr<Ciphertext> PIRDatabase::multiply(
     const seal::RelinKeys* const relin_keys,
     seal::Decryptor* const decryptor) const {
   auto& dimensions = context_->Params()->dimensions();
-  const size_t dim_sum =
-      std::accumulate(dimensions.begin(), dimensions.end(), 0);
+  const size_t dim_sum = context_->DimensionsSum();
 
   if (selection_vector.size() != dim_sum) {
     return InvalidArgumentError(
@@ -207,9 +206,9 @@ vector<uint32_t> PIRDatabase::calculate_indices(const vector<uint32_t>& dims,
   return results;
 }
 
-std::vector<uint32_t> PIRDatabase::calculate_dimensions(
-    uint32_t db_size, uint32_t num_dimensions) {
-  std::vector<uint32_t> results;
+vector<uint32_t> PIRDatabase::calculate_dimensions(uint32_t db_size,
+                                                   uint32_t num_dimensions) {
+  vector<uint32_t> results;
   for (int i = num_dimensions; i > 0; --i) {
     results.push_back(std::ceil(std::pow(db_size, 1.0 / i)));
     db_size = std::ceil(static_cast<double>(db_size) / results.back());

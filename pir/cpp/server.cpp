@@ -61,8 +61,7 @@ StatusOr<Response> PIRServer::ProcessRequest(
                                                request_proto.galois_keys()));
 
   const auto dimensions = context_->Params()->dimensions();
-  const size_t dim_sum = std::accumulate(dimensions.begin(), dimensions.end(),
-                                         decltype(dimensions)::value_type(0));
+  const size_t dim_sum = context_->DimensionsSum();
 
   ASSIGN_OR_RETURN(auto selection_vector,
                    oblivious_expansion(query, dim_sum, galois_keys));
