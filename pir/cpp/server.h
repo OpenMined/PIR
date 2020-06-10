@@ -29,6 +29,8 @@ namespace pir {
 
 using ::private_join_and_compute::Status;
 using ::private_join_and_compute::StatusOr;
+using ::seal::GaloisKeys;
+using ::seal::RelinKeys;
 
 class PIRServer {
  public:
@@ -145,8 +147,9 @@ class PIRServer {
   PIRServer(std::unique_ptr<PIRContext> /*sealctx*/,
             std::shared_ptr<PIRDatabase> /*db*/);
 
-  Status processQuery(const Ciphertexts& query, const string& galois_keys,
-                      const string& relin_keys, Ciphertexts* output) const;
+  Status processQuery(const Ciphertexts& query, const GaloisKeys& galois_keys,
+                      const optional<RelinKeys>& relin_keys,
+                      const size_t& dim_sum, Ciphertexts* output) const;
 
   std::unique_ptr<PIRContext> context_;
   std::shared_ptr<PIRDatabase> db_;

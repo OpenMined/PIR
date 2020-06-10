@@ -52,9 +52,24 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
 
 StatusOr<Response> PIRServer::ProcessRequest(const Request& request) const {
   Response response;
+  ASSIGN_OR_RETURN(auto galois_keys,
+                   SEALDeserialize<GaloisKeys>(context_->SEALContext(),
+                                               request.galois_keys()));
+
+  const auto dimensions = context_->Parameters()->Dimensions();
+  const size_t dim_sum = std::accumulate(dimensions.begin(), dimensions.end(),
+                                         decltype(dimensions)::value_type(0));
+
+  optional<RelinKeys> relin_keys;
+  if (!request.relin_keys().empty()) {
+    ASSIGN_OR_RETURN(relin_keys,
+                     SEALDeserialize<RelinKeys>(context_->SEALContext(),
+                                                request.relin_keys()));
+  }
+
   for (auto& query : request.query()) {
-    RETURN_IF_ERROR(processQuery(query, request.galois_keys(),
-                                 request.relin_keys(), response.add_reply()));
+    RETURN_IF_ERROR(processQuery(query, galois_keys, relin_keys, dim_sum,
+                                 response.add_reply()));
   }
   return response;
 }
@@ -166,30 +181,22 @@ StatusOr<std::vector<seal::Ciphertext>> PIRServer::oblivious_expansion(
 }
 
 Status PIRServer::processQuery(const Ciphertexts& query_proto,
-                               const string& galois_keys_proto,
-                               const string& relin_keys_proto,
+                               const GaloisKeys& galois_keys,
+                               const optional<RelinKeys>& relin_keys,
+                               const size_t& dim_sum,
                                Ciphertexts* output) const {
   ASSIGN_OR_RETURN(auto query,
                    LoadCiphertexts(context_->SEALContext(), query_proto));
-  ASSIGN_OR_RETURN(
-      auto galois_keys,
-      SEALDeserialize<GaloisKeys>(context_->SEALContext(), galois_keys_proto));
-
-  const auto dimensions = context_->Parameters()->Dimensions();
-  const size_t dim_sum = std::accumulate(dimensions.begin(), dimensions.end(),
-                                         decltype(dimensions)::value_type(0));
 
   ASSIGN_OR_RETURN(auto selection_vector,
                    oblivious_expansion(query, dim_sum, galois_keys));
 
   seal::Ciphertext result;
-  if (relin_keys_proto.empty()) {
+  if (!relin_keys) {
     ASSIGN_OR_RETURN(result, db_->multiply(selection_vector));
   } else {
-    ASSIGN_OR_RETURN(
-        auto relin_keys,
-        SEALDeserialize<RelinKeys>(context_->SEALContext(), relin_keys_proto));
-    ASSIGN_OR_RETURN(result, db_->multiply(selection_vector, &relin_keys));
+    ASSIGN_OR_RETURN(result,
+                     db_->multiply(selection_vector, &relin_keys.value()));
   }
 
   RETURN_IF_ERROR(SaveCiphertexts(vector<seal::Ciphertext>{result}, output));
