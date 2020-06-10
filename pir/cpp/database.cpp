@@ -34,7 +34,7 @@ using seal::Plaintext;
 using std::vector;
 
 StatusOr<std::shared_ptr<PIRDatabase>> PIRDatabase::Create(
-    const raw_db_type& rawdb, std::shared_ptr<PIRParameters> params) {
+    const raw_db_type& rawdb, shared_ptr<PIRParameters> params) {
   db_type db(rawdb.size());
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
 
@@ -80,7 +80,7 @@ class DatabaseMultiplier {
   /**
    * Do the multiplication using the given dimension sizes.
    */
-  Ciphertext multiply(vector<uint32_t> dimensions) {
+  Ciphertext multiply(const RepeatedField<uint32_t>& dimensions) {
     database_it_ = database_.begin();
     return multiply(dimensions, selection_vector_.begin(), 0);
   }
@@ -100,12 +100,12 @@ class DatabaseMultiplier {
    *  vector for the current depth.
    * @param[in] depth Current depth.
    */
-  Ciphertext multiply(vector<uint32_t> dimensions,
+  Ciphertext multiply(const RepeatedField<uint32_t>& dimensions,
                       vector<Ciphertext>::const_iterator selection_vector_it,
                       size_t depth) {
     const size_t this_dimension = dimensions[0];
     auto remaining_dimensions =
-        vector<uint32_t>(dimensions.begin() + 1, dimensions.end());
+        RepeatedField<uint32_t>(dimensions.begin() + 1, dimensions.end());
 
     string depth_string(depth, ' ');
 
@@ -179,9 +179,8 @@ StatusOr<Ciphertext> PIRDatabase::multiply(
     const vector<Ciphertext>& selection_vector,
     const seal::RelinKeys* const relin_keys,
     seal::Decryptor* const decryptor) const {
-  auto dimensions = context_->Parameters()->Dimensions();
-  const size_t dim_sum = std::accumulate(dimensions.begin(), dimensions.end(),
-                                         decltype(dimensions)::value_type(0));
+  auto& dimensions = context_->Params()->dimensions();
+  const size_t dim_sum = context_->DimensionsSum();
 
   if (selection_vector.size() != dim_sum) {
     return InvalidArgumentError(
@@ -203,6 +202,16 @@ vector<uint32_t> PIRDatabase::calculate_indices(const vector<uint32_t>& dims,
   for (int i = results.size() - 1; i >= 0; --i) {
     results[i] = index % dims[i];
     index = index / dims[i];
+  }
+  return results;
+}
+
+vector<uint32_t> PIRDatabase::calculate_dimensions(uint32_t db_size,
+                                                   uint32_t num_dimensions) {
+  vector<uint32_t> results;
+  for (int i = num_dimensions; i > 0; --i) {
+    results.push_back(std::ceil(std::pow(db_size, 1.0 / i)));
+    db_size = std::ceil(static_cast<double>(db_size) / results.back());
   }
   return results;
 }

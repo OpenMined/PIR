@@ -18,6 +18,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "pir/cpp/serialization.h"
 
 namespace pir {
 namespace {
@@ -44,20 +45,32 @@ using std::vector;
 
 TEST(PIRParametersTest, SanityCheck) {
   // make sure we can actually initialize SEAL and that defaults are sane
-  auto pir_params = PIRParameters::Create(100);
-  EXPECT_THAT(pir_params->DBSize(), Eq(100));
-  EXPECT_THAT(pir_params->Dimensions(), ElementsAre(100));
-  auto context = seal::SEALContext::Create(pir_params->GetEncryptionParams());
+  auto pir_params_or = CreatePIRParameters(100);
+  ASSERT_THAT(pir_params_or.ok(), IsTrue())
+      << "Error creating PIR params: " << pir_params_or.status().ToString();
+  auto pir_params = pir_params_or.ValueOrDie();
+  EXPECT_THAT(pir_params->database_size(), Eq(100));
+  EXPECT_THAT(pir_params->dimensions(), ElementsAre(100));
+  auto encryptionParams =
+      SEALDeserialize<EncryptionParameters>(pir_params->encryption_parameters())
+          .ValueOrDie();
+  auto context = seal::SEALContext::Create(encryptionParams);
   EXPECT_THAT(context->parameters_set(), IsTrue())
       << "Error setting encryption parameters: "
       << context->parameter_error_message();
 }
 
 TEST(PIRParametersTest, CreateMultiDim) {
-  auto pir_params = PIRParameters::Create(1001, 3);
-  EXPECT_THAT(pir_params->DBSize(), Eq(1001));
-  EXPECT_THAT(pir_params->Dimensions(), ElementsAre(11, 10, 10));
-  auto context = seal::SEALContext::Create(pir_params->GetEncryptionParams());
+  auto pir_params = CreatePIRParameters(1001, 3).ValueOrDie();
+  EXPECT_THAT(pir_params->database_size(), Eq(1001));
+  EXPECT_THAT(pir_params->dimensions(), ElementsAre(11, 10, 10));
+  auto encryption_params_or = SEALDeserialize<EncryptionParameters>(
+      pir_params->encryption_parameters());
+  ASSERT_THAT(encryption_params_or.ok(), IsTrue())
+      << "Error creating encryption params: "
+      << encryption_params_or.status().ToString();
+  auto encryption_params = encryption_params_or.ValueOrDie();
+  auto context = seal::SEALContext::Create(encryption_params);
   EXPECT_THAT(context->parameters_set(), IsTrue())
       << "Error setting encryption parameters: "
       << context->parameter_error_message();
@@ -65,36 +78,17 @@ TEST(PIRParametersTest, CreateMultiDim) {
 
 TEST(PIRParametersTest, EncryptionParamsSerialization) {
   // use something other than defaults
-  auto params = generateEncryptionParams(8192);
-  auto s_or = serializeEncryptionParams(params);
-  ASSERT_THAT(s_or.ok(), IsTrue())
-      << "Error serializing encryption params: " << s_or.status().ToString();
-  auto new_params_or = deserializeEncryptionParams(s_or.ValueOrDie());
+  auto params = GenerateEncryptionParams(8192);
+  std::string serial;
+  auto status = SEALSerialize<EncryptionParameters>(params, &serial);
+  ASSERT_THAT(status.ok(), IsTrue())
+      << "Error serializing encryption params: " << status.ToString();
+  auto new_params_or = SEALDeserialize<EncryptionParameters>(serial);
   ASSERT_THAT(new_params_or.ok(), IsTrue())
       << "Error deserializing encryption params: "
       << new_params_or.status().ToString();
   ASSERT_THAT(new_params_or.ValueOrDie(), Eq(params));
 }
-
-class CalculateDimensionsTest
-    : public testing::TestWithParam<
-          tuple<uint32_t, uint32_t, vector<uint32_t>>> {};
-
-TEST_P(CalculateDimensionsTest, DimensionsExamples) {
-  EXPECT_THAT(PIRParameters::calculate_dimensions(get<0>(GetParam()),
-                                                  get<1>(GetParam())),
-              ContainerEq(get<2>(GetParam())));
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    CalculateDimensions, CalculateDimensionsTest,
-    testing::Values(make_tuple(100, 1, vector<uint32_t>{100}),
-                    make_tuple(100, 2, vector<uint32_t>{10, 10}),
-                    make_tuple(82, 2, vector<uint32_t>{10, 9}),
-                    make_tuple(975, 2, vector<uint32_t>{32, 31}),
-                    make_tuple(1000, 3, vector<uint32_t>{10, 10, 10}),
-                    make_tuple(1001, 3, vector<uint32_t>{11, 10, 10}),
-                    make_tuple(1000001, 3, vector<uint32_t>{101, 100, 100})));
 
 }  // namespace
 }  // namespace pir

@@ -39,8 +39,8 @@ class PIRSerializationTest : public ::testing::Test {
   void SetUp() { SetUpDB(DB_SIZE); }
 
   void SetUpDB(size_t dbsize) {
-    pir_params_ = PIRParameters::Create(dbsize);
-    context_ = std::move(PIRContext::Create(pir_params_).ValueOrDie());
+    auto pir_params = CreatePIRParameters(dbsize).ValueOrDie();
+    context_ = std::move(PIRContext::Create(pir_params).ValueOrDie());
 
     auto keygen_ =
         std::make_unique<seal::KeyGenerator>(context_->SEALContext());
@@ -50,7 +50,6 @@ class PIRSerializationTest : public ::testing::Test {
                                                    keygen_->secret_key());
   }
 
-  std::shared_ptr<PIRParameters> pir_params_;
   std::shared_ptr<PIRContext> context_;
   std::shared_ptr<seal::Encryptor> encryptor_;
   std::shared_ptr<seal::Decryptor> decryptor_;
@@ -194,4 +193,17 @@ TEST_F(PIRSerializationTest, TestRequestSerialization_ShortcutWithRelin) {
   // Can't really check if the relin keys are valid. Just assume it's ok here.
 }
 
+TEST_F(PIRSerializationTest, TestEncryptionParamsSerialization) {
+  auto params = GenerateEncryptionParams();
+  std::string serial;
+  auto status = SEALSerialize<EncryptionParameters>(params, &serial);
+  ASSERT_TRUE(status.ok()) << "Status is: " << status.ToString();
+  auto decoded_params_or = SEALDeserialize<EncryptionParameters>(serial);
+  ASSERT_TRUE(decoded_params_or.ok())
+      << "Status is: " << decoded_params_or.status().ToString();
+  auto decoded_params = decoded_params_or.ValueOrDie();
+
+  ASSERT_EQ(params.plain_modulus(), decoded_params.plain_modulus());
+  ASSERT_EQ(params.poly_modulus_degree(), decoded_params.poly_modulus_degree());
+}
 }  // namespace pir

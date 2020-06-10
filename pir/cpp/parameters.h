@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "absl/memory/memory.h"
+#include "pir/proto/payload.pb.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
 #include "util/statusor.h"
@@ -27,6 +28,7 @@
 namespace pir {
 
 using ::std::optional;
+using ::std::shared_ptr;
 using ::std::size_t;
 using ::std::vector;
 
@@ -38,78 +40,25 @@ using ::private_join_and_compute::StatusOr;
 
 constexpr uint32_t DEFAULT_POLY_MODULUS_DEGREE = 4096;
 
-// Utility function to serialize encryption parameters to a string.
-StatusOr<std::string> serializeEncryptionParams(
-    const seal::EncryptionParameters& parms);
-
-// Utility function to deserialize encryption parameters from a string.
-StatusOr<seal::EncryptionParameters> deserializeEncryptionParams(
-    const std::string& input);
-
-seal::EncryptionParameters generateEncryptionParams(
-    std::optional<uint32_t> poly_mod_opt = {},
-    std::optional<Modulus> plain_mod_opt = {},
-    std::optional<std::vector<Modulus>> coeff_opt = {},
-    std::optional<seal::scheme_type> scheme = {});
-
-class PIRParameters {
- public:
-  /**
-   * Creates a new PIR Parameters container.
-   * @param[in] Database size
-   * @param[in] Number of dimensions in database representation.
-   * @param[in] SEAL Paramenters
-   */
-  static std::shared_ptr<PIRParameters> Create(
-      size_t dbsize, size_t dimensions = 1,
-      seal::EncryptionParameters sealParams = generateEncryptionParams()) {
-    return absl::WrapUnique(new PIRParameters(
-        dbsize, calculate_dimensions(dbsize, dimensions), sealParams));
-  }
-
-  /**
-   * Returns the database size.
-   */
-  size_t DBSize() const { return database_size_; }
-
-  /**
-   * Returns a vector with the size of each dimension of the multi-dimensional
-   * representation of the database.
-   */
-  const vector<uint32_t>& Dimensions() const { return dimensions_; }
-
-  /**
-   * Returns the encryption parameters.
-   */
-  const EncryptionParameters& GetEncryptionParams() const { return parms_; }
-
-  PIRParameters() = delete;
-
-  /**
-   * Helper function to calculate the dimensions for representing a database of
-   * db_size elements as a hypercube with num_dimensions dimensions.
-   * @param[in] db_size Number of elements in the database
-   * @param[in] num_dimensions Number of dimensions
-   * @returns vector of dimension sizes
-   */
-  static std::vector<uint32_t> calculate_dimensions(uint32_t db_size,
-                                                    uint32_t num_dimensions);
-
- private:
-  PIRParameters(size_t dbsize, const vector<uint32_t>& dimensions,
-                seal::EncryptionParameters sealParams)
-      : database_size_(dbsize), dimensions_(dimensions), parms_(sealParams) {}
-
-  // Database parameters
-  size_t database_size_;
-
-  // Size of each dimension in the database representation
-  vector<uint32_t> dimensions_;
-
-  // Encryption parameters&helpers
-  EncryptionParameters parms_;
-};
-
+/*
+ * Helper function to generate encryption parameters.
+ * @param[in] optional The polynomial modulus degree
+ * @param[in] optional The plaintext modulus
+ * @param[in] optional The coefficient modulus
+ * */
+EncryptionParameters GenerateEncryptionParams(
+    optional<uint32_t> poly_mod_opt = {}, optional<Modulus> plain_mod_opt = {},
+    optional<std::vector<Modulus>> coeff_opt = {});
+/*
+ * Helper function to create the PIRParameters
+ * @param[in] the database size
+ * @param[in] the encryption parameters
+ * @param[in] the database dimensions
+ * @returns InvalidArgument if EncryptionParameters serialization fails.
+ * */
+StatusOr<std::shared_ptr<PIRParameters>> CreatePIRParameters(
+    size_t dbsize, size_t dimensions = 1,
+    EncryptionParameters enc_params = GenerateEncryptionParams());
 }  // namespace pir
 
 #endif  // PIR_PARAMETERS_H_

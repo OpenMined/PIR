@@ -31,14 +31,15 @@ using ::private_join_and_compute::Status;
 using ::private_join_and_compute::StatusOr;
 using ::seal::GaloisKeys;
 using ::seal::RelinKeys;
+using ::std::shared_ptr;
 
 PIRServer::PIRServer(std::unique_ptr<PIRContext> context,
                      std::shared_ptr<PIRDatabase> db)
     : context_(std::move(context)), db_(db) {}
 
 StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
-    std::shared_ptr<PIRDatabase> db, std::shared_ptr<PIRParameters> params) {
-  if (params->DBSize() != db->size()) {
+    std::shared_ptr<PIRDatabase> db, shared_ptr<PIRParameters> params) {
+  if (params->database_size() != db->size()) {
     return InvalidArgumentError("database size mismatch");
   }
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
@@ -47,7 +48,8 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
 
 StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
     std::shared_ptr<PIRDatabase> db) {
-  return PIRServer::Create(db, PIRParameters::Create(db->size()));
+  ASSIGN_OR_RETURN(auto params, CreatePIRParameters(db->size()));
+  return PIRServer::Create(db, params);
 }
 
 StatusOr<Response> PIRServer::ProcessRequest(
@@ -58,9 +60,8 @@ StatusOr<Response> PIRServer::ProcessRequest(
                    SEALDeserialize<GaloisKeys>(context_->SEALContext(),
                                                request_proto.galois_keys()));
 
-  const auto dimensions = context_->Parameters()->Dimensions();
-  const size_t dim_sum = std::accumulate(dimensions.begin(), dimensions.end(),
-                                         decltype(dimensions)::value_type(0));
+  const auto dimensions = context_->Params()->dimensions();
+  const size_t dim_sum = context_->DimensionsSum();
 
   ASSIGN_OR_RETURN(auto selection_vector,
                    oblivious_expansion(query, dim_sum, galois_keys));
@@ -124,7 +125,7 @@ StatusOr<std::vector<seal::Ciphertext>> PIRServer::oblivious_expansion(
     const seal::Ciphertext& ct, const size_t num_items,
     const seal::GaloisKeys& gal_keys) const {
   const auto poly_modulus_degree =
-      context_->Parameters()->GetEncryptionParams().poly_modulus_degree();
+      context_->EncryptionParams().poly_modulus_degree();
 
   if (num_items > poly_modulus_degree) {
     return InvalidArgumentError(
@@ -166,8 +167,8 @@ StatusOr<std::vector<seal::Ciphertext>> PIRServer::oblivious_expansion(
 StatusOr<std::vector<seal::Ciphertext>> PIRServer::oblivious_expansion(
     const std::vector<seal::Ciphertext>& cts, size_t total_items,
     const seal::GaloisKeys& gal_keys) const {
-  const auto poly_modulus_degree =
-      context_->Parameters()->GetEncryptionParams().poly_modulus_degree();
+  size_t poly_modulus_degree =
+      context_->EncryptionParams().poly_modulus_degree();
 
   if (cts.size() != total_items / poly_modulus_degree + 1) {
     return InvalidArgumentError(
