@@ -41,8 +41,7 @@ class PIRServer {
    * @returns InvalidArgument if the database encoding fails
    **/
   static StatusOr<std::unique_ptr<PIRServer>> Create(
-      std::shared_ptr<PIRDatabase> database,
-      std::shared_ptr<PIRParameters> params);
+      std::shared_ptr<PIRDatabase> database, shared_ptr<PIRParameters> params);
   /**
    * Creates and returns a new server instance, holding a database.
    * @param[in] db PIRDatabase to load
@@ -58,11 +57,6 @@ class PIRServer {
    *fail
    **/
   StatusOr<Response> ProcessRequest(const Request& request) const;
-
-  /**
-   * Returns the database size.
-   **/
-  std::size_t DBSize() const { return context_->DBSize(); }
 
   PIRServer() = delete;
 

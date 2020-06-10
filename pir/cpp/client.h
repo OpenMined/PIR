@@ -35,7 +35,7 @@ class PIRClient {
    * @returns InvalidArgument if the parameters cannot be loaded
    **/
   static StatusOr<std::unique_ptr<PIRClient>> Create(
-      std::shared_ptr<PIRParameters> params);
+      shared_ptr<PIRParameters> params);
   /**
    * Creates a new request to query the database for the given index. Note that
    * if more than one dimension is specified in context, then the request
@@ -56,11 +56,6 @@ class PIRClient {
    **/
   StatusOr<std::vector<int64_t>> ProcessResponse(
       const Response& response) const;
-
-  /**
-   * Returns the database size.
-   **/
-  std::size_t DBSize() const { return context_->DBSize(); }
 
   PIRClient() = delete;
 

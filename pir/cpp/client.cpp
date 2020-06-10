@@ -44,7 +44,7 @@ PIRClient::PIRClient(std::unique_ptr<PIRContext> context)
 }
 
 StatusOr<std::unique_ptr<PIRClient>> PIRClient::Create(
-    std::shared_ptr<PIRParameters> params) {
+    shared_ptr<PIRParameters> params) {
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
   return absl::WrapUnique(new PIRClient(std::move(context)));
 }
@@ -63,7 +63,7 @@ StatusOr<uint64_t> InvertMod(uint64_t m, const seal::Modulus& mod) {
 StatusOr<Request> PIRClient::CreateRequest(
     const std::vector<std::size_t>& indexes) const {
   const auto poly_modulus_degree =
-      context_->Parameters()->GetEncryptionParams().poly_modulus_degree();
+      context_->EncryptionParams().poly_modulus_degree();
 
   vector<vector<Ciphertext>> queries(indexes.size());
 
@@ -112,22 +112,19 @@ StatusOr<std::vector<int64_t>> PIRClient::ProcessResponse(
 
 Status PIRClient::createQueryFor(size_t desired_index,
                                  vector<Ciphertext>& query) const {
-  if (desired_index >= DBSize()) {
-    return InvalidArgumentError("invalid index " +
+  if (desired_index >= context_->Params()->database_size()) {
+    return InvalidArgumentError("invalid index" +
                                 std::to_string(desired_index));
   }
-
+  auto plain_mod = context_->EncryptionParams().plain_modulus();
   const auto poly_modulus_degree =
-      context_->Parameters()->GetEncryptionParams().poly_modulus_degree();
+      context_->EncryptionParams().poly_modulus_degree();
 
-  const auto& plain_mod =
-      context_->Parameters()->GetEncryptionParams().plain_modulus();
-
-  auto dims = context_->Parameters()->Dimensions();
+  auto dims = std::vector<uint32_t>(context_->Params()->dimensions().begin(),
+                                    context_->Params()->dimensions().end());
   auto indices = PIRDatabase::calculate_indices(dims, desired_index);
 
-  const size_t dim_sum =
-      std::accumulate(dims.begin(), dims.end(), decltype(dims)::value_type(0));
+  const size_t dim_sum = context_->DimensionsSum();
 
   size_t offset = 0;
   query.resize(dim_sum / poly_modulus_degree + 1);

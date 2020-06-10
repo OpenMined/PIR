@@ -30,6 +30,8 @@ using ::std::shared_ptr;
 using ::std::string;
 using ::std::vector;
 
+using seal::EncryptionParameters;
+
 class PIRContext {
  public:
   /**
@@ -38,26 +40,30 @@ class PIRContext {
    * @returns InvalidArgument if the SEAL parameter deserialization fails
    **/
   static StatusOr<std::unique_ptr<PIRContext>> Create(
-      std::shared_ptr<PIRParameters> /*params*/);
+      shared_ptr<PIRParameters> /*params*/);
   /**
-   * Returns an Evaluator instance
+   * Returns an Evaluator instance.
    **/
   std::shared_ptr<seal::Evaluator>& Evaluator() { return evaluator_; }
-
   /**
-   * Returns the PIR parameters
-   **/
-  std::shared_ptr<PIRParameters>& Parameters() { return parameters_; }
-
-  /**
-   * Returns the database size
-   **/
-  size_t DBSize() { return parameters_->DBSize(); }
-
-  /**
-   * Returns the SEAL context
+   * Returns the SEAL context.
    **/
   std::shared_ptr<seal::SEALContext>& SEALContext() { return context_; }
+  /**
+   * Returns the PIR parameters protobuffer.
+   **/
+  shared_ptr<PIRParameters> Params() { return parameters_; }
+  /**
+   * Returns the dimensions sum.
+   **/
+  size_t DimensionsSum() {
+    return std::accumulate(Params()->dimensions().begin(),
+                           Params()->dimensions().end(), 0);
+  }
+  /**
+   * Returns the encryption parameters used to create SEAL context.
+   **/
+  const EncryptionParameters& EncryptionParams() { return encryption_params_; }
 
   /**
    * Returns the encoder
@@ -65,9 +71,12 @@ class PIRContext {
   std::shared_ptr<seal::IntegerEncoder>& Encoder() { return encoder_; }
 
  private:
-  PIRContext(std::shared_ptr<PIRParameters> /*params*/);
+  PIRContext(shared_ptr<PIRParameters> /*params*/,
+             const EncryptionParameters& /*enc_params*/,
+             shared_ptr<seal::SEALContext> /*seal_context*/);
 
   shared_ptr<PIRParameters> parameters_;
+  EncryptionParameters encryption_params_;
   shared_ptr<seal::SEALContext> context_;
   shared_ptr<seal::Evaluator> evaluator_;
   shared_ptr<seal::IntegerEncoder> encoder_;

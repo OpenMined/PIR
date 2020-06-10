@@ -27,6 +27,7 @@ using namespace seal;
 using std::get;
 using std::make_tuple;
 using std::make_unique;
+using std::shared_ptr;
 using std::tuple;
 using std::vector;
 using namespace ::testing;
@@ -39,8 +40,9 @@ class PIRClientTest : public ::testing::Test {
 
   void SetUpDB(size_t dbsize, size_t dimensions = 1) {
     db_size_ = dbsize;
-    pir_params_ = PIRParameters::Create(
-        dbsize, dimensions, generateEncryptionParams(POLY_MODULUS_DEGREE));
+    encryption_params_ = GenerateEncryptionParams(POLY_MODULUS_DEGREE);
+    pir_params_ = CreatePIRParameters(dbsize, dimensions, encryption_params_)
+                      .ValueOrDie();
     client_ = PIRClient::Create(pir_params_).ValueOrDie();
 
     ASSERT_TRUE(client_ != nullptr);
@@ -51,7 +53,8 @@ class PIRClientTest : public ::testing::Test {
   std::shared_ptr<seal::Encryptor> Encryptor() { return client_->encryptor_; }
 
   size_t db_size_;
-  std::shared_ptr<PIRParameters> pir_params_;
+  shared_ptr<PIRParameters> pir_params_;
+  EncryptionParameters encryption_params_;
   std::unique_ptr<PIRClient> client_;
 };
 
@@ -69,8 +72,7 @@ TEST_F(PIRClientTest, TestCreateRequest) {
   EXPECT_THAT(req_proto.galois_keys(), Not(IsEmpty()));
   Decryptor()->decrypt(req[0], pt);
 
-  const auto plain_mod =
-      pir_params_->GetEncryptionParams().plain_modulus().value();
+  const auto plain_mod = encryption_params_.plain_modulus().value();
   EXPECT_EQ((pt[desired_index] * next_power_two(db_size_)) % plain_mod, 1);
   for (size_t i = 0; i < pt.coeff_count(); ++i) {
     if (i != desired_index) {
@@ -87,7 +89,7 @@ TEST_F(PIRClientTest, TestCreateRequestD2) {
   const size_t num_rows = 10;
   const size_t num_cols = 9;
   const size_t total_s_items = num_rows + num_cols;
-  ASSERT_THAT(Context()->Parameters()->Dimensions(),
+  ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols));
 
   auto request_proto = client_->CreateRequest(indexes).ValueOrDie();
@@ -104,8 +106,7 @@ TEST_F(PIRClientTest, TestCreateRequestD2) {
 
   const size_t expected_row = 4;
   const size_t expected_col = 6;
-  const auto plain_mod =
-      pir_params_->GetEncryptionParams().plain_modulus().value();
+  const auto plain_mod = encryption_params_.plain_modulus().value();
   // NB: both row and column selection vectors are packed into the same CT
   EXPECT_EQ((pt[expected_row] * next_power_two(total_s_items)) % plain_mod, 1);
   EXPECT_EQ(
@@ -127,7 +128,7 @@ TEST_F(PIRClientTest, TestCreateRequestD3) {
   const size_t num_cols = 5;
   const size_t num_depth = 4;
   const size_t total_s_items = num_rows + num_cols + num_depth;
-  ASSERT_THAT(Context()->Parameters()->Dimensions(),
+  ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols, num_depth));
 
   auto request_proto = client_->CreateRequest(indexes).ValueOrDie();
@@ -144,8 +145,7 @@ TEST_F(PIRClientTest, TestCreateRequestD3) {
   const size_t expected_row = 2;
   const size_t expected_col = 0;
   const size_t expected_depth = 2;
-  const auto plain_mod =
-      pir_params_->GetEncryptionParams().plain_modulus().value();
+  const auto plain_mod = encryption_params_.plain_modulus().value();
   EXPECT_EQ((pt[expected_row] * next_power_two(total_s_items)) % plain_mod, 1);
   EXPECT_EQ(
       (pt[num_rows + expected_col] * next_power_two(total_s_items)) % plain_mod,
@@ -168,7 +168,7 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT1) {
   const vector<size_t> indexes = {desired_index};
   const size_t num_rows = 4473;
   const size_t num_cols = 4472;
-  ASSERT_THAT(Context()->Parameters()->Dimensions(),
+  ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols));
 
   auto request_proto = client_->CreateRequest(indexes).ValueOrDie();
@@ -182,8 +182,7 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT1) {
 
   const size_t expected_row = 2760;
   const size_t expected_col = 2959;
-  const auto plain_mod =
-      pir_params_->GetEncryptionParams().plain_modulus().value();
+  const auto plain_mod = encryption_params_.plain_modulus().value();
 
   vector<Plaintext> pts(request.size());
   for (size_t i = 0; i < pts.size(); ++i) {
@@ -220,7 +219,7 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT2) {
   const vector<size_t> indexes = {desired_index};
   const size_t num_rows = 4473;
   const size_t num_cols = 4472;
-  ASSERT_THAT(Context()->Parameters()->Dimensions(),
+  ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols));
 
   auto request_proto = client_->CreateRequest(indexes).ValueOrDie();
@@ -234,8 +233,7 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT2) {
 
   const size_t expected_row = 2760;
   const size_t expected_col = 3959;
-  const auto plain_mod =
-      pir_params_->GetEncryptionParams().plain_modulus().value();
+  const auto plain_mod = encryption_params_.plain_modulus().value();
 
   vector<Plaintext> pts(request.size());
   for (size_t i = 0; i < pts.size(); ++i) {
@@ -315,10 +313,8 @@ TEST_P(CreateRequestTest, TestCreateRequest) {
   vector<size_t> indexes = get<1>(GetParam());
   SetUpDB(dbsize);
 
-  const auto poly_modulus_degree =
-      pir_params_->GetEncryptionParams().poly_modulus_degree();
-  const auto plain_mod =
-      pir_params_->GetEncryptionParams().plain_modulus().value();
+  const auto poly_modulus_degree = encryption_params_.poly_modulus_degree();
+  const auto plain_mod = encryption_params_.plain_modulus().value();
 
   auto request_or = client_->CreateRequest(indexes);
   ASSERT_TRUE(request_or.ok())

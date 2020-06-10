@@ -15,6 +15,9 @@
 //
 #include "pir/cpp/parameters.h"
 
+#include "pir/cpp/database.h"
+#include "pir/cpp/serialization.h"
+#include "pir/cpp/utils.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
 #include "util/statusor.h"
@@ -23,60 +26,38 @@ namespace pir {
 
 using ::private_join_and_compute::InvalidArgumentError;
 using ::private_join_and_compute::StatusOr;
+using ::seal::EncryptionParameters;
+using ::std::make_shared;
+using ::std::shared_ptr;
 
-StatusOr<std::string> serializeEncryptionParams(
-    const seal::EncryptionParameters& parms) {
-  std::stringstream stream;
-
-  try {
-    parms.save(stream);
-  } catch (const std::exception& e) {
-    return InvalidArgumentError(e.what());
-  }
-  return stream.str();
-}
-
-StatusOr<seal::EncryptionParameters> deserializeEncryptionParams(
-    const std::string& input) {
-  seal::EncryptionParameters parms;
-
-  std::stringstream stream;
-  stream << input;
-
-  try {
-    parms.load(stream);
-  } catch (const std::exception& e) {
-    return InvalidArgumentError(e.what());
-  }
-
-  return parms;
-}
-
-seal::EncryptionParameters generateEncryptionParams(
+EncryptionParameters GenerateEncryptionParams(
     std::optional<uint32_t> poly_mod_opt, std::optional<Modulus> plain_mod_opt,
-    std::optional<std::vector<Modulus>> coeff_opt,
-    std::optional<seal::scheme_type> scheme_opt) {
+    std::optional<std::vector<Modulus>> coeff_opt) {
   auto poly_modulus_degree = poly_mod_opt.value_or(DEFAULT_POLY_MODULUS_DEGREE);
   auto plain_modulus = plain_mod_opt.value_or(
       seal::PlainModulus::Batching(poly_modulus_degree, 20));
   auto coeff =
       coeff_opt.value_or(seal::CoeffModulus::BFVDefault(poly_modulus_degree));
-  auto scheme = scheme_opt.value_or(seal::scheme_type::BFV);
-  seal::EncryptionParameters parms(scheme);
+
+  EncryptionParameters parms(seal::scheme_type::BFV);
   parms.set_poly_modulus_degree(poly_modulus_degree);
   parms.set_plain_modulus(plain_modulus);
   parms.set_coeff_modulus(coeff);
   return parms;
 }
 
-std::vector<uint32_t> PIRParameters::calculate_dimensions(
-    uint32_t db_size, uint32_t num_dimensions) {
-  std::vector<uint32_t> results;
-  for (int i = num_dimensions; i > 0; --i) {
-    results.push_back(std::ceil(std::pow(db_size, 1.0 / i)));
-    db_size = std::ceil(static_cast<double>(db_size) / results.back());
-  }
-  return results;
+StatusOr<shared_ptr<PIRParameters>> CreatePIRParameters(
+    size_t dbsize, size_t dimensions, EncryptionParameters encParams) {
+  auto parameters = std::make_shared<PIRParameters>();
+  parameters->set_database_size(dbsize);
+
+  RETURN_IF_ERROR(SEALSerialize<EncryptionParameters>(
+      encParams, parameters->mutable_encryption_parameters()));
+
+  for (auto& dim : PIRDatabase::calculate_dimensions(dbsize, dimensions))
+    parameters->add_dimensions(dim);
+
+  return parameters;
 }
 
 }  // namespace pir

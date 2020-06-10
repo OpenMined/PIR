@@ -31,6 +31,8 @@ using ::private_join_and_compute::StatusOr;
 using raw_db_type = std::vector<std::int64_t>;
 using db_type = std::vector<seal::Plaintext>;
 
+using google::protobuf::RepeatedField;
+
 class PIRDatabase {
  public:
   /**
@@ -39,7 +41,7 @@ class PIRDatabase {
    * @param[in] PIR parameters
    **/
   static StatusOr<std::shared_ptr<PIRDatabase>> Create(
-      const raw_db_type& /*database*/, std::shared_ptr<PIRParameters> params);
+      const raw_db_type& /*database*/, shared_ptr<PIRParameters> params);
 
   /**
    * Multiplies the database represented as a multi-dimensional hypercube with
@@ -68,6 +70,16 @@ class PIRDatabase {
    */
   static vector<uint32_t> calculate_indices(const vector<uint32_t>& dims,
                                             uint32_t index);
+
+  /**
+   * Helper function to calculate the multi-dimensional representation of the
+   * database
+   * @param[in] db_size, The database size.
+   * @param[in] num_dimensions The mumber of dimensions.
+   * @returns Vector of dimensions.
+   */
+  static vector<uint32_t> calculate_dimensions(uint32_t db_size,
+                                               uint32_t num_dimensions);
 
   PIRDatabase(db_type db, std::unique_ptr<PIRContext> context)
       : db_(db), context_(std::move(context)) {}
