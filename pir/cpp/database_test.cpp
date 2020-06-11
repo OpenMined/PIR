@@ -16,6 +16,8 @@
 
 #include <algorithm>
 #include <iostream>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "gmock/gmock.h"
@@ -49,19 +51,75 @@ using std::vector;
 
 constexpr uint32_t POLY_MODULUS_DEGREE = 4096;
 
+std::string string_to_hex(const std::string& input) {
+  static const char hex_digits[] = "0123456789ABCDEF";
+
+  std::string output;
+  output.reserve(input.length() * 2);
+  for (unsigned char c : input) {
+    output.push_back(hex_digits[c >> 4]);
+    output.push_back(hex_digits[c & 15]);
+  }
+  return output;
+}
+
+int hex_value(char hex_digit) {
+  switch (hex_digit) {
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+    case '9':
+      return hex_digit - '0';
+
+    case 'A':
+    case 'B':
+    case 'C':
+    case 'D':
+    case 'E':
+    case 'F':
+      return hex_digit - 'A' + 10;
+
+    case 'a':
+    case 'b':
+    case 'c':
+    case 'd':
+    case 'e':
+    case 'f':
+      return hex_digit - 'a' + 10;
+  }
+  throw std::invalid_argument("invalid hex digit");
+}
+
+std::string hex_to_string(const std::string& input) {
+  const auto len = input.length();
+  if (len & 1) throw std::invalid_argument("odd length");
+
+  std::string output;
+  output.reserve(len / 2);
+  for (auto it = input.begin(); it != input.end();) {
+    int hi = hex_value(*it++);
+    int lo = hex_value(*it++);
+    output.push_back(hi << 4 | lo);
+  }
+  return output;
+}
+
 class PIRDatabaseTest : public ::testing::Test {
  protected:
   void SetUp() { SetUpDB(100); }
 
-  void SetUpDB(size_t dbsize, size_t dimensions = 1,
-               uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE) {
+  void SetUpDBInternal(size_t dbsize, size_t dimensions,
+                       uint32_t poly_modulus_degree, auto generator) {
     poly_modulus_degree_ = poly_modulus_degree;
     db_size_ = dbsize;
     rawdb_.resize(dbsize);
-    std::generate(rawdb_.begin(), rawdb_.end(), [n = 0]() mutable {
-      ++n;
-      return BigUInt(32, 4 * n + 2600);
-    });
+    std::generate(rawdb_.begin(), rawdb_.end(), generator);
 
     encryption_params_ = GenerateEncryptionParams(poly_modulus_degree);
     pir_params_ =
@@ -79,6 +137,26 @@ class PIRDatabaseTest : public ::testing::Test {
     encryptor_ = make_unique<Encryptor>(seal_context_, keygen_->public_key());
     evaluator_ = make_unique<Evaluator>(seal_context_);
     decryptor_ = make_unique<Decryptor>(seal_context_, keygen_->secret_key());
+  }
+
+  void SetUpDB(size_t dbsize, size_t dimensions = 1,
+               uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE) {
+    return SetUpDBInternal(dbsize, dimensions, poly_modulus_degree,
+                           [n = 0]() mutable {
+                             ++n;
+                             return BigUInt(32, 4 * n + 2600);
+                           });
+  }
+
+  void SetUpDBString(size_t dbsize, size_t dimensions = 1,
+                     uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE) {
+    return SetUpDBInternal(
+        dbsize, dimensions, poly_modulus_degree, [n = 0]() mutable {
+          ++n;
+          std::string el = "Element " + std::to_string(4 * n + 2600);
+          std::string el_hex = string_to_hex(el);
+          return BigUInt(el_hex);
+        });
   }
 
   size_t db_size_;
@@ -161,6 +239,43 @@ TEST_F(PIRDatabaseTest, TestMultiplySelectionVectorTooBig) {
   auto results_or = pirdb_->multiply(cts);
   ASSERT_THAT(results_or.status().code(),
               Eq(private_join_and_compute::StatusCode::kInvalidArgument));
+}
+
+TEST_F(PIRDatabaseTest, TestStringDatabase) {
+  SetUpDBString(100, 2);
+  const auto desired_index = 42;
+  const auto dims = PIRDatabase::calculate_dimensions(db_size_, 2);
+  const auto indices = PIRDatabase::calculate_indices(dims, desired_index);
+
+  vector<Ciphertext> cts;
+  for (size_t d = 0; d < dims.size(); ++d) {
+    for (size_t i = 0; i < dims[d]; ++i) {
+      Ciphertext ct;
+      if (i == indices[d]) {
+        Plaintext pt(POLY_MODULUS_DEGREE);
+        pt.set_zero();
+        pt[0] = 1;
+        encryptor_->encrypt(pt, ct);
+      } else {
+        encryptor_->encrypt_zero(ct);
+      }
+      cts.push_back(ct);
+    }
+  }
+
+  auto relin_keys = keygen_->relin_keys_local();
+  auto results_or = pirdb_->multiply(cts, &relin_keys);
+  ASSERT_THAT(results_or.ok(), IsTrue())
+      << "Error: " << results_or.status().ToString();
+  auto result_ct = results_or.ValueOrDie();
+
+  Plaintext result_pt;
+  decryptor_->decrypt(result_ct, result_pt);
+  auto result = encoder_->decode_biguint(result_pt);
+  EXPECT_THAT(result, Eq(rawdb_[desired_index]));
+
+  auto result_str = hex_to_string(result.to_string());
+  EXPECT_THAT(result_str, Eq("Element 2772"));
 }
 
 class MultiplyMultiDimTest
