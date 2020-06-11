@@ -67,8 +67,8 @@ StatusOr<Request> PIRClient::CreateRequest(
 
   vector<vector<Ciphertext>> queries(indexes.size());
 
-  for (size_t idx = 0; idx < indexes.size(); ++idx) {
-    RETURN_IF_ERROR(createQueryFor(indexes[idx], queries[idx]));
+  for (size_t i = 0; i < indexes.size(); ++i) {
+    RETURN_IF_ERROR(createQueryFor(indexes[i], queries[i]));
   }
 
   GaloisKeys gal_keys;
@@ -85,29 +85,6 @@ StatusOr<Request> PIRClient::CreateRequest(
   RETURN_IF_ERROR(SaveRequest(queries, gal_keys, relin_keys, &request_proto));
 
   return request_proto;
-}
-
-StatusOr<std::vector<int64_t>> PIRClient::ProcessResponse(
-    const Response& response_proto) const {
-  vector<int64_t> result(response_proto.reply_size());
-  for (int idx = 0; idx < response_proto.reply_size(); ++idx) {
-    ASSIGN_OR_RETURN(auto response, LoadCiphertexts(context_->SEALContext(),
-                                                    response_proto.reply(idx)));
-    if (response.size() != 1) {
-      return InvalidArgumentError(
-          "Number of ciphertexts in response must be 1");
-    }
-    seal::Plaintext plaintext;
-    try {
-      decryptor_->decrypt(response[0], plaintext);
-      // have to divide the integer result by the the next power of 2 greater
-      // than number of items in oblivious expansion.
-      result[idx] = context_->Encoder()->decode_int64(plaintext);
-    } catch (const std::exception& e) {
-      return InternalError(e.what());
-    }
-  }
-  return result;
 }
 
 Status PIRClient::createQueryFor(size_t desired_index,
@@ -164,4 +141,24 @@ Status PIRClient::createQueryFor(size_t desired_index,
   return Status::OK;
 }
 
+StatusOr<std::vector<int64_t>> PIRClient::ProcessResponse(
+    const Response& response_proto) const {
+  vector<int64_t> result(response_proto.reply_size());
+  for (int idx = 0; idx < response_proto.reply_size(); ++idx) {
+    ASSIGN_OR_RETURN(auto response, LoadCiphertexts(context_->SEALContext(),
+                                                    response_proto.reply(idx)));
+    if (response.size() != 1) {
+      return InvalidArgumentError(
+          "Number of ciphertexts in response must be 1");
+    }
+    seal::Plaintext plaintext;
+    try {
+      decryptor_->decrypt(response[0], plaintext);
+      result[idx] = context_->Encoder()->decode_int64(plaintext);
+    } catch (const std::exception& e) {
+      return InternalError(e.what());
+    }
+  }
+  return result;
+}
 }  // namespace pir

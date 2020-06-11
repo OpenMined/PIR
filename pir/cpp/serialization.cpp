@@ -58,8 +58,8 @@ Status SaveCiphertexts(const vector<Ciphertext>& ciphertexts,
 
 Status SaveRequest(const vector<vector<Ciphertext>>& cts,
                    const GaloisKeys& galois_keys, Request* request) {
-  for (size_t idx = 0; idx < cts.size(); ++idx) {
-    RETURN_IF_ERROR(SaveCiphertexts(cts[idx], request->add_query()));
+  for (const auto& ct : cts) {
+    RETURN_IF_ERROR(SaveCiphertexts(ct, request->add_query()));
   }
   RETURN_IF_ERROR(
       SEALSerialize<GaloisKeys>(galois_keys, request->mutable_galois_keys()));

@@ -68,7 +68,7 @@ StatusOr<Response> PIRServer::ProcessRequest(const Request& request) const {
                                                 request.relin_keys()));
   }
 
-  for (auto& query : request.query()) {
+  for (const auto& query : request.query()) {
     RETURN_IF_ERROR(processQuery(query, galois_keys, relin_keys, dim_sum,
                                  response.add_reply()));
   }
@@ -193,11 +193,11 @@ Status PIRServer::processQuery(const Ciphertexts& query_proto,
                    oblivious_expansion(query, dim_sum, galois_keys));
 
   seal::Ciphertext result;
-  if (!relin_keys) {
-    ASSIGN_OR_RETURN(result, db_->multiply(selection_vector));
-  } else {
+  if (relin_keys) {
     ASSIGN_OR_RETURN(result,
                      db_->multiply(selection_vector, &relin_keys.value()));
+  } else {
+    ASSIGN_OR_RETURN(result, db_->multiply(selection_vector));
   }
 
   RETURN_IF_ERROR(SaveCiphertexts(vector<seal::Ciphertext>{result}, output));

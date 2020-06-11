@@ -60,9 +60,9 @@ class PIRClientTest : public ::testing::Test {
 
 TEST_F(PIRClientTest, TestCreateRequest) {
   const size_t desired_index = 5;
-  const vector<size_t> indexes = {desired_index};
+  const vector<size_t> indices = {desired_index};
 
-  auto req_proto = client_->CreateRequest(indexes).ValueOrDie();
+  auto req_proto = client_->CreateRequest(indices).ValueOrDie();
   ASSERT_EQ(req_proto.query_size(), 1);
   auto req = LoadCiphertexts(Context()->SEALContext(), req_proto.query(0))
                  .ValueOrDie();
@@ -84,7 +84,7 @@ TEST_F(PIRClientTest, TestCreateRequest) {
 TEST_F(PIRClientTest, TestCreateRequestD2) {
   SetUpDB(84, 2);
   const size_t desired_index = 42;
-  const vector<size_t> indexes = {desired_index};
+  const vector<size_t> indices = {desired_index};
 
   const size_t num_rows = 10;
   const size_t num_cols = 9;
@@ -92,7 +92,7 @@ TEST_F(PIRClientTest, TestCreateRequestD2) {
   ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols));
 
-  auto request_proto = client_->CreateRequest(indexes).ValueOrDie();
+  auto request_proto = client_->CreateRequest(indices).ValueOrDie();
   ASSERT_EQ(request_proto.query_size(), 1);
   auto request =
       LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
@@ -122,7 +122,7 @@ TEST_F(PIRClientTest, TestCreateRequestD2) {
 TEST_F(PIRClientTest, TestCreateRequestD3) {
   SetUpDB(82, 3);
   const size_t desired_index = 42;
-  const vector<size_t> indexes = {desired_index};
+  const vector<size_t> indices = {desired_index};
 
   const size_t num_rows = 5;
   const size_t num_cols = 5;
@@ -131,7 +131,7 @@ TEST_F(PIRClientTest, TestCreateRequestD3) {
   ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols, num_depth));
 
-  auto request_proto = client_->CreateRequest(indexes).ValueOrDie();
+  auto request_proto = client_->CreateRequest(indices).ValueOrDie();
   ASSERT_EQ(request_proto.query_size(), 1);
   auto request =
       LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
@@ -165,13 +165,13 @@ TEST_F(PIRClientTest, TestCreateRequestD3) {
 TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT1) {
   SetUpDB(20000000, 2);
   const size_t desired_index = 12345679;
-  const vector<size_t> indexes = {desired_index};
+  const vector<size_t> indices = {desired_index};
   const size_t num_rows = 4473;
   const size_t num_cols = 4472;
   ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols));
 
-  auto request_proto = client_->CreateRequest(indexes).ValueOrDie();
+  auto request_proto = client_->CreateRequest(indices).ValueOrDie();
   ASSERT_EQ(request_proto.query_size(), 1);
   auto request =
       LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
@@ -216,13 +216,13 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT1) {
 TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT2) {
   SetUpDB(20000000, 2);
   const size_t desired_index = 12346679;
-  const vector<size_t> indexes = {desired_index};
+  const vector<size_t> indices = {desired_index};
   const size_t num_rows = 4473;
   const size_t num_cols = 4472;
   ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols));
 
-  auto request_proto = client_->CreateRequest(indexes).ValueOrDie();
+  auto request_proto = client_->CreateRequest(indices).ValueOrDie();
   ASSERT_EQ(request_proto.query_size(), 1);
   auto request =
       LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
@@ -310,27 +310,27 @@ class CreateRequestTest : public PIRClientTest,
 
 TEST_P(CreateRequestTest, TestCreateRequest) {
   const auto dbsize = get<0>(GetParam());
-  vector<size_t> indexes = get<1>(GetParam());
+  vector<size_t> indices = get<1>(GetParam());
   SetUpDB(dbsize);
 
   const auto poly_modulus_degree = encryption_params_.poly_modulus_degree();
   const auto plain_mod = encryption_params_.plain_modulus().value();
 
-  auto request_or = client_->CreateRequest(indexes);
+  auto request_or = client_->CreateRequest(indices);
   ASSERT_TRUE(request_or.ok())
       << "Status is: " << request_or.status().ToString();
 
   auto request = request_or.ValueOrDie();
-  ASSERT_EQ(request.query_size(), indexes.size());
+  ASSERT_EQ(request.query_size(), indices.size());
   EXPECT_THAT(request.galois_keys(), Not(IsEmpty()));
 
   auto m = get<2>(GetParam());
 
-  for (size_t idx = 0; idx < indexes.size(); ++idx) {
+  for (size_t idx = 0; idx < indices.size(); ++idx) {
     auto query = LoadCiphertexts(Context()->SEALContext(), request.query(idx))
                      .ValueOrDie();
     ASSERT_EQ(query.size(), dbsize / poly_modulus_degree + 1);
-    size_t desired_index = indexes[idx];
+    size_t desired_index = indices[idx];
 
     for (const auto& ct : query) {
       Plaintext pt;
