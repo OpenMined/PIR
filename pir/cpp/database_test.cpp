@@ -115,7 +115,8 @@ class PIRDatabaseTest : public ::testing::Test {
   void SetUp() { SetUpDB(100); }
 
   void SetUpDBInternal(size_t dbsize, size_t dimensions,
-                       uint32_t poly_modulus_degree, auto generator) {
+                       uint32_t poly_modulus_degree,
+                       std::function<BigUInt()> generator) {
     poly_modulus_degree_ = poly_modulus_degree;
     db_size_ = dbsize;
     rawdb_.resize(dbsize);
