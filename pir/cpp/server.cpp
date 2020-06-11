@@ -52,34 +52,26 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
   return PIRServer::Create(db, params);
 }
 
-StatusOr<Response> PIRServer::ProcessRequest(
-    const Request& request_proto) const {
-  ASSIGN_OR_RETURN(auto query, LoadCiphertexts(context_->SEALContext(),
-                                               request_proto.query()));
+StatusOr<Response> PIRServer::ProcessRequest(const Request& request) const {
+  Response response;
   ASSIGN_OR_RETURN(auto galois_keys,
                    SEALDeserialize<GaloisKeys>(context_->SEALContext(),
-                                               request_proto.galois_keys()));
+                                               request.galois_keys()));
 
   const auto dimensions = context_->Params()->dimensions();
   const size_t dim_sum = context_->DimensionsSum();
 
-  ASSIGN_OR_RETURN(auto selection_vector,
-                   oblivious_expansion(query, dim_sum, galois_keys));
-
-  seal::Ciphertext result;
-  if (request_proto.relin_keys().empty()) {
-    ASSIGN_OR_RETURN(result, db_->multiply(selection_vector));
-  } else {
-    ASSIGN_OR_RETURN(auto relin_keys,
+  optional<RelinKeys> relin_keys;
+  if (!request.relin_keys().empty()) {
+    ASSIGN_OR_RETURN(relin_keys,
                      SEALDeserialize<RelinKeys>(context_->SEALContext(),
-                                                request_proto.relin_keys()));
-    ASSIGN_OR_RETURN(result, db_->multiply(selection_vector, &relin_keys));
+                                                request.relin_keys()));
   }
 
-  Response response;
-  RETURN_IF_ERROR(SaveCiphertexts(vector<seal::Ciphertext>{result},
-                                  response.mutable_reply()));
-
+  for (const auto& query : request.query()) {
+    RETURN_IF_ERROR(processQuery(query, galois_keys, relin_keys, dim_sum,
+                                 response.add_reply()));
+  }
   return response;
 }
 
@@ -187,6 +179,30 @@ StatusOr<std::vector<seal::Ciphertext>> PIRServer::oblivious_expansion(
     total_items -= poly_modulus_degree;
   }
   return results;
+}
+
+Status PIRServer::processQuery(const Ciphertexts& query_proto,
+                               const GaloisKeys& galois_keys,
+                               const optional<RelinKeys>& relin_keys,
+                               const size_t& dim_sum,
+                               Ciphertexts* output) const {
+  ASSIGN_OR_RETURN(auto query,
+                   LoadCiphertexts(context_->SEALContext(), query_proto));
+
+  ASSIGN_OR_RETURN(auto selection_vector,
+                   oblivious_expansion(query, dim_sum, galois_keys));
+
+  seal::Ciphertext result;
+  if (relin_keys) {
+    ASSIGN_OR_RETURN(result,
+                     db_->multiply(selection_vector, &relin_keys.value()));
+  } else {
+    ASSIGN_OR_RETURN(result, db_->multiply(selection_vector));
+  }
+
+  RETURN_IF_ERROR(SaveCiphertexts(vector<seal::Ciphertext>{result}, output));
+
+  return Status::OK;
 }
 
 }  // namespace pir

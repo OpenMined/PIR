@@ -26,7 +26,7 @@ message Ciphertexts {
 // ciphertexts and a set of galois keys to be used.
 message Request {
   // Each query may have 1 or more ciphertexts.
-  Ciphertexts query = 1;
+  repeated Ciphertexts query = 1;
 
   // Galois keys, needed to compute substitution operation on ciphertexts.
   bytes galois_keys = 2;
@@ -38,7 +38,7 @@ message Request {
 // Response to a query, a set of ciphertexts.
 message Response {
   // Reply to query as a set of 1 or more serialized ciphertexts.
-  Ciphertexts reply = 1;
+  repeated Ciphertexts reply = 1;
 }
 
 // Private information retrieval setup parameters

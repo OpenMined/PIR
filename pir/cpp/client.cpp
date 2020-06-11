@@ -60,14 +60,42 @@ StatusOr<uint64_t> InvertMod(uint64_t m, const seal::Modulus& mod) {
   return inverse;
 }
 
-StatusOr<Request> PIRClient::CreateRequest(std::size_t desired_index) const {
+StatusOr<Request> PIRClient::CreateRequest(
+    const std::vector<std::size_t>& indexes) const {
   const auto poly_modulus_degree =
       context_->EncryptionParams().poly_modulus_degree();
-  if (desired_index >= context_->Params()->database_size()) {
-    return InvalidArgumentError("invalid index");
+
+  vector<vector<Ciphertext>> queries(indexes.size());
+
+  for (size_t i = 0; i < indexes.size(); ++i) {
+    RETURN_IF_ERROR(createQueryFor(indexes[i], queries[i]));
   }
 
+  GaloisKeys gal_keys;
+  RelinKeys relin_keys;
+  try {
+    gal_keys =
+        keygen_->galois_keys_local(generate_galois_elts(poly_modulus_degree));
+    relin_keys = keygen_->relin_keys_local();
+  } catch (const std::exception& e) {
+    return InternalError(e.what());
+  }
+
+  Request request_proto;
+  RETURN_IF_ERROR(SaveRequest(queries, gal_keys, relin_keys, &request_proto));
+
+  return request_proto;
+}
+
+Status PIRClient::createQueryFor(size_t desired_index,
+                                 vector<Ciphertext>& query) const {
+  if (desired_index >= context_->Params()->database_size()) {
+    return InvalidArgumentError("invalid index" +
+                                std::to_string(desired_index));
+  }
   auto plain_mod = context_->EncryptionParams().plain_modulus();
+  const auto poly_modulus_degree =
+      context_->EncryptionParams().poly_modulus_degree();
 
   auto dims = std::vector<uint32_t>(context_->Params()->dimensions().begin(),
                                     context_->Params()->dimensions().end());
@@ -76,7 +104,7 @@ StatusOr<Request> PIRClient::CreateRequest(std::size_t desired_index) const {
   const size_t dim_sum = context_->DimensionsSum();
 
   size_t offset = 0;
-  vector<Ciphertext> query(dim_sum / poly_modulus_degree + 1);
+  query.resize(dim_sum / poly_modulus_degree + 1);
   for (size_t c = 0; c < query.size(); ++c) {
     Plaintext pt(poly_modulus_degree);
     pt.set_zero();
@@ -110,39 +138,27 @@ StatusOr<Request> PIRClient::CreateRequest(std::size_t desired_index) const {
     }
   }
 
-  GaloisKeys gal_keys;
-  RelinKeys relin_keys;
-  try {
-    gal_keys =
-        keygen_->galois_keys_local(generate_galois_elts(poly_modulus_degree));
-    relin_keys = keygen_->relin_keys_local();
-  } catch (const std::exception& e) {
-    return InternalError(e.what());
-  }
-
-  Request request_proto;
-  RETURN_IF_ERROR(SaveRequest(query, gal_keys, relin_keys, &request_proto));
-
-  return request_proto;
+  return Status::OK;
 }
 
-StatusOr<int64_t> PIRClient::ProcessResponse(
+StatusOr<std::vector<int64_t>> PIRClient::ProcessResponse(
     const Response& response_proto) const {
-  ASSIGN_OR_RETURN(auto response, LoadCiphertexts(context_->SEALContext(),
-                                                  response_proto.reply()));
-  if (response.size() != 1) {
-    return InvalidArgumentError("Number of ciphertexts in response must be 1");
+  vector<int64_t> result(response_proto.reply_size());
+  for (int idx = 0; idx < response_proto.reply_size(); ++idx) {
+    ASSIGN_OR_RETURN(auto response, LoadCiphertexts(context_->SEALContext(),
+                                                    response_proto.reply(idx)));
+    if (response.size() != 1) {
+      return InvalidArgumentError(
+          "Number of ciphertexts in response must be 1");
+    }
+    seal::Plaintext plaintext;
+    try {
+      decryptor_->decrypt(response[0], plaintext);
+      result[idx] = context_->Encoder()->decode_int64(plaintext);
+    } catch (const std::exception& e) {
+      return InternalError(e.what());
+    }
   }
-  seal::Plaintext plaintext;
-  try {
-    decryptor_->decrypt(response[0], plaintext);
-    // have to divide the integer result by the the next power of 2 greater than
-    // number of items in oblivious expansion.
-    return context_->Encoder()->decode_int64(plaintext);
-  } catch (const std::exception& e) {
-    return InternalError(e.what());
-  }
-  return InternalError("Should never get here.");
+  return result;
 }
-
 }  // namespace pir
