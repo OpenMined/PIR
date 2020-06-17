@@ -53,12 +53,17 @@ class PIRDatabaseTest : public ::testing::Test {
  protected:
   void SetUp() { SetUpDB(100); }
 
-  void SetUpDBInternal(size_t dbsize, size_t dimensions,
-                       uint32_t poly_modulus_degree, auto generator) {
+  void SetUpDB(size_t dbsize, size_t dimensions = 1,
+               uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE,
+               bool transparent = false) {
     poly_modulus_degree_ = poly_modulus_degree;
     db_size_ = dbsize;
     rawdb_.resize(dbsize);
-    std::generate(rawdb_.begin(), rawdb_.end(), generator);
+
+    std::generate(rawdb_.begin(), rawdb_.end(), [n = 0, transparent]() mutable {
+      ++n;
+      return transparent ? 0 : 4 * n + 2600;
+    });
 
     encryption_params_ = GenerateEncryptionParams(poly_modulus_degree);
     pir_params_ =
@@ -76,21 +81,6 @@ class PIRDatabaseTest : public ::testing::Test {
     encryptor_ = make_unique<Encryptor>(seal_context_, keygen_->public_key());
     evaluator_ = make_unique<Evaluator>(seal_context_);
     decryptor_ = make_unique<Decryptor>(seal_context_, keygen_->secret_key());
-  }
-
-  void SetUpDB(size_t dbsize, size_t dimensions = 1,
-               uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE) {
-    return SetUpDBInternal(dbsize, dimensions, poly_modulus_degree,
-                           [n = 0]() mutable {
-                             ++n;
-                             return 4 * n + 2600;
-                           });
-  }
-
-  void SetUpDBZero(size_t dbsize, size_t dimensions = 1,
-                   uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE) {
-    return SetUpDBInternal(dbsize, dimensions, poly_modulus_degree,
-                           []() mutable { return 0; });
   }
 
   size_t db_size_;
@@ -186,11 +176,9 @@ TEST_P(MultiplyMultiDimTest, TestMultiply) {
   const auto d = get<2>(GetParam());
   const auto desired_index = get<3>(GetParam());
   const auto transparent = get<4>(GetParam());
-  if (transparent) {
-    SetUpDBZero(dbsize, d, poly_modulus_degree);
-  } else {
-    SetUpDB(dbsize, d, poly_modulus_degree);
-  }
+
+  SetUpDB(dbsize, d, poly_modulus_degree, transparent);
+
   const auto dims = PIRDatabase::calculate_dimensions(dbsize, d);
   const auto indices = PIRDatabase::calculate_indices(dims, desired_index);
 
