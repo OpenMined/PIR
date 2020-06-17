@@ -39,6 +39,9 @@ t next_power_two(t n) {
 // Utility function to find the log base 2 of v rounded up.
 uint32_t ceil_log2(uint32_t v);
 
+// Utility function to find the log base 2 of v truncated.
+uint32_t log2(uint32_t v);
+
 }  // namespace pir
 
 namespace private_join_and_compute {

@@ -21,9 +21,6 @@
 namespace pir {
 namespace {
 
-using seal::Ciphertext;
-using seal::Plaintext;
-
 TEST(NextPowerTwoTest, NextPowerTwo) {
   EXPECT_EQ(next_power_two(0), 1);
   EXPECT_EQ(next_power_two(1), 1);
@@ -46,8 +43,23 @@ TEST(CeilLog2Test, CeilLog2) {
   EXPECT_EQ(ceil_log2(17), 5);
   EXPECT_EQ(ceil_log2((1 << 16) - 1), 16);
   EXPECT_EQ(ceil_log2(1 << 16), 16);
-  EXPECT_EQ(ceil_log2(1 << 16) + 1, 17);
+  EXPECT_EQ(ceil_log2((1 << 16) + 1), 17);
   EXPECT_EQ(ceil_log2(1UL << 31), 31);
+}
+
+TEST(Log2Test, Log2) {
+  EXPECT_EQ(log2(1), 0);
+  EXPECT_EQ(log2(2), 1);
+  EXPECT_EQ(log2(3), 1);
+  EXPECT_EQ(log2(8), 3);
+  EXPECT_EQ(log2(15), 3);
+  EXPECT_EQ(log2(16), 4);
+  EXPECT_EQ(log2(17), 4);
+  EXPECT_EQ(log2((1 << 16) - 1), 15);
+  EXPECT_EQ(log2(1 << 16), 16);
+  EXPECT_EQ(log2((1 << 16) + 1), 16);
+  EXPECT_EQ(log2((1UL << 31) - 1), 30);
+  EXPECT_EQ(log2(1UL << 31), 31);
 }
 
 }  // namespace
