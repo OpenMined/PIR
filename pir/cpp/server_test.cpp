@@ -115,6 +115,49 @@ TEST_F(PIRServerTest, TestCorrectness) {
   ASSERT_EQ(result[0], db_[desired_index]);
 }
 
+TEST_F(PIRServerTest, TestCorrectnessLargeValues) {
+  const size_t dimensions = 1;
+  auto prng =
+      seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
+  vector<string> db(db_size_);
+  for (size_t i = 0; i < db_size_; ++i) {
+    db[i].resize(9727);
+    prng->generate(db[i].size(), reinterpret_cast<SEAL_BYTE*>(db[i].data()));
+  }
+
+  encryption_params_ = GenerateEncryptionParams(POLY_MODULUS_DEGREE);
+  pir_params_ = CreatePIRParameters(db.size(), dimensions, encryption_params_)
+                    .ValueOrDie();
+  auto pirdb = PIRDatabase::Create(db, pir_params_).ValueOrDie();
+  server_ = PIRServer::Create(pirdb, pir_params_).ValueOrDie();
+  ASSERT_THAT(server_, NotNull());
+
+  auto context = server_->Context()->SEALContext();
+  if (!context->parameters_set()) {
+    FAIL() << "Error setting encryption parameters: "
+           << context->parameter_error_message();
+  }
+  keygen_ = make_unique<KeyGenerator>(context);
+  gal_keys_ =
+      keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
+  relin_keys_ = keygen_->relin_keys_local();
+  encryptor_ = make_unique<Encryptor>(context, keygen_->public_key());
+  evaluator_ = make_unique<Evaluator>(context);
+  decryptor_ = make_unique<Decryptor>(context, keygen_->secret_key());
+
+  auto client = PIRClient::Create(pir_params_).ValueOrDie();
+
+  const size_t desired_index = 5;
+  auto request = client->CreateRequest({desired_index}).ValueOrDie();
+  auto response = server_->ProcessRequest(request).ValueOrDie();
+  auto result = client->ProcessResponseString(response).ValueOrDie();
+
+  ASSERT_THAT(result, SizeIs(1));
+  ASSERT_GE(result[0].size(), db[desired_index].size());
+  EXPECT_EQ(result[0].substr(0, db[desired_index].size()), db[desired_index]);
+  EXPECT_THAT(result[0].substr(db[desired_index].size()), testing::Each(0));
+}
+
 TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
   const size_t desired_index = 7;
   Plaintext pt(POLY_MODULUS_DEGREE);
