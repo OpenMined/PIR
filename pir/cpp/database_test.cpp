@@ -53,15 +53,12 @@ class PIRDatabaseTest : public ::testing::Test {
  protected:
   void SetUp() { SetUpDB(100); }
 
-  void SetUpDB(size_t dbsize, size_t dimensions = 1,
-               uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE) {
+  void SetUpDBInternal(size_t dbsize, size_t dimensions,
+                       uint32_t poly_modulus_degree, auto generator) {
     poly_modulus_degree_ = poly_modulus_degree;
     db_size_ = dbsize;
     rawdb_.resize(dbsize);
-    std::generate(rawdb_.begin(), rawdb_.end(), [n = 0]() mutable {
-      ++n;
-      return 4 * n + 2600;
-    });
+    std::generate(rawdb_.begin(), rawdb_.end(), generator);
 
     encryption_params_ = GenerateEncryptionParams(poly_modulus_degree);
     pir_params_ =
@@ -79,6 +76,21 @@ class PIRDatabaseTest : public ::testing::Test {
     encryptor_ = make_unique<Encryptor>(seal_context_, keygen_->public_key());
     evaluator_ = make_unique<Evaluator>(seal_context_);
     decryptor_ = make_unique<Decryptor>(seal_context_, keygen_->secret_key());
+  }
+
+  void SetUpDB(size_t dbsize, size_t dimensions = 1,
+               uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE) {
+    return SetUpDBInternal(dbsize, dimensions, poly_modulus_degree,
+                           [n = 0]() mutable {
+                             ++n;
+                             return 4 * n + 2600;
+                           });
+  }
+
+  void SetUpDBZero(size_t dbsize, size_t dimensions = 1,
+                   uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE) {
+    return SetUpDBInternal(dbsize, dimensions, poly_modulus_degree,
+                           []() mutable { return 0; });
   }
 
   size_t db_size_;
@@ -166,14 +178,19 @@ TEST_F(PIRDatabaseTest, TestMultiplySelectionVectorTooBig) {
 class MultiplyMultiDimTest
     : public PIRDatabaseTest,
       public testing::WithParamInterface<
-          tuple<uint32_t, uint32_t, uint32_t, uint32_t>> {};
+          tuple<uint32_t, uint32_t, uint32_t, uint32_t, bool>> {};
 
 TEST_P(MultiplyMultiDimTest, TestMultiply) {
   const auto poly_modulus_degree = get<0>(GetParam());
   const auto dbsize = get<1>(GetParam());
   const auto d = get<2>(GetParam());
   const auto desired_index = get<3>(GetParam());
-  SetUpDB(dbsize, d, poly_modulus_degree);
+  const auto transparent = get<4>(GetParam());
+  if (transparent) {
+    SetUpDBZero(dbsize, d, poly_modulus_degree);
+  } else {
+    SetUpDB(dbsize, d, poly_modulus_degree);
+  }
   const auto dims = PIRDatabase::calculate_dimensions(dbsize, d);
   const auto indices = PIRDatabase::calculate_indices(dims, desired_index);
 
@@ -205,13 +222,17 @@ TEST_P(MultiplyMultiDimTest, TestMultiply) {
   EXPECT_THAT(result, Eq(rawdb_[desired_index]));
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    Multiplies, MultiplyMultiDimTest,
-    testing::Values(make_tuple(4096, 10, 1, 7), make_tuple(4096, 16, 2, 11),
-                    make_tuple(4096, 16, 2, 0), make_tuple(4096, 16, 2, 15),
-                    make_tuple(4096, 82, 2, 42), make_tuple(8192, 27, 3, 2),
-                    make_tuple(8192, 117, 3, 17),
-                    make_tuple(8192, 222, 4, 111)));
+INSTANTIATE_TEST_SUITE_P(Multiplies, MultiplyMultiDimTest,
+                         testing::Values(make_tuple(4096, 10, 1, 7, false),
+                                         make_tuple(4096, 16, 2, 11, false),
+                                         make_tuple(4096, 16, 2, 0, false),
+                                         make_tuple(4096, 16, 2, 15, false),
+                                         make_tuple(4096, 82, 2, 42, false),
+                                         make_tuple(8192, 27, 3, 2, false),
+                                         make_tuple(4096, 82, 2, 42, true),
+                                         make_tuple(8192, 27, 3, 2, true),
+                                         make_tuple(8192, 117, 3, 17, false),
+                                         make_tuple(8192, 222, 4, 111, false)));
 
 class CalculateIndicesTest
     : public testing::TestWithParam<

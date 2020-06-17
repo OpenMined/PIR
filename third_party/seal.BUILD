@@ -11,6 +11,7 @@ cmake_external(
    cmake_options = [
         "-DSEAL_USE_MSGSL=OFF",
         "-DSEAL_USE_ZLIB=OFF",
+        "-DSEAL_THROW_ON_TRANSPARENT_CIPHERTEXT=OFF",
         "-DCMAKE_CXX_STANDARD=17",
    ],
    cache_entries = {
