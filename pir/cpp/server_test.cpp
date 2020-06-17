@@ -22,6 +22,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "pir/cpp/PackedBigUIntEncoder.h"
 #include "pir/cpp/client.h"
 #include "pir/cpp/utils.h"
 
@@ -112,6 +113,88 @@ TEST_F(PIRServerTest, TestCorrectness) {
   auto result = client->ProcessResponse(response).ValueOrDie();
 
   ASSERT_EQ(result, db_[desired_index]);
+}
+
+using namespace std::chrono;
+
+TEST_F(PIRServerTest, TestCorrectnessLargeValues) {
+  const size_t dimensions = 1;
+  auto prng =
+      seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
+  vector<BigUInt> db;
+  db.reserve(db_size_);
+  std::array<std::array<uint64_t, 128>, 10> v;
+
+  auto t_start = high_resolution_clock::now();
+  for (size_t i = 0; i < db_size_; ++i) {
+    prng->generate(sizeof(v[i]), reinterpret_cast<SEAL_BYTE*>(v[i].data()));
+    db.emplace_back(sizeof(v[i]) * 8, v[i].data());
+    // std::cout << "db[" << i << "] = " << db.back().to_string() << std::endl;
+  }
+
+  auto t_db_setup = high_resolution_clock::now();
+
+  encryption_params_ = GenerateEncryptionParams(POLY_MODULUS_DEGREE);
+  pir_params_ = CreatePIRParameters(db.size(), dimensions, encryption_params_)
+                    .ValueOrDie();
+  auto pirdb = PIRDatabase::Create(db, pir_params_).ValueOrDie();
+  server_ = PIRServer::Create(pirdb, pir_params_).ValueOrDie();
+  ASSERT_THAT(server_, NotNull());
+
+  auto context = server_->Context()->SEALContext();
+  if (!context->parameters_set()) {
+    FAIL() << "Error setting encryption parameters: "
+           << context->parameter_error_message();
+  }
+  keygen_ = make_unique<KeyGenerator>(context);
+  gal_keys_ =
+      keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
+  relin_keys_ = keygen_->relin_keys_local();
+  encryptor_ = make_unique<Encryptor>(context, keygen_->public_key());
+  evaluator_ = make_unique<Evaluator>(context);
+  decryptor_ = make_unique<Decryptor>(context, keygen_->secret_key());
+
+  auto client = PIRClient::Create(pir_params_).ValueOrDie();
+  auto t_setup = high_resolution_clock::now();
+
+  const size_t desired_index = 5;
+  auto request = client->CreateRequest(desired_index).ValueOrDie();
+  auto t_create_request = high_resolution_clock::now();
+
+  // auto query = LoadCiphertexts(context, request.query()).ValueOrDie();
+  // std::cout << "Query" << std::endl;
+  // for (const auto& q : query) {
+  //   Plaintext pt;
+  //   decryptor_->decrypt(q, pt);
+  //   std::cout << pt.to_string() << std::endl;
+  // }
+
+  auto response = server_->ProcessRequest(request).ValueOrDie();
+  auto t_process_request = high_resolution_clock::now();
+
+  auto result = client->ProcessResponseBigUInt(response).ValueOrDie();
+  auto t_process_response = high_resolution_clock::now();
+
+  // std::cout << "Exp = " << db[desired_index].to_string() << std::endl;
+  // std::cout << "Act = " << result.to_string() << std::endl;
+
+  cout << "DB Setup Time: "
+       << duration_cast<microseconds>(t_db_setup - t_start).count() << endl;
+  cout << "Other Setup Time: "
+       << duration_cast<microseconds>(t_setup - t_db_setup).count() << endl;
+  cout << "Create Request Time: "
+       << duration_cast<microseconds>(t_create_request - t_setup).count()
+       << endl;
+  cout << "Process Request Time: "
+       << duration_cast<microseconds>(t_process_request - t_create_request)
+              .count()
+       << endl;
+  cout << "Process Response Time: "
+       << duration_cast<microseconds>(t_process_response - t_process_request)
+              .count()
+       << endl;
+
+  ASSERT_EQ(result, db[desired_index]);
 }
 
 TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {

@@ -22,6 +22,10 @@ void PackedBigUIntEncoder::encode(BigUInt value, Plaintext &destination) const {
   const auto poly_modulus_degree = params.poly_modulus_degree();
   const auto plain_mod = params.plain_modulus().value();
 
+  std::cout << "Encoding with poly_mod_degree=" << poly_modulus_degree
+            << ", plain_mod = " << plain_mod << std::endl;
+  std::cout << "Value = " << value.to_string() << std::endl;
+
   // TODO: use the correct size for the value given
   destination.resize(poly_modulus_degree);
   destination.set_zero();

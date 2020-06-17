@@ -55,6 +55,9 @@ class PIRClient {
    **/
   StatusOr<int64_t> ProcessResponse(const Response& response) const;
 
+  StatusOr<seal::BigUInt> ProcessResponseBigUInt(
+      const Response& response) const;
+
   PIRClient() = delete;
 
  private:

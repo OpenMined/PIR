@@ -16,6 +16,7 @@
 #include "pir/cpp/client.h"
 
 #include "absl/memory/memory.h"
+#include "pir/cpp/PackedBigUIntEncoder.h"
 #include "pir/cpp/database.h"
 #include "pir/cpp/utils.h"
 #include "seal/seal.h"
@@ -145,4 +146,21 @@ StatusOr<int64_t> PIRClient::ProcessResponse(
   return InternalError("Should never get here.");
 }
 
+StatusOr<seal::BigUInt> PIRClient::ProcessResponseBigUInt(
+    const Response& response_proto) const {
+  ASSIGN_OR_RETURN(auto response, LoadCiphertexts(context_->SEALContext(),
+                                                  response_proto.reply()));
+  if (response.size() != 1) {
+    return InvalidArgumentError("Number of ciphertexts in response must be 1");
+  }
+  PackedBigUIntEncoder encoder(context_->SEALContext());
+  seal::Plaintext plaintext;
+  try {
+    decryptor_->decrypt(response[0], plaintext);
+    return encoder.decode(plaintext);
+  } catch (const std::exception& e) {
+    return InternalError(e.what());
+  }
+  return InternalError("Should never get here.");
+}
 }  // namespace pir

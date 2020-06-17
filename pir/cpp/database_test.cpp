@@ -20,6 +20,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "pir/cpp/PackedBigUIntEncoder.h"
 #include "pir/cpp/client.h"
 #include "pir/cpp/server.h"
 #include "pir/cpp/utils.h"
@@ -79,6 +80,7 @@ class PIRDatabaseTest : public ::testing::Test {
     encryptor_ = make_unique<Encryptor>(seal_context_, keygen_->public_key());
     evaluator_ = make_unique<Evaluator>(seal_context_);
     decryptor_ = make_unique<Decryptor>(seal_context_, keygen_->secret_key());
+    big_encoder_ = make_unique<PackedBigUIntEncoder>(seal_context_);
   }
 
   size_t db_size_;
@@ -89,6 +91,7 @@ class PIRDatabaseTest : public ::testing::Test {
   EncryptionParameters encryption_params_;
   shared_ptr<SEALContext> seal_context_;
   unique_ptr<seal::IntegerEncoder> encoder_;
+  unique_ptr<PackedBigUIntEncoder> big_encoder_;
   unique_ptr<KeyGenerator> keygen_;
   unique_ptr<Encryptor> encryptor_;
   unique_ptr<Evaluator> evaluator_;
@@ -161,6 +164,58 @@ TEST_F(PIRDatabaseTest, TestMultiplySelectionVectorTooBig) {
   auto results_or = pirdb_->multiply(cts);
   ASSERT_THAT(results_or.status().code(),
               Eq(private_join_and_compute::StatusCode::kInvalidArgument));
+}
+
+TEST_F(PIRDatabaseTest, TestMultiplyPackedBigUInt) {
+  constexpr size_t db_size = 10;
+  constexpr size_t desired_index = 7;
+
+  SetUpDB(10);
+
+  auto prng =
+      seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
+  vector<BigUInt> db;
+  db.reserve(db_size);
+  std::array<std::array<uint64_t, 2>, db_size> v;
+  for (size_t i = 0; i < db_size; ++i) {
+    prng->generate(sizeof(v[i]), reinterpret_cast<SEAL_BYTE*>(v[i].data()));
+    db.emplace_back(sizeof(v[i]) * 8, v[i].data());
+    cout << "db[" << i << "] = " << db.back().to_string() << endl;
+  }
+
+  vector<Plaintext> pt_db(db_size);
+  for (size_t i = 0; i < db_size; ++i) {
+    cout << "db[" << i << "] = " << db[i].to_string() << endl;
+    big_encoder_->encode(db[i], pt_db[i]);
+    cout << "pt_db[" << i << "] = " << pt_db[i].to_string() << endl;
+  }
+
+  pirdb_ = PIRDatabase::Create(db, pir_params_).ValueOrDie();
+
+  vector<Plaintext> selection_vector_pt(db_size);
+  vector<Ciphertext> selection_vector_ct(db_size);
+  for (size_t i = 0; i < db_size; ++i) {
+    selection_vector_pt[i].resize(POLY_MODULUS_DEGREE);
+    selection_vector_pt[i].set_zero();
+    if (i == desired_index) {
+      selection_vector_pt[i][0] = 1;
+    }
+    cout << "SV[" << i << "] = " << selection_vector_pt[i].to_string() << endl;
+    encryptor_->encrypt(selection_vector_pt[i], selection_vector_ct[i]);
+  }
+
+  auto results_or =
+      pirdb_->multiply(selection_vector_ct, nullptr, decryptor_.get());
+  ASSERT_THAT(results_or.ok(), IsTrue())
+      << "Error: " << results_or.status().ToString();
+  auto result_ct = results_or.ValueOrDie();
+
+  Plaintext result_pt;
+  decryptor_->decrypt(result_ct, result_pt);
+  auto result = big_encoder_->decode(result_pt);
+  cout << "Result PT " << result_pt.to_string() << endl;
+
+  EXPECT_THAT(result, Eq(db[desired_index]));
 }
 
 class MultiplyMultiDimTest
