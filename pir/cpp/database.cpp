@@ -18,6 +18,7 @@
 #include <iostream>
 
 #include "absl/memory/memory.h"
+#include "pir/cpp/string_encoder.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
 #include "util/status_macros.h"
@@ -41,6 +42,23 @@ StatusOr<std::shared_ptr<PIRDatabase>> PIRDatabase::Create(
   for (size_t idx = 0; idx < rawdb.size(); ++idx) {
     try {
       context->Encoder()->encode(rawdb[idx], db[idx]);
+    } catch (std::exception& e) {
+      return InvalidArgumentError(e.what());
+    }
+  }
+  return std::make_shared<PIRDatabase>(db, std::move(context));
+}
+
+StatusOr<std::shared_ptr<PIRDatabase>> PIRDatabase::Create(
+    const vector<string>& rawdb, shared_ptr<PIRParameters> params) {
+  db_type db(rawdb.size());
+  ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
+  auto encoder = std::make_unique<StringEncoder>(context->SEALContext());
+
+  for (size_t idx = 0; idx < rawdb.size(); ++idx) {
+    try {
+      encoder->encode(rawdb[idx], db[idx]);
+
     } catch (std::exception& e) {
       return InvalidArgumentError(e.what());
     }

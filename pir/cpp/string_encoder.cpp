@@ -23,8 +23,6 @@ StringEncoder::StringEncoder(shared_ptr<seal::SEALContext> context)
   const auto params = context_->first_context_data()->parms();
   poly_modulus_degree_ = params.poly_modulus_degree();
   bits_per_coeff_ = log2(params.plain_modulus().value());
-  std::cout << "Plain mod = " << params.plain_modulus().value() << std::endl;
-  std::cout << "Bits per coeff = " << bits_per_coeff_ << std::endl;
 }
 
 void StringEncoder::encode(const string& value, Plaintext& destination) const {

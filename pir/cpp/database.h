@@ -44,6 +44,14 @@ class PIRDatabase {
       const raw_db_type& /*database*/, shared_ptr<PIRParameters> params);
 
   /**
+   * Creates and returns a new PIR database instance.
+   * @param[in] db Database to load
+   * @param[in] PIR parameters
+   **/
+  static StatusOr<std::shared_ptr<PIRDatabase>> Create(
+      const vector<string>& /*database*/, shared_ptr<PIRParameters> params);
+
+  /**
    * Multiplies the database represented as a multi-dimensional hypercube with
    * a selection vector. Selection vector is split into sub vectors based on
    * dimensions fetched from PIRParameters in the current context.
