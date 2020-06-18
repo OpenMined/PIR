@@ -174,7 +174,7 @@ TEST_F(PIRDatabaseTest, TestMultiplyStringValues) {
       seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
   vector<string> db(db_size);
   for (size_t i = 0; i < db_size; ++i) {
-    db[i].resize(256);
+    db[i].resize(9728);
     prng->generate(db[i].size(), reinterpret_cast<SEAL_BYTE*>(db[i].data()));
   }
 
@@ -205,6 +205,24 @@ TEST_F(PIRDatabaseTest, TestMultiplyStringValues) {
   // cout << "Result PT " << result_pt.to_string() << endl;
 
   EXPECT_THAT(result, Eq(db[desired_index]));
+}
+
+TEST_F(PIRDatabaseTest, TestCreateValueTooBig) {
+  constexpr size_t db_size = 10;
+  SetUpDB(10);
+
+  auto prng =
+      seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
+  vector<string> db(db_size);
+  for (size_t i = 0; i < db_size; ++i) {
+    db[i].resize(9729);
+    prng->generate(db[i].size(), reinterpret_cast<SEAL_BYTE*>(db[i].data()));
+  }
+
+  auto pirdb_or = PIRDatabase::Create(db, pir_params_);
+  ASSERT_FALSE(pirdb_or.ok());
+  ASSERT_EQ(pirdb_or.status().code(),
+            private_join_and_compute::StatusCode::kInvalidArgument);
 }
 
 class MultiplyMultiDimTest

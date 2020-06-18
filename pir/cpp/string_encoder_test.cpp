@@ -63,7 +63,8 @@ TEST_F(StringEncoderTest, TestEncodeDecode) {
   string value("This is a string test for random VALUES@!#");
   size_t num_coeff = ceil((value.size() * 8) / 19.0);
   Plaintext pt;
-  encoder_->encode(value, pt);
+  auto status = encoder_->encode(value, pt);
+  EXPECT_TRUE(status.ok()) << status.ToString();
   EXPECT_EQ(pt.coeff_count(), num_coeff);
   auto result = encoder_->decode(pt);
   ASSERT_GE(result.size(), value.size());
@@ -77,20 +78,34 @@ TEST_F(StringEncoderTest, TestEncodeDecodePRN) {
   string v(1024, 0);
   prng->generate(v.size(), reinterpret_cast<SEAL_BYTE *>(v.data()));
   Plaintext pt;
-  encoder_->encode(v, pt);
+  auto status = encoder_->encode(v, pt);
+  EXPECT_TRUE(status.ok()) << status.ToString();
   auto result = encoder_->decode(pt);
   ASSERT_GE(result.size(), v.size());
   EXPECT_EQ(result.substr(0, v.size()), v);
   EXPECT_THAT(result.substr(v.size()), testing::Each(0));
 }
 
+TEST_F(StringEncoderTest, TestEncodeDecodeTooBig) {
+  auto prng =
+      seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
+  string v(9729, 0);
+  prng->generate(v.size(), reinterpret_cast<SEAL_BYTE *>(v.data()));
+  Plaintext pt;
+  auto status = encoder_->encode(v, pt);
+  EXPECT_FALSE(status.ok());
+  EXPECT_EQ(status.code(),
+            private_join_and_compute::StatusCode::kInvalidArgument);
+}
+
 TEST_F(StringEncoderTest, TestEncOp) {
   auto prng =
       seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
-  string v(1024, 0);
+  string v(9728, 0);
   prng->generate(v.size(), reinterpret_cast<SEAL_BYTE *>(v.data()));
   Plaintext pt;
-  encoder_->encode(v, pt);
+  auto status = encoder_->encode(v, pt);
+  EXPECT_TRUE(status.ok()) << status.ToString();
 
   Plaintext selection_vector_pt(POLY_MODULUS_DEGREE);
   selection_vector_pt.set_zero();

@@ -19,6 +19,7 @@
 
 #include "absl/memory/memory.h"
 #include "pir/cpp/string_encoder.h"
+#include "pir/cpp/utils.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
 #include "util/status_macros.h"
@@ -57,7 +58,7 @@ StatusOr<std::shared_ptr<PIRDatabase>> PIRDatabase::Create(
 
   for (size_t idx = 0; idx < rawdb.size(); ++idx) {
     try {
-      encoder->encode(rawdb[idx], db[idx]);
+      RETURN_IF_ERROR(encoder->encode(rawdb[idx], db[idx]));
 
     } catch (std::exception& e) {
       return InvalidArgumentError(e.what());

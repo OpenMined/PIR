@@ -20,9 +20,11 @@
 #include <string>
 
 #include "seal/seal.h"
+#include "util/status.h"
 
 namespace pir {
 
+using private_join_and_compute::Status;
 using seal::Plaintext;
 using std::shared_ptr;
 using std::string;
@@ -38,7 +40,7 @@ class StringEncoder {
    * @param[in] value String to encode
    * @param[in] destination Plaintext to populate with encoded value
    */
-  void encode(const string& value, Plaintext& destination) const;
+  Status encode(const string& value, Plaintext& destination) const;
 
   /**
    * Decode a plaintext assumed to be in packed form into a string.

@@ -16,7 +16,11 @@
 
 #include "pir/cpp/string_encoder.h"
 
+#include "util/canonical_errors.h"
+
 namespace pir {
+
+using ::private_join_and_compute::InvalidArgumentError;
 
 StringEncoder::StringEncoder(shared_ptr<seal::SEALContext> context)
     : context_(context) {
@@ -25,10 +29,16 @@ StringEncoder::StringEncoder(shared_ptr<seal::SEALContext> context)
   bits_per_coeff_ = log2(params.plain_modulus().value());
 }
 
-void StringEncoder::encode(const string& value, Plaintext& destination) const {
+Status StringEncoder::encode(const string& value,
+                             Plaintext& destination) const {
   size_t num_coeff =
       ceil(static_cast<double>(value.size() * 8) / bits_per_coeff_);
-  // TODO: check if num_coeff < poly_mod_degree
+  if (num_coeff > poly_modulus_degree_) {
+    return InvalidArgumentError(
+        "Number of coefficients needed to encode string greater than poly "
+        "modulus degree");
+  }
+
   destination.resize(num_coeff);
   destination.set_zero();
   size_t coeff_index = 0;
@@ -48,7 +58,10 @@ void StringEncoder::encode(const string& value, Plaintext& destination) const {
       }
     }
   }
-  destination[coeff_index] <<= coeff_bits;
+  if (coeff_bits < bits_per_coeff_ && coeff_bits > 0) {
+    destination[coeff_index] <<= coeff_bits;
+  }
+  return Status::OK;
 }
 
 string StringEncoder::decode(const Plaintext& pt) const {
