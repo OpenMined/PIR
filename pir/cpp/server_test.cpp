@@ -194,8 +194,8 @@ TEST_F(PIRServerTest, DISABLED_TestCorrectnessLargeValuesD2) {
 
   EXPECT_EQ(result[0].substr(0, string_db_[desired_index].size()),
             string_db_[desired_index]);
-  // EXPECT_THAT(result[0].substr(string_db_[desired_index].size()),
-  //             testing::Each(0));
+  EXPECT_THAT(result[0].substr(string_db_[desired_index].size()),
+              testing::Each(0));
 }
 
 TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
