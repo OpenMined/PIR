@@ -24,6 +24,8 @@ cc_library(
     name = "pir",
     srcs = [
         "client.cpp",
+        "ct_reencoder.cpp",
+        "ct_reencoder.h",
         "context.cpp",
         "context.h",
         "database.cpp",
@@ -57,6 +59,7 @@ cc_test(
     srcs = [
         "client_test.cpp",
         "correctness_test.cpp",
+        "ct_reencoder_test.cpp",
         "database_test.cpp",
         "parameters_test.cpp",
         "serialization_test.cpp",
