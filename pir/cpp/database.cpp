@@ -58,12 +58,7 @@ StatusOr<shared_ptr<PIRDatabase>> PIRDatabase::Create(
   auto encoder = std::make_unique<StringEncoder>(context->SEALContext());
 
   for (size_t idx = 0; idx < rawdb.size(); ++idx) {
-    try {
-      RETURN_IF_ERROR(encoder->encode(rawdb[idx], db[idx]));
-
-    } catch (std::exception& e) {
-      return InvalidArgumentError(e.what());
-    }
+    RETURN_IF_ERROR(encoder->encode(rawdb[idx], db[idx]));
   }
   return std::make_shared<PIRDatabase>(db, std::move(context));
 }
