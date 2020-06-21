@@ -18,6 +18,8 @@
 #include <iostream>
 
 #include "absl/memory/memory.h"
+#include "pir/cpp/string_encoder.h"
+#include "pir/cpp/utils.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
 #include "util/status_macros.h"
@@ -25,17 +27,18 @@
 
 namespace pir {
 
-using ::private_join_and_compute::InternalError;
-using ::private_join_and_compute::InvalidArgumentError;
-using ::private_join_and_compute::StatusOr;
+using google::protobuf::RepeatedField;
+using private_join_and_compute::InternalError;
+using private_join_and_compute::InvalidArgumentError;
+using private_join_and_compute::StatusOr;
 using seal::Ciphertext;
 using seal::Evaluator;
 using seal::Plaintext;
 using std::vector;
 
-StatusOr<std::shared_ptr<PIRDatabase>> PIRDatabase::Create(
-    const raw_db_type& rawdb, shared_ptr<PIRParameters> params) {
-  db_type db(rawdb.size());
+StatusOr<shared_ptr<PIRDatabase>> PIRDatabase::Create(
+    const vector<std::int64_t>& rawdb, shared_ptr<PIRParameters> params) {
+  vector<Plaintext> db(rawdb.size());
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
 
   for (size_t idx = 0; idx < rawdb.size(); ++idx) {
@@ -44,6 +47,18 @@ StatusOr<std::shared_ptr<PIRDatabase>> PIRDatabase::Create(
     } catch (std::exception& e) {
       return InvalidArgumentError(e.what());
     }
+  }
+  return std::make_shared<PIRDatabase>(db, std::move(context));
+}
+
+StatusOr<shared_ptr<PIRDatabase>> PIRDatabase::Create(
+    const vector<string>& rawdb, shared_ptr<PIRParameters> params) {
+  vector<Plaintext> db(rawdb.size());
+  ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
+  auto encoder = std::make_unique<StringEncoder>(context->SEALContext());
+
+  for (size_t idx = 0; idx < rawdb.size(); ++idx) {
+    RETURN_IF_ERROR(encoder->encode(rawdb[idx], db[idx]));
   }
   return std::make_shared<PIRDatabase>(db, std::move(context));
 }

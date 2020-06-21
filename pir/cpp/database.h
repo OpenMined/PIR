@@ -26,12 +26,9 @@
 
 namespace pir {
 
-using ::private_join_and_compute::StatusOr;
-
-using raw_db_type = std::vector<std::int64_t>;
-using db_type = std::vector<seal::Plaintext>;
-
-using google::protobuf::RepeatedField;
+using private_join_and_compute::StatusOr;
+using std::shared_ptr;
+using std::vector;
 
 class PIRDatabase {
  public:
@@ -40,8 +37,17 @@ class PIRDatabase {
    * @param[in] db Database to load
    * @param[in] PIR parameters
    **/
-  static StatusOr<std::shared_ptr<PIRDatabase>> Create(
-      const raw_db_type& /*database*/, shared_ptr<PIRParameters> params);
+  static StatusOr<shared_ptr<PIRDatabase>> Create(
+      const vector<std::int64_t>& /*database*/,
+      shared_ptr<PIRParameters> params);
+
+  /**
+   * Creates and returns a new PIR database instance.
+   * @param[in] db Database to load
+   * @param[in] PIR parameters
+   **/
+  static StatusOr<shared_ptr<PIRDatabase>> Create(
+      const vector<string>& /*database*/, shared_ptr<PIRParameters> params);
 
   /**
    * Multiplies the database represented as a multi-dimensional hypercube with
@@ -81,11 +87,12 @@ class PIRDatabase {
   static vector<uint32_t> calculate_dimensions(uint32_t db_size,
                                                uint32_t num_dimensions);
 
-  PIRDatabase(db_type db, std::unique_ptr<PIRContext> context)
+  PIRDatabase(const vector<seal::Plaintext>& db,
+              std::unique_ptr<PIRContext> context)
       : db_(db), context_(std::move(context)) {}
 
  private:
-  db_type db_;
+  vector<seal::Plaintext> db_;
   std::unique_ptr<PIRContext> context_;
 };
 

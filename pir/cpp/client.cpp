@@ -17,6 +17,7 @@
 
 #include "absl/memory/memory.h"
 #include "pir/cpp/database.h"
+#include "pir/cpp/string_encoder.h"
 #include "pir/cpp/utils.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
@@ -90,7 +91,7 @@ StatusOr<Request> PIRClient::CreateRequest(
 Status PIRClient::createQueryFor(size_t desired_index,
                                  vector<Ciphertext>& query) const {
   if (desired_index >= context_->Params()->database_size()) {
-    return InvalidArgumentError("invalid index" +
+    return InvalidArgumentError("invalid index " +
                                 std::to_string(desired_index));
   }
   auto plain_mod = context_->EncryptionParams().plain_modulus();
@@ -143,18 +144,38 @@ Status PIRClient::createQueryFor(size_t desired_index,
 
 StatusOr<std::vector<int64_t>> PIRClient::ProcessResponse(
     const Response& response_proto) const {
-  vector<int64_t> result(response_proto.reply_size());
-  for (int idx = 0; idx < response_proto.reply_size(); ++idx) {
-    ASSIGN_OR_RETURN(auto response, LoadCiphertexts(context_->SEALContext(),
-                                                    response_proto.reply(idx)));
-    if (response.size() != 1) {
-      return InvalidArgumentError(
-          "Number of ciphertexts in response must be 1");
+  vector<int64_t> result;
+  result.reserve(response_proto.reply_size());
+  for (const auto& r : response_proto.reply()) {
+    ASSIGN_OR_RETURN(auto reply, LoadCiphertexts(context_->SEALContext(), r));
+    if (reply.size() != 1) {
+      return InvalidArgumentError("Number of ciphertexts in reply must be 1");
     }
     seal::Plaintext plaintext;
     try {
-      decryptor_->decrypt(response[0], plaintext);
-      result[idx] = context_->Encoder()->decode_int64(plaintext);
+      decryptor_->decrypt(reply[0], plaintext);
+      result.push_back(context_->Encoder()->decode_int64(plaintext));
+    } catch (const std::exception& e) {
+      return InternalError(e.what());
+    }
+  }
+  return result;
+}
+
+StatusOr<std::vector<string>> PIRClient::ProcessResponseString(
+    const Response& response_proto) const {
+  vector<string> result;
+  result.reserve(response_proto.reply_size());
+  for (const auto& r : response_proto.reply()) {
+    ASSIGN_OR_RETURN(auto reply, LoadCiphertexts(context_->SEALContext(), r));
+    if (reply.size() != 1) {
+      return InvalidArgumentError("Number of ciphertexts in reply must be 1");
+    }
+    StringEncoder encoder(context_->SEALContext());
+    seal::Plaintext plaintext;
+    try {
+      decryptor_->decrypt(reply[0], plaintext);
+      result.push_back(encoder.decode(plaintext));
     } catch (const std::exception& e) {
       return InternalError(e.what());
     }

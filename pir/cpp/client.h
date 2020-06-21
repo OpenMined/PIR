@@ -17,6 +17,8 @@
 #ifndef PIR_CLIENT_H_
 #define PIR_CLIENT_H_
 
+#include <string>
+
 #include "pir/cpp/context.h"
 #include "pir/cpp/serialization.h"
 #include "util/statusor.h"
@@ -55,6 +57,9 @@ class PIRClient {
    * @returns InvalidArgument if the decryption fails
    **/
   StatusOr<std::vector<int64_t>> ProcessResponse(
+      const Response& response) const;
+
+  StatusOr<std::vector<std::string>> ProcessResponseString(
       const Response& response) const;
 
   PIRClient() = delete;

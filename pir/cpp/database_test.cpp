@@ -22,6 +22,7 @@
 #include "gtest/gtest.h"
 #include "pir/cpp/client.h"
 #include "pir/cpp/server.h"
+#include "pir/cpp/string_encoder.h"
 #include "pir/cpp/utils.h"
 
 namespace pir {
@@ -161,6 +162,67 @@ TEST_F(PIRDatabaseTest, TestMultiplySelectionVectorTooBig) {
   auto results_or = pirdb_->multiply(cts);
   ASSERT_THAT(results_or.status().code(),
               Eq(private_join_and_compute::StatusCode::kInvalidArgument));
+}
+
+TEST_F(PIRDatabaseTest, TestMultiplyStringValues) {
+  constexpr size_t db_size = 10;
+  constexpr size_t desired_index = 7;
+
+  SetUpDB(10);
+
+  auto prng =
+      seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
+  vector<string> db(db_size);
+  for (size_t i = 0; i < db_size; ++i) {
+    db[i].resize(9728);
+    prng->generate(db[i].size(), reinterpret_cast<SEAL_BYTE*>(db[i].data()));
+  }
+
+  pirdb_ = PIRDatabase::Create(db, pir_params_).ValueOrDie();
+
+  vector<Plaintext> selection_vector_pt(db_size);
+  vector<Ciphertext> selection_vector_ct(db_size);
+  for (size_t i = 0; i < db_size; ++i) {
+    selection_vector_pt[i].resize(POLY_MODULUS_DEGREE);
+    selection_vector_pt[i].set_zero();
+    if (i == desired_index) {
+      selection_vector_pt[i][0] = 1;
+    }
+    // cout << "SV[" << i << "] = " << selection_vector_pt[i].to_string() <<
+    // endl;
+    encryptor_->encrypt(selection_vector_pt[i], selection_vector_ct[i]);
+  }
+
+  auto results_or = pirdb_->multiply(selection_vector_ct, nullptr);
+  ASSERT_THAT(results_or.ok(), IsTrue())
+      << "Error: " << results_or.status().ToString();
+  auto result_ct = results_or.ValueOrDie();
+
+  Plaintext result_pt;
+  decryptor_->decrypt(result_ct, result_pt);
+  auto string_encoder = make_unique<StringEncoder>(seal_context_);
+  auto result = string_encoder->decode(result_pt);
+  // cout << "Result PT " << result_pt.to_string() << endl;
+
+  EXPECT_THAT(result, Eq(db[desired_index]));
+}
+
+TEST_F(PIRDatabaseTest, TestCreateValueTooBig) {
+  constexpr size_t db_size = 10;
+  SetUpDB(10);
+
+  auto prng =
+      seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
+  vector<string> db(db_size);
+  for (size_t i = 0; i < db_size; ++i) {
+    db[i].resize(9729);
+    prng->generate(db[i].size(), reinterpret_cast<SEAL_BYTE*>(db[i].data()));
+  }
+
+  auto pirdb_or = PIRDatabase::Create(db, pir_params_);
+  ASSERT_FALSE(pirdb_or.ok());
+  ASSERT_EQ(pirdb_or.status().code(),
+            private_join_and_compute::StatusCode::kInvalidArgument);
 }
 
 class MultiplyMultiDimTest

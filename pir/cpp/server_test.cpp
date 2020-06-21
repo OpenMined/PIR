@@ -68,12 +68,33 @@ class PIRServerTest : public ::testing::Test {
       ++n;
       return 4 * n + 2600;
     });
-
-    encryption_params_ = GenerateEncryptionParams(POLY_MODULUS_DEGREE);
-    pir_params_ =
-        CreatePIRParameters(db_.size(), dimensions, encryption_params_)
-            .ValueOrDie();
+    SetUpParams(dimensions);
     auto pirdb = PIRDatabase::Create(db_, pir_params_).ValueOrDie();
+    SetUpServer(pirdb);
+  }
+
+  void SetUpStringDB(size_t dbsize, size_t elem_size, size_t dimensions = 1) {
+    db_size_ = dbsize;
+    string_db_.resize(db_size_);
+    auto prng =
+        seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
+    for (size_t i = 0; i < db_size_; ++i) {
+      string_db_[i].resize(elem_size);
+      prng->generate(string_db_[i].size(),
+                     reinterpret_cast<SEAL_BYTE*>(string_db_[i].data()));
+    }
+    SetUpParams(dimensions);
+    auto pirdb = PIRDatabase::Create(string_db_, pir_params_).ValueOrDie();
+    SetUpServer(pirdb);
+  }
+
+  void SetUpParams(size_t dimensions) {
+    encryption_params_ = GenerateEncryptionParams(POLY_MODULUS_DEGREE);
+    pir_params_ = CreatePIRParameters(db_size_, dimensions, encryption_params_)
+                      .ValueOrDie();
+  }
+
+  void SetUpServer(std::shared_ptr<PIRDatabase> pirdb) {
     server_ = PIRServer::Create(pirdb, pir_params_).ValueOrDie();
     ASSERT_THAT(server_, NotNull());
 
@@ -93,6 +114,7 @@ class PIRServerTest : public ::testing::Test {
 
   size_t db_size_;
   vector<std::int64_t> db_;
+  vector<std::string> string_db_;
   GaloisKeys gal_keys_;
   RelinKeys relin_keys_;
   shared_ptr<PIRParameters> pir_params_;
@@ -113,6 +135,67 @@ TEST_F(PIRServerTest, TestCorrectness) {
 
   ASSERT_EQ(result.size(), 1);
   ASSERT_EQ(result[0], db_[desired_index]);
+}
+
+TEST_F(PIRServerTest, TestCorrectnessD2) {
+  SetUpDB(87, 2);
+  auto client = PIRClient::Create(pir_params_).ValueOrDie();
+  const size_t desired_index = 42;
+  auto request = client->CreateRequest({desired_index}).ValueOrDie();
+  auto response = server_->ProcessRequest(request).ValueOrDie();
+  auto result = client->ProcessResponse(response).ValueOrDie();
+
+  ASSERT_EQ(result.size(), 1);
+  ASSERT_EQ(result[0], db_[desired_index]);
+}
+
+TEST_F(PIRServerTest, TestCorrectnessLargeValues) {
+  SetUpStringDB(10, 9728);
+
+  auto client = PIRClient::Create(pir_params_).ValueOrDie();
+  const size_t desired_index = 5;
+
+  auto request = client->CreateRequest({desired_index}).ValueOrDie();
+  auto response = server_->ProcessRequest(request).ValueOrDie();
+  auto result = client->ProcessResponseString(response).ValueOrDie();
+
+  ASSERT_THAT(result, SizeIs(1));
+  ASSERT_GE(result[0].size(), string_db_[desired_index].size());
+  EXPECT_EQ(result[0].substr(0, string_db_[desired_index].size()),
+            string_db_[desired_index]);
+  EXPECT_THAT(result[0].substr(string_db_[desired_index].size()),
+              testing::Each(0));
+}
+
+void print_hex_string(const string& desc, const string& s) {
+  cout << desc;
+  for (auto c : s) {
+    cout << std::hex << std::setw(2) << std::setfill('0')
+         << (uint16_t)(uint8_t)c;
+  }
+  cout << endl;
+}
+
+TEST_F(PIRServerTest, DISABLED_TestCorrectnessLargeValuesD2) {
+  SetUpStringDB(12, 32, 2);
+
+  auto client = PIRClient::Create(pir_params_).ValueOrDie();
+  const size_t desired_index = 7;
+
+  auto request = client->CreateRequest({desired_index}).ValueOrDie();
+  auto response = server_->ProcessRequest(request).ValueOrDie();
+  auto result = client->ProcessResponseString(response).ValueOrDie();
+
+  ASSERT_THAT(result, SizeIs(1));
+  ASSERT_GE(result[0].size(), string_db_[desired_index].size());
+  print_hex_string("Expected: ", string_db_[desired_index]);
+  print_hex_string("Actual  : ",
+                   result[0].substr(0, string_db_[desired_index].size()));
+
+  EXPECT_EQ(result[0].substr(0, string_db_[desired_index].size()),
+            string_db_[desired_index]);
+  EXPECT_THAT(result[0].substr(string_db_[desired_index].size()),
+              testing::Each(0));
 }
 
 TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
