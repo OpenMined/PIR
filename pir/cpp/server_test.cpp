@@ -61,19 +61,21 @@ class PIRServerTest : public ::testing::Test {
  protected:
   void SetUp() { SetUpDB(10); }
 
-  void SetUpDB(size_t dbsize, size_t dimensions = 1) {
+  void SetUpDB(size_t dbsize, size_t dimensions = 1,
+               uint32_t plain_mod_bit_size = 20) {
     db_size_ = dbsize;
     db_.resize(dbsize);
     std::generate(db_.begin(), db_.end(), [n = 0]() mutable {
       ++n;
       return 4 * n + 2600;
     });
-    SetUpParams(dimensions);
+    SetUpParams(dimensions, plain_mod_bit_size);
     auto pirdb = PIRDatabase::Create(db_, pir_params_).ValueOrDie();
     SetUpServer(pirdb);
   }
 
-  void SetUpStringDB(size_t dbsize, size_t elem_size, size_t dimensions = 1) {
+  void SetUpStringDB(size_t dbsize, size_t elem_size, size_t dimensions = 1,
+                     uint32_t plain_mod_bit_size = 20) {
     db_size_ = dbsize;
     string_db_.resize(db_size_);
     auto prng =
@@ -83,13 +85,14 @@ class PIRServerTest : public ::testing::Test {
       prng->generate(string_db_[i].size(),
                      reinterpret_cast<SEAL_BYTE*>(string_db_[i].data()));
     }
-    SetUpParams(dimensions);
+    SetUpParams(dimensions, plain_mod_bit_size);
     auto pirdb = PIRDatabase::Create(string_db_, pir_params_).ValueOrDie();
     SetUpServer(pirdb);
   }
 
-  void SetUpParams(size_t dimensions) {
-    encryption_params_ = GenerateEncryptionParams(POLY_MODULUS_DEGREE);
+  void SetUpParams(size_t dimensions, uint32_t plain_mod_bit_size = 20) {
+    encryption_params_ =
+        GenerateEncryptionParams(POLY_MODULUS_DEGREE, plain_mod_bit_size);
     pir_params_ = CreatePIRParameters(db_size_, dimensions, encryption_params_)
                       .ValueOrDie();
   }
@@ -167,17 +170,8 @@ TEST_F(PIRServerTest, TestCorrectnessLargeValues) {
               testing::Each(0));
 }
 
-void print_hex_string(const string& desc, const string& s) {
-  cout << desc;
-  for (auto c : s) {
-    cout << std::hex << std::setw(2) << std::setfill('0')
-         << (uint16_t)(uint8_t)c;
-  }
-  cout << endl;
-}
-
-TEST_F(PIRServerTest, DISABLED_TestCorrectnessLargeValuesD2) {
-  SetUpStringDB(12, 32, 2);
+TEST_F(PIRServerTest, TestCorrectnessLargeValuesD2) {
+  SetUpStringDB(12, 32, 2, 16);
 
   auto client = PIRClient::Create(pir_params_).ValueOrDie();
   const size_t desired_index = 7;
@@ -188,9 +182,6 @@ TEST_F(PIRServerTest, DISABLED_TestCorrectnessLargeValuesD2) {
 
   ASSERT_THAT(result, SizeIs(1));
   ASSERT_GE(result[0].size(), string_db_[desired_index].size());
-  print_hex_string("Expected: ", string_db_[desired_index]);
-  print_hex_string("Actual  : ",
-                   result[0].substr(0, string_db_[desired_index].size()));
 
   EXPECT_EQ(result[0].substr(0, string_db_[desired_index].size()),
             string_db_[desired_index]);

@@ -55,7 +55,8 @@ class PIRDatabaseTest : public ::testing::Test {
   void SetUp() { SetUpDB(100); }
 
   void SetUpDB(size_t dbsize, size_t dimensions = 1,
-               uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE) {
+               uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE,
+               uint32_t plain_mod_bit_size = 20) {
     poly_modulus_degree_ = poly_modulus_degree;
     db_size_ = dbsize;
     rawdb_.resize(dbsize);
@@ -64,7 +65,8 @@ class PIRDatabaseTest : public ::testing::Test {
       return 4 * n + 2600;
     });
 
-    encryption_params_ = GenerateEncryptionParams(poly_modulus_degree);
+    encryption_params_ =
+        GenerateEncryptionParams(poly_modulus_degree, plain_mod_bit_size);
     pir_params_ =
         CreatePIRParameters(rawdb_.size(), dimensions, encryption_params_)
             .ValueOrDie();
@@ -168,13 +170,13 @@ TEST_F(PIRDatabaseTest, TestMultiplyStringValues) {
   constexpr size_t db_size = 10;
   constexpr size_t desired_index = 7;
 
-  SetUpDB(10);
+  SetUpDB(db_size, 1, POLY_MODULUS_DEGREE, 22);
 
   auto prng =
       seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
   vector<string> db(db_size);
   for (size_t i = 0; i < db_size; ++i) {
-    db[i].resize(9728);
+    db[i].resize(4000);
     prng->generate(db[i].size(), reinterpret_cast<SEAL_BYTE*>(db[i].data()));
   }
 
@@ -193,7 +195,7 @@ TEST_F(PIRDatabaseTest, TestMultiplyStringValues) {
     encryptor_->encrypt(selection_vector_pt[i], selection_vector_ct[i]);
   }
 
-  auto results_or = pirdb_->multiply(selection_vector_ct, nullptr);
+  auto results_or = pirdb_->multiply(selection_vector_ct);
   ASSERT_THAT(results_or.ok(), IsTrue())
       << "Error: " << results_or.status().ToString();
   auto result_ct = results_or.ValueOrDie();
@@ -205,6 +207,63 @@ TEST_F(PIRDatabaseTest, TestMultiplyStringValues) {
   // cout << "Result PT " << result_pt.to_string() << endl;
 
   EXPECT_THAT(result, Eq(db[desired_index]));
+}
+
+vector<Ciphertext> create_selection_vector(const vector<uint32_t>& dims,
+                                           const vector<uint32_t>& indices,
+                                           Encryptor& encryptor) {
+  vector<Ciphertext> cts;
+  for (size_t d = 0; d < dims.size(); ++d) {
+    for (size_t i = 0; i < dims[d]; ++i) {
+      Ciphertext ct;
+      if (i == indices[d]) {
+        Plaintext pt(POLY_MODULUS_DEGREE);
+        pt.set_zero();
+        pt[0] = 1;
+        encryptor.encrypt(pt, ct);
+      } else {
+        encryptor.encrypt_zero(ct);
+      }
+      cts.push_back(ct);
+    }
+  }
+  return cts;
+}
+
+TEST_F(PIRDatabaseTest, TestMultiplyStringValuesD2) {
+  constexpr size_t d = 2;
+  constexpr size_t db_size = 9;
+  constexpr size_t desired_index = 5;
+
+  SetUpDB(db_size, d, POLY_MODULUS_DEGREE, 16);
+
+  auto prng =
+      seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
+  vector<string> db(db_size);
+  for (size_t i = 0; i < db_size; ++i) {
+    db[i].resize(7680);
+    prng->generate(db[i].size(), reinterpret_cast<SEAL_BYTE*>(db[i].data()));
+  }
+
+  pirdb_ = PIRDatabase::Create(db, pir_params_).ValueOrDie();
+
+  const auto dims = PIRDatabase::calculate_dimensions(db_size, d);
+  const auto indices = PIRDatabase::calculate_indices(dims, desired_index);
+  const auto sv = create_selection_vector(dims, indices, *encryptor_);
+
+  auto relin_keys = keygen_->relin_keys_local();
+  auto results_or = pirdb_->multiply(sv, &relin_keys);
+  ASSERT_THAT(results_or.ok(), IsTrue())
+      << "Error: " << results_or.status().ToString();
+  auto result_ct = results_or.ValueOrDie();
+
+  Plaintext result_pt;
+  decryptor_->decrypt(result_ct, result_pt);
+  auto string_encoder = make_unique<StringEncoder>(seal_context_);
+  auto result = string_encoder->decode(result_pt);
+
+  EXPECT_THAT(result.substr(0, db[desired_index].size()),
+              Eq(db[desired_index]));
 }
 
 TEST_F(PIRDatabaseTest, TestCreateValueTooBig) {
@@ -238,22 +297,7 @@ TEST_P(MultiplyMultiDimTest, TestMultiply) {
   SetUpDB(dbsize, d, poly_modulus_degree);
   const auto dims = PIRDatabase::calculate_dimensions(dbsize, d);
   const auto indices = PIRDatabase::calculate_indices(dims, desired_index);
-
-  vector<Ciphertext> cts;
-  for (size_t d = 0; d < dims.size(); ++d) {
-    for (size_t i = 0; i < dims[d]; ++i) {
-      Ciphertext ct;
-      if (i == indices[d]) {
-        Plaintext pt(POLY_MODULUS_DEGREE);
-        pt.set_zero();
-        pt[0] = 1;
-        encryptor_->encrypt(pt, ct);
-      } else {
-        encryptor_->encrypt_zero(ct);
-      }
-      cts.push_back(ct);
-    }
-  }
+  const auto cts = create_selection_vector(dims, indices, *encryptor_);
 
   auto relin_keys = keygen_->relin_keys_local();
   auto results_or = pirdb_->multiply(cts, &relin_keys);

@@ -30,6 +30,13 @@ using ::seal::EncryptionParameters;
 using ::std::make_shared;
 using ::std::shared_ptr;
 
+EncryptionParameters GenerateEncryptionParams(uint32_t poly_mod_degree,
+                                              uint32_t plain_mod_bit_size) {
+  return GenerateEncryptionParams(
+      poly_mod_degree,
+      seal::PlainModulus::Batching(poly_mod_degree, plain_mod_bit_size));
+}
+
 EncryptionParameters GenerateEncryptionParams(
     std::optional<uint32_t> poly_mod_opt, std::optional<Modulus> plain_mod_opt,
     std::optional<std::vector<Modulus>> coeff_opt) {

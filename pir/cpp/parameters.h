@@ -40,22 +40,30 @@ using ::private_join_and_compute::StatusOr;
 
 constexpr uint32_t DEFAULT_POLY_MODULUS_DEGREE = 4096;
 
-/*
+/**
  * Helper function to generate encryption parameters.
  * @param[in] optional The polynomial modulus degree
  * @param[in] optional The plaintext modulus
  * @param[in] optional The coefficient modulus
- * */
+ */
 EncryptionParameters GenerateEncryptionParams(
     optional<uint32_t> poly_mod_opt = {}, optional<Modulus> plain_mod_opt = {},
     optional<std::vector<Modulus>> coeff_opt = {});
-/*
+
+/**
+ * Shortcut to generate encryption parameters for a given poly modulus degree
+ * and bit size of the plain modulus.
+ */
+EncryptionParameters GenerateEncryptionParams(uint32_t poly_mod_degree,
+                                              uint32_t plain_mod_bit_size);
+
+/**
  * Helper function to create the PIRParameters
  * @param[in] the database size
  * @param[in] the encryption parameters
  * @param[in] the database dimensions
  * @returns InvalidArgument if EncryptionParameters serialization fails.
- * */
+ */
 StatusOr<std::shared_ptr<PIRParameters>> CreatePIRParameters(
     size_t dbsize, size_t dimensions = 1,
     EncryptionParameters enc_params = GenerateEncryptionParams());
