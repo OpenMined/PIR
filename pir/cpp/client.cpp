@@ -175,7 +175,8 @@ StatusOr<std::vector<string>> PIRClient::ProcessResponseString(
     seal::Plaintext plaintext;
     try {
       decryptor_->decrypt(reply[0], plaintext);
-      result.push_back(encoder.decode(plaintext));
+      ASSIGN_OR_RETURN(auto v, encoder.decode(plaintext));
+      result.push_back(v);
     } catch (const std::exception& e) {
       return InternalError(e.what());
     }

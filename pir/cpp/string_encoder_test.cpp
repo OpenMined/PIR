@@ -32,6 +32,7 @@ using std::make_unique;
 using std::unique_ptr;
 
 using namespace seal;
+using namespace testing;
 
 constexpr size_t POLY_MODULUS_DEGREE = 4096;
 
@@ -66,24 +67,51 @@ TEST_F(StringEncoderTest, TestEncodeDecode) {
   auto status = encoder_->encode(value, pt);
   EXPECT_TRUE(status.ok()) << status.ToString();
   EXPECT_EQ(pt.coeff_count(), num_coeff);
-  auto result = encoder_->decode(pt);
+  auto result = encoder_->decode(pt).ValueOrDie();
   ASSERT_GE(result.size(), value.size());
   EXPECT_EQ(result.substr(0, value.size()), value);
-  EXPECT_THAT(result.substr(value.size()), testing::Each(0));
+  EXPECT_THAT(result.substr(value.size()), Each(0));
 }
 
 TEST_F(StringEncoderTest, TestEncodeDecodePRN) {
   auto prng =
       seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
-  string v(1024, 0);
+  string v(9728, 0);
   prng->generate(v.size(), reinterpret_cast<SEAL_BYTE *>(v.data()));
   Plaintext pt;
   auto status = encoder_->encode(v, pt);
   EXPECT_TRUE(status.ok()) << status.ToString();
-  auto result = encoder_->decode(pt);
+  auto result = encoder_->decode(pt).ValueOrDie();
   ASSERT_GE(result.size(), v.size());
   EXPECT_EQ(result.substr(0, v.size()), v);
-  EXPECT_THAT(result.substr(v.size()), testing::Each(0));
+  EXPECT_THAT(result.substr(v.size()), Each(0));
+}
+
+TEST_F(StringEncoderTest, TestEncodeDecodeVector) {
+  auto prng =
+      seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
+  vector<string> v(152);
+  for (auto &s : v) {
+    s.resize(64);
+    prng->generate(s.size(), reinterpret_cast<SEAL_BYTE *>(s.data()));
+  }
+
+  for (const auto &s : v) {
+    EXPECT_THAT(s, SizeIs(64));
+    EXPECT_THAT(s, Not(Each(0)));
+  }
+
+  Plaintext pt;
+  auto status = encoder_->encode(v, pt);
+  EXPECT_TRUE(status.ok()) << status.ToString();
+  size_t offset = 0;
+  for (size_t i = 0; i < v.size(); ++i) {
+    auto result = encoder_->decode(pt, v[i].size(), offset);
+    offset += v[i].size();
+    ASSERT_THAT(result.ok(), IsTrue())
+        << "i = " << i << ", error: " << result.status().ToString();
+    EXPECT_THAT(result.ValueOrDie(), StrEq(v[i])) << "i = " << i;
+  }
 }
 
 TEST_F(StringEncoderTest, TestEncodeDecodeTooBig) {
@@ -95,6 +123,36 @@ TEST_F(StringEncoderTest, TestEncodeDecodeTooBig) {
   auto status = encoder_->encode(v, pt);
   EXPECT_FALSE(status.ok());
   EXPECT_EQ(status.code(),
+            private_join_and_compute::StatusCode::kInvalidArgument);
+}
+
+TEST_F(StringEncoderTest, TestEncodeVectorTooBig) {
+  auto prng =
+      seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
+  vector<string> v(141);
+  for (auto &s : v) {
+    s.resize(69);
+    prng->generate(s.size(), reinterpret_cast<SEAL_BYTE *>(s.data()));
+  }
+
+  Plaintext pt;
+  auto status = encoder_->encode(v, pt);
+  EXPECT_FALSE(status.ok());
+  EXPECT_EQ(status.code(),
+            private_join_and_compute::StatusCode::kInvalidArgument);
+}
+
+TEST_F(StringEncoderTest, TestDecodeTooBig) {
+  auto prng =
+      seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
+  string v(9728, 0);
+  prng->generate(v.size(), reinterpret_cast<SEAL_BYTE *>(v.data()));
+  Plaintext pt;
+  auto status = encoder_->encode(v, pt);
+  EXPECT_TRUE(status.ok()) << status.ToString();
+  auto result_or = encoder_->decode(pt, 100, 9629);
+  EXPECT_FALSE(result_or.status().ok());
+  EXPECT_EQ(result_or.status().code(),
             private_join_and_compute::StatusCode::kInvalidArgument);
 }
 
@@ -117,10 +175,10 @@ TEST_F(StringEncoderTest, TestEncOp) {
 
   Plaintext result_pt;
   decryptor_->decrypt(selection_vector_ct, result_pt);
-  auto result = encoder_->decode(result_pt);
+  auto result = encoder_->decode(result_pt).ValueOrDie();
   ASSERT_GE(result.size(), v.size());
   EXPECT_EQ(result.substr(0, v.size()), v);
-  EXPECT_THAT(result.substr(v.size()), testing::Each(0));
+  EXPECT_THAT(result.substr(v.size()), Each(0));
 }
 
 }  // namespace

@@ -203,7 +203,7 @@ TEST_F(PIRDatabaseTest, TestMultiplyStringValues) {
   Plaintext result_pt;
   decryptor_->decrypt(result_ct, result_pt);
   auto string_encoder = make_unique<StringEncoder>(seal_context_);
-  auto result = string_encoder->decode(result_pt);
+  auto result = string_encoder->decode(result_pt).ValueOrDie();
   // cout << "Result PT " << result_pt.to_string() << endl;
 
   EXPECT_THAT(result, Eq(db[desired_index]));
@@ -260,7 +260,7 @@ TEST_F(PIRDatabaseTest, TestMultiplyStringValuesD2) {
   Plaintext result_pt;
   decryptor_->decrypt(result_ct, result_pt);
   auto string_encoder = make_unique<StringEncoder>(seal_context_);
-  auto result = string_encoder->decode(result_pt);
+  auto result = string_encoder->decode(result_pt).ValueOrDie();
 
   EXPECT_THAT(result.substr(0, db[desired_index].size()),
               Eq(db[desired_index]));
