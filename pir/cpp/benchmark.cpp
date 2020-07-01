@@ -1,17 +1,19 @@
 #include "benchmark/benchmark.h"
 
+#include <random>
+
 #include "pir/cpp/client.h"
 #include "pir/cpp/server.h"
 
 namespace pir {
 
+uint32_t dimensions = 2;
+
 std::vector<std::int64_t> generateDB(std::size_t dbsize) {
   std::vector<std::int64_t> db(dbsize, 0);
 
-  std::generate(db.begin(), db.end(), [n = 100]() mutable {
-    ++n;
-    return 4 * n;
-  });
+  std::random_device rd;
+  std::generate(db.begin(), db.end(), [&]() mutable { return rd(); });
 
   return db;
 }
@@ -20,7 +22,7 @@ void BM_DatabaseLoad(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
   auto db = generateDB(dbsize);
   int64_t elements_processed = 0;
-  auto params = CreatePIRParameters(db.size()).ValueOrDie();
+  auto params = CreatePIRParameters(db.size(), dimensions).ValueOrDie();
 
   for (auto _ : state) {
     auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
@@ -31,13 +33,13 @@ void BM_DatabaseLoad(benchmark::State& state) {
       static_cast<double>(elements_processed), benchmark::Counter::kIsRate);
 }
 // Range is for the dbsize.
-BENCHMARK(BM_DatabaseLoad)->RangeMultiplier(10)->Range(10, 10000);
+BENCHMARK(BM_DatabaseLoad)->RangeMultiplier(2)->Range(1 << 12, 1 << 16);
 
 void BM_ClientCreateRequest(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
   auto db = generateDB(dbsize);
 
-  auto params = CreatePIRParameters(db.size()).ValueOrDie();
+  auto params = CreatePIRParameters(db.size(), dimensions).ValueOrDie();
   auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
   auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
 
@@ -55,13 +57,13 @@ void BM_ClientCreateRequest(benchmark::State& state) {
       static_cast<double>(elements_processed), benchmark::Counter::kIsRate);
 }
 // Range is for the dbsize.
-BENCHMARK(BM_ClientCreateRequest)->RangeMultiplier(10)->Range(10, 1000);
+BENCHMARK(BM_ClientCreateRequest)->RangeMultiplier(2)->Range(1 << 12, 1 << 16);
 
 void BM_ServerProcessRequest(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
   auto db = generateDB(dbsize);
 
-  auto params = CreatePIRParameters(db.size()).ValueOrDie();
+  auto params = CreatePIRParameters(db.size(), dimensions).ValueOrDie();
   auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
   auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
 
@@ -80,13 +82,13 @@ void BM_ServerProcessRequest(benchmark::State& state) {
       static_cast<double>(elements_processed), benchmark::Counter::kIsRate);
 }
 // Range is for the dbsize.
-BENCHMARK(BM_ServerProcessRequest)->RangeMultiplier(10)->Range(10, 1000);
+BENCHMARK(BM_ServerProcessRequest)->RangeMultiplier(2)->Range(1 << 12, 1 << 16);
 
 void BM_ClientProcessResponse(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
   auto db = generateDB(dbsize);
 
-  auto params = CreatePIRParameters(db.size()).ValueOrDie();
+  auto params = CreatePIRParameters(db.size(), dimensions).ValueOrDie();
   auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
   auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
 
@@ -106,13 +108,15 @@ void BM_ClientProcessResponse(benchmark::State& state) {
       static_cast<double>(elements_processed), benchmark::Counter::kIsRate);
 }
 // Range is for the dbsize.
-BENCHMARK(BM_ClientProcessResponse)->RangeMultiplier(10)->Range(10, 1000);
+BENCHMARK(BM_ClientProcessResponse)
+    ->RangeMultiplier(2)
+    ->Range(1 << 12, 1 << 16);
 
 void BM_PayloadSize(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
   auto db = generateDB(dbsize);
 
-  auto params = CreatePIRParameters(db.size()).ValueOrDie();
+  auto params = CreatePIRParameters(db.size(), dimensions).ValueOrDie();
   auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
   auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
 
@@ -141,6 +145,6 @@ void BM_PayloadSize(benchmark::State& state) {
       static_cast<double>(total_bytes), benchmark::Counter::kIsRate);
 }
 // Range is for the dbsize.
-BENCHMARK(BM_PayloadSize)->RangeMultiplier(10)->Range(10, 1000);
+BENCHMARK(BM_PayloadSize)->RangeMultiplier(2)->Range(1 << 12, 1 << 16);
 
 }  // namespace pir
