@@ -49,12 +49,14 @@ class StringEncoder {
   /**
    * Encodes several strings into a plaintext using the
    * minimal amount of coefficients.
-   * @param[in] values Vector of string to encode
+   * @param[in] v Iterator pointing to the start of values to encode
+   * @param[in] end End of the sequence of values to
    * @param[out] destination Plaintext to populate with encoded value
    * @returns Invalid argument if total string length is too big for plaintext
    * polynomial
    */
-  Status encode(const vector<string>& values, Plaintext& destination) const;
+  Status encode(vector<string>::iterator v, const vector<string>::iterator end,
+                Plaintext& destination) const;
 
   /**
    * Decode a plaintext assumed to be in packed form into a string.

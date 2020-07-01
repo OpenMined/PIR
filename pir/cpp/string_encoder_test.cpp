@@ -102,7 +102,7 @@ TEST_F(StringEncoderTest, TestEncodeDecodeVector) {
   }
 
   Plaintext pt;
-  auto status = encoder_->encode(v, pt);
+  auto status = encoder_->encode(v.begin(), v.end(), pt);
   EXPECT_TRUE(status.ok()) << status.ToString();
   size_t offset = 0;
   for (size_t i = 0; i < v.size(); ++i) {
@@ -136,7 +136,7 @@ TEST_F(StringEncoderTest, TestEncodeVectorTooBig) {
   }
 
   Plaintext pt;
-  auto status = encoder_->encode(v, pt);
+  auto status = encoder_->encode(v.begin(), v.end(), pt);
   EXPECT_FALSE(status.ok());
   EXPECT_EQ(status.code(),
             private_join_and_compute::StatusCode::kInvalidArgument);

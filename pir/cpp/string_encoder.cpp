@@ -98,17 +98,17 @@ Status StringEncoder::encode(const string& value,
   return Status::OK;
 }
 
-Status StringEncoder::encode(const vector<string>& values,
+Status StringEncoder::encode(vector<string>::iterator v,
+                             const vector<string>::iterator end,
                              Plaintext& destination) const {
-  size_t total_size =
-      std::accumulate(values.begin(), values.end(), 0,
-                      [](int a, const string& b) { return a + b.size(); });
+  size_t total_size = std::accumulate(
+      v, end, 0, [](int a, const string& b) { return a + b.size(); });
   ASSIGN_OR_RETURN(auto num_coeff, calc_num_coeff(total_size));
   destination.resize(num_coeff);
   destination.set_zero();
   StringEncoderImpl impl(destination, bits_per_coeff_);
-  for (const auto& s : values) {
-    impl.encode(s);
+  while (v != end) {
+    impl.encode(*(v++));
   }
   impl.terminate();
   return Status::OK;
