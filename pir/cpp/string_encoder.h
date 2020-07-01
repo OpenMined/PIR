@@ -38,6 +38,13 @@ class StringEncoder {
   StringEncoder(shared_ptr<seal::SEALContext> context);
 
   /**
+   * Calculate the number of items that can be encoded into a single plaintext.
+   * @param[in] item_size Size of each item in database
+   * @returns Number of items per plaintext
+   */
+  size_t num_items_per_plaintext(size_t item_size);
+
+  /**
    * Encode a string of binary value into the destination using a
    * minimal amount of coefficients.
    * @param[in] value String to encode

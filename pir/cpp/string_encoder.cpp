@@ -23,6 +23,10 @@ namespace pir {
 
 using ::private_join_and_compute::InvalidArgumentError;
 
+size_t StringEncoder::num_items_per_plaintext(size_t item_size) {
+  return poly_modulus_degree_ * bits_per_coeff_ / item_size / 8;
+}
+
 /**
  * Helper class for encoding strings to PT coefficients and keeping track of
  * where we are.

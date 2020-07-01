@@ -60,6 +60,15 @@ class StringEncoderTest : public ::testing::Test {
   unique_ptr<Decryptor> decryptor_;
 };
 
+TEST_F(StringEncoderTest, TestNumItemsPerPlaintext) {
+  EXPECT_EQ(encoder_->num_items_per_plaintext(1), 9728);
+  EXPECT_EQ(encoder_->num_items_per_plaintext(9728), 1);
+  EXPECT_EQ(encoder_->num_items_per_plaintext(9729), 0);
+  EXPECT_EQ(encoder_->num_items_per_plaintext(99999), 0);
+  EXPECT_EQ(encoder_->num_items_per_plaintext(64), 152);
+  EXPECT_EQ(encoder_->num_items_per_plaintext(288), 33);
+}
+
 TEST_F(StringEncoderTest, TestEncodeDecode) {
   string value("This is a string test for random VALUES@!#");
   size_t num_coeff = ceil((value.size() * 8) / 19.0);
