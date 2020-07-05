@@ -70,14 +70,13 @@ def pir_deps():
             ],
         )
 
-
     if "com_microsoft_seal" not in native.existing_rules():
         http_archive(
             name = "com_microsoft_seal",
             build_file = "//third_party:seal.BUILD",
-            sha256 = "9dfb1482d0bade6c1c76f2aa06aca6203f98aadc4ad94ca0f316be916b45fbd5",
-            strip_prefix = "SEAL-3.5.1",
-            urls = ["https://github.com/microsoft/SEAL/archive/v3.5.1.tar.gz"],
+            sha256 = "0c325c3e3d9b77be63ef866a7c73de861be46b99b61a22be60518d34865a1f37",
+            strip_prefix = "SEAL-3.5.4",
+            urls = ["https://github.com/microsoft/SEAL/archive/v3.5.4.tar.gz"],
         )
 
     rules_proto_dependencies()
