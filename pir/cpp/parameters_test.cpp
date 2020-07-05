@@ -45,11 +45,13 @@ using std::vector;
 
 TEST(PIRParametersTest, SanityCheck) {
   // make sure we can actually initialize SEAL and that defaults are sane
-  auto pir_params_or = CreatePIRParameters(100);
+  auto pir_params_or = CreatePIRParameters(100, 64);
   ASSERT_THAT(pir_params_or.ok(), IsTrue())
       << "Error creating PIR params: " << pir_params_or.status().ToString();
   auto pir_params = pir_params_or.ValueOrDie();
   EXPECT_THAT(pir_params->database_size(), Eq(100));
+  EXPECT_THAT(pir_params->bytes_per_item(), Eq(64));
+  EXPECT_THAT(pir_params->items_per_plaintext(), Eq(152));
   EXPECT_THAT(pir_params->dimensions(), ElementsAre(100));
   auto encryptionParams =
       SEALDeserialize<EncryptionParameters>(pir_params->encryption_parameters())
@@ -61,7 +63,7 @@ TEST(PIRParametersTest, SanityCheck) {
 }
 
 TEST(PIRParametersTest, CreateMultiDim) {
-  auto pir_params = CreatePIRParameters(1001, 3).ValueOrDie();
+  auto pir_params = CreatePIRParameters(1001, 64, 3).ValueOrDie();
   EXPECT_THAT(pir_params->database_size(), Eq(1001));
   EXPECT_THAT(pir_params->dimensions(), ElementsAre(11, 10, 10));
   auto encryption_params_or = SEALDeserialize<EncryptionParameters>(

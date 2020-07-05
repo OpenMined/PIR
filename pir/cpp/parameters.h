@@ -65,7 +65,7 @@ EncryptionParameters GenerateEncryptionParams(uint32_t poly_mod_degree,
  * @returns InvalidArgument if EncryptionParameters serialization fails.
  */
 StatusOr<std::shared_ptr<PIRParameters>> CreatePIRParameters(
-    size_t dbsize, size_t dimensions = 1,
+    size_t dbsize, size_t bytes_per_item, size_t dimensions = 1,
     EncryptionParameters enc_params = GenerateEncryptionParams());
 }  // namespace pir
 

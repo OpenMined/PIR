@@ -29,17 +29,19 @@ using namespace seal;
 using std::get;
 using std::make_tuple;
 using std::make_unique;
+using std::size_t;
 using std::tuple;
 
 using ::testing::ElementsAreArray;
 
 class PIRSerializationTest : public ::testing::Test {
  protected:
-  static constexpr std::size_t DB_SIZE = 100;
+  static constexpr size_t DB_SIZE = 100;
+  static constexpr size_t ELEM_SIZE = 64;
   void SetUp() { SetUpDB(DB_SIZE); }
 
   void SetUpDB(size_t dbsize) {
-    auto pir_params = CreatePIRParameters(dbsize).ValueOrDie();
+    auto pir_params = CreatePIRParameters(dbsize, ELEM_SIZE).ValueOrDie();
     context_ = std::move(PIRContext::Create(pir_params).ValueOrDie());
 
     auto keygen_ =

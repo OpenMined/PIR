@@ -61,6 +61,8 @@ cc_test(
         "serialization_test.cpp",
         "server_test.cpp",
         "string_encoder_test.cpp",
+        "test_base.h",
+        "test_base.cpp",
         "utils_test.cpp",
     ],
     copts = PIR_DEFAULT_COPTS,

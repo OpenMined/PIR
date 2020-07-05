@@ -46,12 +46,6 @@ StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
   return absl::WrapUnique(new PIRServer(std::move(context), db));
 }
 
-StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
-    std::shared_ptr<PIRDatabase> db) {
-  ASSIGN_OR_RETURN(auto params, CreatePIRParameters(db->size()));
-  return PIRServer::Create(db, params);
-}
-
 StatusOr<Response> PIRServer::ProcessRequest(const Request& request) const {
   Response response;
   ASSIGN_OR_RETURN(auto galois_keys,

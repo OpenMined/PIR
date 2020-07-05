@@ -5,14 +5,16 @@
 
 namespace pir {
 
-std::vector<std::int64_t> generateDB(std::size_t dbsize) {
-  std::vector<std::int64_t> db(dbsize, 0);
+constexpr std::size_t ITEM_SIZE = 64;
 
-  std::generate(db.begin(), db.end(), [n = 100]() mutable {
-    ++n;
-    return 4 * n;
-  });
-
+std::vector<std::string> generateDB(std::size_t dbsize) {
+  auto prng =
+      seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
+  vector<string> db(dbsize, string(ITEM_SIZE, 0));
+  for (size_t i = 0; i < dbsize; ++i) {
+    prng->generate(db[i].size(),
+                   reinterpret_cast<seal::SEAL_BYTE*>(db[i].data()));
+  }
   return db;
 }
 
@@ -20,7 +22,7 @@ void BM_DatabaseLoad(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
   auto db = generateDB(dbsize);
   int64_t elements_processed = 0;
-  auto params = CreatePIRParameters(db.size()).ValueOrDie();
+  auto params = CreatePIRParameters(db.size(), ITEM_SIZE).ValueOrDie();
 
   for (auto _ : state) {
     auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
@@ -37,7 +39,7 @@ void BM_ClientCreateRequest(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
   auto db = generateDB(dbsize);
 
-  auto params = CreatePIRParameters(db.size()).ValueOrDie();
+  auto params = CreatePIRParameters(db.size(), ITEM_SIZE).ValueOrDie();
   auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
   auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
 
@@ -61,7 +63,7 @@ void BM_ServerProcessRequest(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
   auto db = generateDB(dbsize);
 
-  auto params = CreatePIRParameters(db.size()).ValueOrDie();
+  auto params = CreatePIRParameters(db.size(), ITEM_SIZE).ValueOrDie();
   auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
   auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
 
@@ -86,7 +88,7 @@ void BM_ClientProcessResponse(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
   auto db = generateDB(dbsize);
 
-  auto params = CreatePIRParameters(db.size()).ValueOrDie();
+  auto params = CreatePIRParameters(db.size(), ITEM_SIZE).ValueOrDie();
   auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
   auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
 
@@ -112,7 +114,7 @@ void BM_PayloadSize(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
   auto db = generateDB(dbsize);
 
-  auto params = CreatePIRParameters(db.size()).ValueOrDie();
+  auto params = CreatePIRParameters(db.size(), ITEM_SIZE).ValueOrDie();
   auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
   auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
 

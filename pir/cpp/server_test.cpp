@@ -23,6 +23,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "pir/cpp/client.h"
+#include "pir/cpp/test_base.h"
 #include "pir/cpp/utils.h"
 
 namespace pir {
@@ -56,138 +57,25 @@ using std::vector;
 #endif  // TEST_DEBUG
 
 constexpr uint32_t POLY_MODULUS_DEGREE = 4096;
+constexpr uint32_t ELEM_SIZE = 7680;
 
-class PIRServerTest : public ::testing::Test {
+class PIRServerTest : public ::testing::Test, public PIRTestingBase {
  protected:
   void SetUp() { SetUpDB(10); }
 
   void SetUpDB(size_t dbsize, size_t dimensions = 1,
-               uint32_t plain_mod_bit_size = 20) {
-    db_size_ = dbsize;
-    db_.resize(dbsize);
-    std::generate(db_.begin(), db_.end(), [n = 0]() mutable {
-      ++n;
-      return 4 * n + 2600;
-    });
-    SetUpParams(dimensions, plain_mod_bit_size);
-    auto pirdb = PIRDatabase::Create(db_, pir_params_).ValueOrDie();
-    SetUpServer(pirdb);
-  }
+               size_t elem_size = ELEM_SIZE, uint32_t plain_mod_bit_size = 20) {
+    SetUpParams(dbsize, elem_size, dimensions, POLY_MODULUS_DEGREE,
+                plain_mod_bit_size);
+    GenerateIntDB();
+    SetUpSealTools();
 
-  void SetUpStringDB(size_t dbsize, size_t elem_size, size_t dimensions = 1,
-                     uint32_t plain_mod_bit_size = 20) {
-    db_size_ = dbsize;
-    string_db_.resize(db_size_);
-    auto prng =
-        seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
-    for (size_t i = 0; i < db_size_; ++i) {
-      string_db_[i].resize(elem_size);
-      prng->generate(string_db_[i].size(),
-                     reinterpret_cast<SEAL_BYTE*>(string_db_[i].data()));
-    }
-    SetUpParams(dimensions, plain_mod_bit_size);
-    auto pirdb = PIRDatabase::Create(string_db_, pir_params_).ValueOrDie();
-    SetUpServer(pirdb);
-  }
-
-  void SetUpParams(size_t dimensions, uint32_t plain_mod_bit_size = 20) {
-    encryption_params_ =
-        GenerateEncryptionParams(POLY_MODULUS_DEGREE, plain_mod_bit_size);
-    pir_params_ = CreatePIRParameters(db_size_, dimensions, encryption_params_)
-                      .ValueOrDie();
-  }
-
-  void SetUpServer(std::shared_ptr<PIRDatabase> pirdb) {
-    server_ = PIRServer::Create(pirdb, pir_params_).ValueOrDie();
+    server_ = PIRServer::Create(pir_db_, pir_params_).ValueOrDie();
     ASSERT_THAT(server_, NotNull());
-
-    auto context = server_->Context()->SEALContext();
-    if (!context->parameters_set()) {
-      FAIL() << "Error setting encryption parameters: "
-             << context->parameter_error_message();
-    }
-    keygen_ = make_unique<KeyGenerator>(context);
-    gal_keys_ =
-        keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
-    relin_keys_ = keygen_->relin_keys_local();
-    encryptor_ = make_unique<Encryptor>(context, keygen_->public_key());
-    evaluator_ = make_unique<Evaluator>(context);
-    decryptor_ = make_unique<Decryptor>(context, keygen_->secret_key());
   }
 
-  size_t db_size_;
-  vector<std::int64_t> db_;
-  vector<std::string> string_db_;
-  GaloisKeys gal_keys_;
-  RelinKeys relin_keys_;
-  shared_ptr<PIRParameters> pir_params_;
-  EncryptionParameters encryption_params_;
   unique_ptr<PIRServer> server_;
-  unique_ptr<KeyGenerator> keygen_;
-  unique_ptr<Encryptor> encryptor_;
-  unique_ptr<Evaluator> evaluator_;
-  unique_ptr<Decryptor> decryptor_;
 };
-
-TEST_F(PIRServerTest, TestCorrectness) {
-  auto client = PIRClient::Create(pir_params_).ValueOrDie();
-  const size_t desired_index = 5;
-  auto request = client->CreateRequest({desired_index}).ValueOrDie();
-  auto response = server_->ProcessRequest(request).ValueOrDie();
-  auto result = client->ProcessResponse(response).ValueOrDie();
-
-  ASSERT_EQ(result.size(), 1);
-  ASSERT_EQ(result[0], db_[desired_index]);
-}
-
-TEST_F(PIRServerTest, TestCorrectnessD2) {
-  SetUpDB(87, 2);
-  auto client = PIRClient::Create(pir_params_).ValueOrDie();
-  const size_t desired_index = 42;
-  auto request = client->CreateRequest({desired_index}).ValueOrDie();
-  auto response = server_->ProcessRequest(request).ValueOrDie();
-  auto result = client->ProcessResponse(response).ValueOrDie();
-
-  ASSERT_EQ(result.size(), 1);
-  ASSERT_EQ(result[0], db_[desired_index]);
-}
-
-TEST_F(PIRServerTest, TestCorrectnessLargeValues) {
-  SetUpStringDB(10, 9728);
-
-  auto client = PIRClient::Create(pir_params_).ValueOrDie();
-  const size_t desired_index = 5;
-
-  auto request = client->CreateRequest({desired_index}).ValueOrDie();
-  auto response = server_->ProcessRequest(request).ValueOrDie();
-  auto result = client->ProcessResponseString(response).ValueOrDie();
-
-  ASSERT_THAT(result, SizeIs(1));
-  ASSERT_GE(result[0].size(), string_db_[desired_index].size());
-  EXPECT_EQ(result[0].substr(0, string_db_[desired_index].size()),
-            string_db_[desired_index]);
-  EXPECT_THAT(result[0].substr(string_db_[desired_index].size()),
-              testing::Each(0));
-}
-
-TEST_F(PIRServerTest, TestCorrectnessLargeValuesD2) {
-  SetUpStringDB(12, 32, 2, 16);
-
-  auto client = PIRClient::Create(pir_params_).ValueOrDie();
-  const size_t desired_index = 7;
-
-  auto request = client->CreateRequest({desired_index}).ValueOrDie();
-  auto response = server_->ProcessRequest(request).ValueOrDie();
-  auto result = client->ProcessResponseString(response).ValueOrDie();
-
-  ASSERT_THAT(result, SizeIs(1));
-  ASSERT_GE(result[0].size(), string_db_[desired_index].size());
-
-  EXPECT_EQ(result[0].substr(0, string_db_[desired_index].size()),
-            string_db_[desired_index]);
-  EXPECT_THAT(result[0].substr(string_db_[desired_index].size()),
-              testing::Each(0));
-}
 
 TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
   const size_t desired_index = 7;
@@ -215,7 +103,7 @@ TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
   decryptor_->decrypt(result[0], result_pt);
   auto encoder = server_->Context()->Encoder();
   ASSERT_THAT(encoder->decode_int64(result_pt),
-              Eq(db_[desired_index] * next_power_two(db_size_)));
+              Eq(int_db_[desired_index] * next_power_two(db_size_)));
 }
 
 TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
@@ -245,11 +133,11 @@ TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
   Plaintext result_pt;
   decryptor_->decrypt(result[0], result_pt);
   auto encoder = server_->Context()->Encoder();
-  DEBUG_OUT("Expected DB value " << db_[desired_index]);
+  DEBUG_OUT("Expected DB value " << int_db_[desired_index]);
   DEBUG_OUT("Expected m " << next_power_two(db_size_ - POLY_MODULUS_DEGREE));
-  ASSERT_THAT(
-      encoder->decode_int64(result_pt),
-      Eq(db_[desired_index] * next_power_two(db_size_ - POLY_MODULUS_DEGREE)));
+  ASSERT_THAT(encoder->decode_int64(result_pt),
+              Eq(int_db_[desired_index] *
+                 next_power_two(db_size_ - POLY_MODULUS_DEGREE)));
 }
 
 TEST_F(PIRServerTest, TestProcessBatchRequest) {
@@ -283,24 +171,7 @@ TEST_F(PIRServerTest, TestProcessBatchRequest) {
     decryptor_->decrypt(result[0], result_pt);
     auto encoder = server_->Context()->Encoder();
     ASSERT_THAT(encoder->decode_int64(result_pt),
-                Eq(db_[indexes[idx]] * next_power_two(db_size_)));
-  }
-}
-
-TEST_F(PIRServerTest, TestProcessBatchRequestClient) {
-  const vector<size_t> indexes = {3, 4, 5};
-  auto client = PIRClient::Create(pir_params_).ValueOrDie();
-  auto request = client->CreateRequest(indexes).ValueOrDie();
-
-  auto response_or = server_->ProcessRequest(request);
-  ASSERT_THAT(response_or.ok(), IsTrue())
-      << "Error: " << response_or.status().ToString();
-
-  auto response = response_or.ValueOrDie();
-  auto result = client->ProcessResponse(response).ValueOrDie();
-
-  for (size_t idx = 0; idx < indexes.size(); ++idx) {
-    ASSERT_EQ(db_[indexes[idx]], result[idx]);
+                Eq(int_db_[indexes[idx]] * next_power_two(db_size_)));
   }
 }
 
@@ -363,7 +234,7 @@ TEST_F(PIRServerTest, TestProcessRequest_2Dim) {
   decryptor_->decrypt(result[0], result_pt);
   auto encoder = server_->Context()->Encoder();
   ASSERT_THAT(encoder->decode_int64(result_pt),
-              Eq(db_[desired_index] * 32 * 32));
+              Eq(int_db_[desired_index] * 32 * 32));
 }
 
 class SubstituteOperatorTest

@@ -17,6 +17,7 @@
 
 #include "pir/cpp/database.h"
 #include "pir/cpp/serialization.h"
+#include "pir/cpp/string_encoder.h"
 #include "pir/cpp/utils.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
@@ -54,12 +55,25 @@ EncryptionParameters GenerateEncryptionParams(
 }
 
 StatusOr<shared_ptr<PIRParameters>> CreatePIRParameters(
-    size_t dbsize, size_t dimensions, EncryptionParameters encParams) {
+    size_t dbsize, size_t bytes_per_item, size_t dimensions,
+    EncryptionParameters seal_params) {
+  // Make sure SEAL Parameter are valid
+  auto seal_context = seal::SEALContext::Create(seal_params);
+  if (!seal_context->parameters_set()) {
+    return InvalidArgumentError(
+        string("Error setting encryption parameters: ") +
+        seal_context->parameter_error_message());
+  }
+  StringEncoder encoder(seal_context);
+
   auto parameters = std::make_shared<PIRParameters>();
   parameters->set_database_size(dbsize);
+  parameters->set_bytes_per_item(bytes_per_item);
+  parameters->set_items_per_plaintext(
+      encoder.num_items_per_plaintext(bytes_per_item));
 
   RETURN_IF_ERROR(SEALSerialize<EncryptionParameters>(
-      encParams, parameters->mutable_encryption_parameters()));
+      seal_params, parameters->mutable_encryption_parameters()));
 
   for (auto& dim : PIRDatabase::calculate_dimensions(dbsize, dimensions))
     parameters->add_dimensions(dim);
