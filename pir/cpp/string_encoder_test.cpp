@@ -190,5 +190,34 @@ TEST_F(StringEncoderTest, TestEncOp) {
   EXPECT_THAT(result.substr(v.size()), Each(0));
 }
 
+class StringEncoderMaxBytesPerPlaintextTest
+    : public testing::TestWithParam<tuple<uint32_t, uint32_t, uint32_t>> {
+ protected:
+  void SetUp() {
+    auto params =
+        GenerateEncryptionParams(get<0>(GetParam()), get<1>(GetParam()));
+    seal_context_ = seal::SEALContext::Create(params);
+    if (!seal_context_->parameters_set()) {
+      FAIL() << "Error setting encryption parameters: "
+             << seal_context_->parameter_error_message();
+    }
+    encoder_ = std::make_unique<StringEncoder>(seal_context_);
+  }
+
+  shared_ptr<SEALContext> seal_context_;
+  unique_ptr<StringEncoder> encoder_;
+};
+
+TEST_P(StringEncoderMaxBytesPerPlaintextTest, Examples) {
+  const auto exp = get<2>(GetParam());
+  EXPECT_EQ(encoder_->max_bytes_per_plaintext(), exp);
+}
+
+INSTANTIATE_TEST_SUITE_P(StringEncoderMaxBytesPerPlaintext,
+                         StringEncoderMaxBytesPerPlaintextTest,
+                         Values(make_tuple(4096, 20, 9728),
+                                make_tuple(4096, 16, 7680),
+                                make_tuple(8192, 20, 19456)));
+
 }  // namespace
 }  // namespace pir

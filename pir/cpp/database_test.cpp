@@ -50,14 +50,12 @@ using std::int64_t;
 using std::vector;
 
 constexpr uint32_t POLY_MODULUS_DEGREE = 4096;
-constexpr uint32_t ELEM_SIZE = 9728;
 
 class PIRDatabaseTest : public ::testing::Test, public PIRTestingBase {
  protected:
   void SetUp() { SetUpDB(100); }
 
-  void SetUpDB(size_t dbsize, size_t dimensions = 1,
-               size_t elem_size = ELEM_SIZE,
+  void SetUpDB(size_t dbsize, size_t dimensions = 1, size_t elem_size = 64,
                uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE,
                uint32_t plain_mod_bit_size = 20) {
     SetUpParams(dbsize, elem_size, dimensions, poly_modulus_degree,
@@ -67,15 +65,29 @@ class PIRDatabaseTest : public ::testing::Test, public PIRTestingBase {
     encoder_ = make_unique<seal::IntegerEncoder>(seal_context_);
   }
 
-  void SetUpStringDB(size_t dbsize, size_t dimensions = 1,
-                     size_t elem_size = ELEM_SIZE,
+  void SetUpStringDB(size_t dbsize, size_t dimensions = 1, size_t elem_size = 0,
                      uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE,
                      uint32_t plain_mod_bit_size = 20) {
-    SetUpParams(dbsize, elem_size, dimensions, poly_modulus_degree,
-                plain_mod_bit_size);
+    db_size_ = dbsize;
+    encryption_params_ =
+        GenerateEncryptionParams(poly_modulus_degree, plain_mod_bit_size);
+    seal_context_ = seal::SEALContext::Create(encryption_params_);
+    if (!seal_context_->parameters_set()) {
+      FAIL() << "Error setting encryption parameters: "
+             << seal_context_->parameter_error_message();
+    }
+
+    if (elem_size <= 0) {
+      StringEncoder string_encoder(seal_context_);
+      elem_size = string_encoder.max_bytes_per_plaintext();
+    }
+
+    pir_params_ =
+        CreatePIRParameters(dbsize, elem_size, dimensions, encryption_params_)
+            .ValueOrDie();
+
     GenerateDB();
     SetUpSealTools();
-    encoder_ = make_unique<seal::IntegerEncoder>(seal_context_);
   }
 
   unique_ptr<seal::IntegerEncoder> encoder_;
@@ -153,7 +165,7 @@ TEST_F(PIRDatabaseTest, TestMultiplyStringValues) {
   constexpr size_t db_size = 10;
   constexpr size_t desired_index = 7;
 
-  SetUpStringDB(db_size, 1, 4000, POLY_MODULUS_DEGREE, 22);
+  SetUpStringDB(db_size, 1, 0, POLY_MODULUS_DEGREE, 22);
 
   vector<Plaintext> selection_vector_pt(db_size);
   vector<Ciphertext> selection_vector_ct(db_size);
@@ -208,7 +220,7 @@ TEST_F(PIRDatabaseTest, TestMultiplyStringValuesD2) {
   constexpr size_t db_size = 9;
   constexpr size_t desired_index = 5;
 
-  SetUpStringDB(db_size, d, 7680, POLY_MODULUS_DEGREE, 16);
+  SetUpStringDB(db_size, d, 0, POLY_MODULUS_DEGREE, 16);
 
   const auto dims = PIRDatabase::calculate_dimensions(db_size, d);
   const auto indices = PIRDatabase::calculate_indices(dims, desired_index);
@@ -254,11 +266,12 @@ class MultiplyMultiDimTest
 TEST_P(MultiplyMultiDimTest, TestMultiply) {
   const auto poly_modulus_degree = get<0>(GetParam());
   const auto plain_mod_bits = get<1>(GetParam());
-  const size_t elem_size = 5000;
   const auto dbsize = get<2>(GetParam());
   const auto d = get<3>(GetParam());
   const auto desired_index = get<4>(GetParam());
+  const size_t elem_size = 5000;
   SetUpStringDB(dbsize, d, elem_size, poly_modulus_degree, plain_mod_bits);
+  // const size_t elem_size = pir_params_->bytes_per_item();
   const auto dims = PIRDatabase::calculate_dimensions(dbsize, d);
   const auto indices = PIRDatabase::calculate_indices(dims, desired_index);
   const auto cts = create_selection_vector(dims, indices, *encryptor_);

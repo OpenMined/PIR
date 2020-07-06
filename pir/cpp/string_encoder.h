@@ -45,6 +45,11 @@ class StringEncoder {
   size_t num_items_per_plaintext(size_t item_size);
 
   /**
+   * Calculate the maximum number of bytes that can be encded in a single pt.
+   */
+  size_t max_bytes_per_plaintext();
+
+  /**
    * Encode a string of binary value into the destination using a
    * minimal amount of coefficients.
    * @param[in] value String to encode
