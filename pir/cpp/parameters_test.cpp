@@ -45,14 +45,14 @@ using std::vector;
 
 TEST(PIRParametersTest, SanityCheck) {
   // make sure we can actually initialize SEAL and that defaults are sane
-  auto pir_params_or = CreatePIRParameters(100, 64);
+  auto pir_params_or = CreatePIRParameters(1026, 256);
   ASSERT_THAT(pir_params_or.ok(), IsTrue())
       << "Error creating PIR params: " << pir_params_or.status().ToString();
   auto pir_params = pir_params_or.ValueOrDie();
-  EXPECT_THAT(pir_params->database_size(), Eq(100));
-  EXPECT_THAT(pir_params->bytes_per_item(), Eq(64));
-  EXPECT_THAT(pir_params->items_per_plaintext(), Eq(152));
-  EXPECT_THAT(pir_params->dimensions(), ElementsAre(100));
+  EXPECT_THAT(pir_params->database_size(), Eq(1026));
+  EXPECT_THAT(pir_params->bytes_per_item(), Eq(256));
+  EXPECT_THAT(pir_params->items_per_plaintext(), Eq(38));
+  EXPECT_THAT(pir_params->dimensions(), ElementsAre(27));
   auto encryptionParams =
       SEALDeserialize<EncryptionParameters>(pir_params->encryption_parameters())
           .ValueOrDie();
@@ -63,8 +63,10 @@ TEST(PIRParametersTest, SanityCheck) {
 }
 
 TEST(PIRParametersTest, CreateMultiDim) {
-  auto pir_params = CreatePIRParameters(1001, 64, 3).ValueOrDie();
-  EXPECT_THAT(pir_params->database_size(), Eq(1001));
+  auto pir_params = CreatePIRParameters(19011, 500, 3).ValueOrDie();
+  EXPECT_THAT(pir_params->database_size(), Eq(19011));
+  EXPECT_THAT(pir_params->bytes_per_item(), Eq(500));
+  EXPECT_THAT(pir_params->items_per_plaintext(), Eq(19));
   EXPECT_THAT(pir_params->dimensions(), ElementsAre(11, 10, 10));
   auto encryption_params_or = SEALDeserialize<EncryptionParameters>(
       pir_params->encryption_parameters());

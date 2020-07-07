@@ -75,7 +75,12 @@ StatusOr<shared_ptr<PIRParameters>> CreatePIRParameters(
   RETURN_IF_ERROR(SEALSerialize<EncryptionParameters>(
       seal_params, parameters->mutable_encryption_parameters()));
 
-  for (auto& dim : PIRDatabase::calculate_dimensions(dbsize, dimensions))
+  size_t num_pt = dbsize / parameters->items_per_plaintext();
+  while (dbsize > num_pt * parameters->items_per_plaintext()) {
+    ++num_pt;
+  }
+
+  for (auto& dim : PIRDatabase::calculate_dimensions(num_pt, dimensions))
     parameters->add_dimensions(dim);
 
   return parameters;
