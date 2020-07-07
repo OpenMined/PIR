@@ -90,7 +90,7 @@ StatusOr<Request> PIRClient::CreateRequest(
 
 Status PIRClient::createQueryFor(size_t desired_index,
                                  vector<Ciphertext>& query) const {
-  if (desired_index >= context_->Params()->database_size()) {
+  if (desired_index >= context_->Params()->num_items()) {
     return InvalidArgumentError("invalid index " +
                                 std::to_string(desired_index));
   }

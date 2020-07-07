@@ -67,20 +67,30 @@ StatusOr<shared_ptr<PIRParameters>> CreatePIRParameters(
   StringEncoder encoder(seal_context);
 
   auto parameters = std::make_shared<PIRParameters>();
-  parameters->set_database_size(dbsize);
-  parameters->set_bytes_per_item(bytes_per_item);
-  parameters->set_items_per_plaintext(
-      encoder.num_items_per_plaintext(bytes_per_item));
+  parameters->set_num_items(dbsize);
+  if (bytes_per_item > 0) {
+    parameters->set_bytes_per_item(bytes_per_item);
+    parameters->set_items_per_plaintext(
+        encoder.num_items_per_plaintext(bytes_per_item));
+    if (parameters->items_per_plaintext() <= 0) {
+      return InvalidArgumentError("Cannot fit an item within one plaintext");
+    }
+    size_t num_pt = dbsize / parameters->items_per_plaintext();
+    while (dbsize > num_pt * parameters->items_per_plaintext()) {
+      ++num_pt;
+    }
+    parameters->set_num_pt(num_pt);
+  } else {
+    parameters->set_bytes_per_item(encoder.max_bytes_per_plaintext());
+    parameters->set_items_per_plaintext(1);
+    parameters->set_num_pt(dbsize);
+  }
 
   RETURN_IF_ERROR(SEALSerialize<EncryptionParameters>(
       seal_params, parameters->mutable_encryption_parameters()));
 
-  size_t num_pt = dbsize / parameters->items_per_plaintext();
-  while (dbsize > num_pt * parameters->items_per_plaintext()) {
-    ++num_pt;
-  }
-
-  for (auto& dim : PIRDatabase::calculate_dimensions(num_pt, dimensions))
+  for (auto& dim :
+       PIRDatabase::calculate_dimensions(parameters->num_pt(), dimensions))
     parameters->add_dimensions(dim);
 
   return parameters;

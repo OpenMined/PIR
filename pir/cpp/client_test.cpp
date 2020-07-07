@@ -33,7 +33,6 @@ using std::vector;
 using namespace ::testing;
 
 constexpr uint32_t POLY_MODULUS_DEGREE = 4096;
-constexpr size_t SIZE_PER_ITEM = 64;
 
 class PIRClientTest : public ::testing::Test {
  protected:
@@ -42,8 +41,7 @@ class PIRClientTest : public ::testing::Test {
   void SetUpDB(size_t dbsize, size_t dimensions = 1) {
     db_size_ = dbsize;
     encryption_params_ = GenerateEncryptionParams(POLY_MODULUS_DEGREE);
-    pir_params_ = CreatePIRParameters(dbsize, SIZE_PER_ITEM, dimensions,
-                                      encryption_params_)
+    pir_params_ = CreatePIRParameters(dbsize, 0, dimensions, encryption_params_)
                       .ValueOrDie();
     client_ = PIRClient::Create(pir_params_).ValueOrDie();
 

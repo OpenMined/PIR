@@ -38,6 +38,9 @@ using std::vector;
 
 StatusOr<shared_ptr<PIRDatabase>> PIRDatabase::Create(
     const vector<std::int64_t>& rawdb, shared_ptr<PIRParameters> params) {
+  if (rawdb.size() != params->num_items()) {
+    return InvalidArgumentError("Database size does not match params");
+  }
   vector<Plaintext> db(rawdb.size());
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
 
@@ -53,10 +56,13 @@ StatusOr<shared_ptr<PIRDatabase>> PIRDatabase::Create(
 
 StatusOr<shared_ptr<PIRDatabase>> PIRDatabase::Create(
     const vector<string>& rawdb, shared_ptr<PIRParameters> params) {
-  vector<Plaintext> db(rawdb.size());
+  if (rawdb.size() != params->num_items()) {
+    return InvalidArgumentError("Database size does not match params");
+  }
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
+  // const auto items_per_pt = params->items_per_plaintext();
+  vector<Plaintext> db(rawdb.size());
   auto encoder = std::make_unique<StringEncoder>(context->SEALContext());
-
   for (size_t idx = 0; idx < rawdb.size(); ++idx) {
     RETURN_IF_ERROR(encoder->encode(rawdb[idx], db[idx]));
   }
