@@ -67,7 +67,8 @@ class StringEncoder {
    * @returns Invalid argument if total string length is too big for plaintext
    * polynomial
    */
-  Status encode(vector<string>::iterator v, const vector<string>::iterator end,
+  Status encode(vector<string>::const_iterator v,
+                const vector<string>::const_iterator end,
                 Plaintext& destination) const;
 
   /**

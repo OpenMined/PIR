@@ -106,8 +106,8 @@ Status StringEncoder::encode(const string& value,
   return Status::OK;
 }
 
-Status StringEncoder::encode(vector<string>::iterator v,
-                             const vector<string>::iterator end,
+Status StringEncoder::encode(vector<string>::const_iterator v,
+                             const vector<string>::const_iterator end,
                              Plaintext& destination) const {
   size_t total_size = std::accumulate(
       v, end, 0, [](int a, const string& b) { return a + b.size(); });

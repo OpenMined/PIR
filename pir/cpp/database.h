@@ -33,8 +33,10 @@ using std::vector;
 class PIRDatabase {
  public:
   /**
-   * Creates and returns a new PIR database instance.
-   * @param[in] db Database to load
+   * Creates and returns a new PIR database instance using a vector of integers
+   * encoded one per database plaintext using IntegerEncoder. Only really used
+   * for testing, not intended for actual PIR use.
+   * @param[in] db Vector of integers to encode into database of plaintexts
    * @param[in] PIR parameters
    **/
   static StatusOr<shared_ptr<PIRDatabase>> Create(
@@ -42,7 +44,8 @@ class PIRDatabase {
       shared_ptr<PIRParameters> params);
 
   /**
-   * Creates and returns a new PIR database instance.
+   * Creates and returns a new PIR database instance using the values given.
+   * Values are packed into the database as per the parameters given.
    * @param[in] db Database to load
    * @param[in] PIR parameters
    **/

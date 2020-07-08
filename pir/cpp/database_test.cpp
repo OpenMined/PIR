@@ -240,6 +240,40 @@ TEST_F(PIRDatabaseTest, TestMultiplyStringValuesD2) {
               Eq(string_db_[desired_index]));
 }
 
+TEST_F(PIRDatabaseTest, TestMultiplyMultipleValuesPerPT) {
+  constexpr size_t d = 2;
+  constexpr size_t db_size = 1000;
+  constexpr size_t elem_size = 128;
+  constexpr size_t desired_index = 754;
+
+  SetUpStringDB(db_size, d, POLY_MODULUS_DEGREE, 16, elem_size);
+  ASSERT_EQ(pir_db_->size(), pir_params_->num_pt());
+
+  const size_t items_per_pt = pir_params_->items_per_plaintext();
+  const size_t num_db_pt = ceil(static_cast<double>(db_size) / items_per_pt);
+  const size_t desired_pt_index = desired_index / items_per_pt;
+  const size_t desired_offset =
+      (desired_index - desired_pt_index * items_per_pt) * elem_size;
+
+  const auto dims = PIRDatabase::calculate_dimensions(num_db_pt, d);
+  const auto indices = PIRDatabase::calculate_indices(dims, desired_pt_index);
+  const auto sv = create_selection_vector(dims, indices, *encryptor_);
+
+  auto relin_keys = keygen_->relin_keys_local();
+  auto results_or = pir_db_->multiply(sv, &relin_keys);
+  ASSERT_THAT(results_or.ok(), IsTrue())
+      << "Error: " << results_or.status().ToString();
+  auto result_ct = results_or.ValueOrDie();
+
+  Plaintext result_pt;
+  decryptor_->decrypt(result_ct, result_pt);
+  auto string_encoder = make_unique<StringEncoder>(seal_context_);
+  auto result =
+      string_encoder->decode(result_pt, elem_size, desired_offset).ValueOrDie();
+
+  EXPECT_THAT(result, Eq(string_db_[desired_index]));
+}
+
 TEST_F(PIRDatabaseTest, TestCreateValueDoesntMatch) {
   SetUpParams(10, 9728);
 

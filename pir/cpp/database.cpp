@@ -60,11 +60,13 @@ StatusOr<shared_ptr<PIRDatabase>> PIRDatabase::Create(
     return InvalidArgumentError("Database size does not match params");
   }
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
-  // const auto items_per_pt = params->items_per_plaintext();
-  vector<Plaintext> db(rawdb.size());
+  const auto items_per_pt = params->items_per_plaintext();
+  vector<Plaintext> db(params->num_pt());
   auto encoder = std::make_unique<StringEncoder>(context->SEALContext());
-  for (size_t idx = 0; idx < rawdb.size(); ++idx) {
-    RETURN_IF_ERROR(encoder->encode(rawdb[idx], db[idx]));
+  vector<string>::const_iterator raw_it = rawdb.begin();
+  for (size_t i = 0; i < db.size(); ++i) {
+    RETURN_IF_ERROR(encoder->encode(raw_it, raw_it + items_per_pt, db[i]));
+    raw_it += items_per_pt;
   }
   return std::make_shared<PIRDatabase>(db, std::move(context));
 }
