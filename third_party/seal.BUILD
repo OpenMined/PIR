@@ -8,9 +8,6 @@ filegroup(
 
 cmake_external(
    name = "seal",
-   cache_entries = {
-        "MAKE_INSTALL_PREFIX": "$EXT_BUILD_DEPS/seal",
-   },
    cmake_options = [
         "-DSEAL_USE_CXX17=17",
         "-DSEAL_USE_INTRIN=ON",
