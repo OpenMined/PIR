@@ -74,9 +74,9 @@ def pir_deps():
         http_archive(
             name = "com_microsoft_seal",
             build_file = "//third_party:seal.BUILD",
-            sha256 = "0c325c3e3d9b77be63ef866a7c73de861be46b99b61a22be60518d34865a1f37",
-            strip_prefix = "SEAL-3.5.4",
-            urls = ["https://github.com/microsoft/SEAL/archive/v3.5.4.tar.gz"],
+            sha256 = "ae987c9df02a0a887eeb96032f307781b945183d3433e54a0a6d59207f4b8143",
+            strip_prefix = "SEAL-3.5.5",
+            urls = ["https://github.com/microsoft/SEAL/archive/v3.5.5.tar.gz"],
         )
 
     rules_proto_dependencies()
