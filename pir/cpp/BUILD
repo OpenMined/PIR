@@ -56,6 +56,7 @@ cc_test(
     name = "pir_test",
     srcs = [
         "client_test.cpp",
+        "correctness_test.cpp",
         "database_test.cpp",
         "parameters_test.cpp",
         "serialization_test.cpp",

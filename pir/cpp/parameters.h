@@ -66,7 +66,8 @@ EncryptionParameters GenerateEncryptionParams(uint32_t poly_mod_degree,
  */
 StatusOr<std::shared_ptr<PIRParameters>> CreatePIRParameters(
     size_t dbsize, size_t bytes_per_item, size_t dimensions = 1,
-    EncryptionParameters enc_params = GenerateEncryptionParams());
+    EncryptionParameters enc_params = GenerateEncryptionParams(),
+    size_t bits_per_coeff = 0);
 }  // namespace pir
 
 #endif  // PIR_PARAMETERS_H_

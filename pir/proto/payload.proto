@@ -60,4 +60,7 @@ message PIRParameters {
 
     // Number of database items packed into each plaintext
     uint32 items_per_plaintext = 6;
+
+    // Number of bits to pack into each plaintext coefficient
+    uint32 bits_per_coeff = 7;
 }

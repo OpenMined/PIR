@@ -172,10 +172,15 @@ StatusOr<std::vector<string>> PIRClient::ProcessResponseString(
       return InvalidArgumentError("Number of ciphertexts in reply must be 1");
     }
     StringEncoder encoder(context_->SEALContext());
+    if (context_->Params()->bits_per_coeff() > 0) {
+      encoder.set_bits_per_coeff(context_->Params()->bits_per_coeff());
+    }
     seal::Plaintext plaintext;
     try {
       decryptor_->decrypt(reply[0], plaintext);
-      ASSIGN_OR_RETURN(auto v, encoder.decode(plaintext));
+      ASSIGN_OR_RETURN(
+          auto v,
+          encoder.decode(plaintext, context_->Params()->bytes_per_item()));
       result.push_back(v);
     } catch (const std::exception& e) {
       return InternalError(e.what());

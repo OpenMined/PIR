@@ -63,9 +63,13 @@ StatusOr<shared_ptr<PIRDatabase>> PIRDatabase::Create(
   const auto items_per_pt = params->items_per_plaintext();
   vector<Plaintext> db(params->num_pt());
   auto encoder = std::make_unique<StringEncoder>(context->SEALContext());
-  vector<string>::const_iterator raw_it = rawdb.begin();
+  if (params->bits_per_coeff() > 0) {
+    encoder->set_bits_per_coeff(params->bits_per_coeff());
+  }
+  auto raw_it = rawdb.begin();
   for (size_t i = 0; i < db.size(); ++i) {
-    RETURN_IF_ERROR(encoder->encode(raw_it, raw_it + items_per_pt, db[i]));
+    auto end_it = std::min(raw_it + items_per_pt, rawdb.end());
+    RETURN_IF_ERROR(encoder->encode(raw_it, end_it, db[i]));
     raw_it += items_per_pt;
   }
   return std::make_shared<PIRDatabase>(db, std::move(context));

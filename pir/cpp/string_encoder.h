@@ -84,6 +84,18 @@ class StringEncoder {
   StatusOr<string> decode(const Plaintext& pt, size_t length = 0,
                           size_t offset = 0) const;
 
+  /**
+   * Allows overriding number of bits to pack per coefficient.
+   */
+  void set_bits_per_coeff(size_t bits_per_coeff) {
+    bits_per_coeff_ = bits_per_coeff;
+  }
+
+  /**
+   * Number of bits to use per coefficient.
+   */
+  size_t bits_per_coeff() { return bits_per_coeff_; }
+
  private:
   shared_ptr<seal::SEALContext> context_;
   size_t poly_modulus_degree_;

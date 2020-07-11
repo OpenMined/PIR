@@ -50,7 +50,8 @@ class PIRTestingBase {
   // Generate the EncryptParameters and PIRParameters and validate them.
   void SetUpParams(size_t db_size, size_t elem_size, size_t dimensions = 1,
                    uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE,
-                   uint32_t plain_mod_bit_size = 20);
+                   uint32_t plain_mod_bit_size = 20,
+                   uint32_t bits_per_coeff = 0);
 
   // Genrate a DB of random values
   void GenerateDB(uint32_t seed = 42);

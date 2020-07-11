@@ -38,7 +38,8 @@ vector<string> generate_test_db(size_t db_size, size_t elem_size,
 void PIRTestingBase::SetUpParams(size_t db_size, size_t elem_size,
                                  size_t dimensions,
                                  uint32_t poly_modulus_degree,
-                                 uint32_t plain_mod_bit_size) {
+                                 uint32_t plain_mod_bit_size,
+                                 uint32_t bits_per_coeff) {
   db_size_ = db_size;
 
   encryption_params_ =
@@ -50,9 +51,9 @@ void PIRTestingBase::SetUpParams(size_t db_size, size_t elem_size,
            << seal_context_->parameter_error_message();
   }
 
-  pir_params_ =
-      CreatePIRParameters(db_size, elem_size, dimensions, encryption_params_)
-          .ValueOrDie();
+  pir_params_ = CreatePIRParameters(db_size, elem_size, dimensions,
+                                    encryption_params_, bits_per_coeff)
+                    .ValueOrDie();
 }
 
 void PIRTestingBase::GenerateDB(uint32_t seed) {

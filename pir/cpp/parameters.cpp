@@ -56,7 +56,7 @@ EncryptionParameters GenerateEncryptionParams(
 
 StatusOr<shared_ptr<PIRParameters>> CreatePIRParameters(
     size_t dbsize, size_t bytes_per_item, size_t dimensions,
-    EncryptionParameters seal_params) {
+    EncryptionParameters seal_params, size_t bits_per_coeff) {
   // Make sure SEAL Parameter are valid
   auto seal_context = seal::SEALContext::Create(seal_params);
   if (!seal_context->parameters_set()) {
@@ -68,6 +68,15 @@ StatusOr<shared_ptr<PIRParameters>> CreatePIRParameters(
 
   auto parameters = std::make_shared<PIRParameters>();
   parameters->set_num_items(dbsize);
+
+  if (bits_per_coeff > 0) {
+    if (bits_per_coeff > encoder.bits_per_coeff()) {
+      return InvalidArgumentError("Bits per coefficient greater than max");
+    }
+    encoder.set_bits_per_coeff(bits_per_coeff);
+    parameters->set_bits_per_coeff(bits_per_coeff);
+  }
+
   if (bytes_per_item > 0) {
     parameters->set_bytes_per_item(bytes_per_item);
     parameters->set_items_per_plaintext(

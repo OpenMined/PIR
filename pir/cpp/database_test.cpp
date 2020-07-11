@@ -67,24 +67,8 @@ class PIRDatabaseTest : public ::testing::Test, public PIRTestingBase {
   void SetUpStringDB(size_t dbsize, size_t dimensions = 1,
                      uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE,
                      uint32_t plain_mod_bit_size = 20, size_t elem_size = 0) {
-    db_size_ = dbsize;
-    encryption_params_ =
-        GenerateEncryptionParams(poly_modulus_degree, plain_mod_bit_size);
-    seal_context_ = seal::SEALContext::Create(encryption_params_);
-    if (!seal_context_->parameters_set()) {
-      FAIL() << "Error setting encryption parameters: "
-             << seal_context_->parameter_error_message();
-    }
-
-    if (elem_size <= 0) {
-      StringEncoder string_encoder(seal_context_);
-      elem_size = string_encoder.max_bytes_per_plaintext();
-    }
-
-    pir_params_ =
-        CreatePIRParameters(dbsize, elem_size, dimensions, encryption_params_)
-            .ValueOrDie();
-
+    SetUpParams(dbsize, elem_size, dimensions, poly_modulus_degree,
+                plain_mod_bit_size);
     GenerateDB();
     SetUpSealTools();
   }
@@ -248,6 +232,7 @@ TEST_F(PIRDatabaseTest, TestMultiplyMultipleValuesPerPT) {
 
   SetUpStringDB(db_size, d, POLY_MODULUS_DEGREE, 16, elem_size);
   ASSERT_EQ(pir_db_->size(), pir_params_->num_pt());
+  ASSERT_EQ(pir_params_->bytes_per_item(), elem_size);
 
   const size_t items_per_pt = pir_params_->items_per_plaintext();
   const size_t num_db_pt = ceil(static_cast<double>(db_size) / items_per_pt);
