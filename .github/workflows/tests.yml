@@ -16,21 +16,20 @@ jobs:
       - name: Run tests
         timeout-minutes: 30
         run: .github/workflows/scripts/run_tests_core.sh
-      - name: Lint (CPP)
+      - name: CPP Lint
         run: .github/workflows/scripts/lint_cpp.sh
         if: ${{ matrix.os == 'ubuntu-20.04' }}
 
   Bazel:
     runs-on: ubuntu-20.04
     steps:
-      - name: Install toolchain lint deps
+      - name: Install golang
         uses: actions/setup-go@v2
         with:
           go-version: 1.13.3
         id: go
-      - name: Install linters
+      - name: Install buildifier
         run: go get github.com/bazelbuild/buildtools/buildifier
       - uses: actions/checkout@v2
-      - name: Lint (Bazel)
+      - name: Bazel Lint
         run: .github/workflows/scripts/lint_bazel.sh
-      
