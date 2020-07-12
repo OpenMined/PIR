@@ -6,36 +6,31 @@ on:
   pull_request:
 
 jobs:
-  Tests:
+  Core:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [macos-latest, ubuntu-20.04]
-
     steps:
       - uses: actions/checkout@v2
       - name: Run tests
-        run: .github/workflows/scripts/run_tests.sh
+        timeout-minutes: 30
+        run: .github/workflows/scripts/run_tests_core.sh
+      - name: Lint (CPP)
+        run: .github/workflows/scripts/lint_cpp.sh
+        if: ${{ matrix.os == 'ubuntu-20.04' }}
 
-  Linters:
-    runs-on: ubuntu-latest
+  Bazel:
+    runs-on: ubuntu-20.04
     steps:
-      - name: Install toolchains
+      - name: Install toolchain lint deps
         uses: actions/setup-go@v2
         with:
           go-version: 1.13.3
         id: go
-      - name: gcc
-        run: |
-          gcc --version
-        shell: bash
       - name: Install linters
         run: go get github.com/bazelbuild/buildtools/buildifier
       - uses: actions/checkout@v2
-      - name: C++ Build
-        run: .github/workflows/scripts/build_cpp.sh
-      - name: C++ linters
-        run: .github/workflows/scripts/lint_cpp.sh
-      - name: Bazel linters
+      - name: Lint (Bazel)
         run: .github/workflows/scripts/lint_bazel.sh
       
