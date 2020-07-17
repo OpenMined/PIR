@@ -20,6 +20,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "pir/cpp/assign_or_fail.h"
 #include "pir/cpp/client.h"
 #include "pir/cpp/server.h"
 #include "pir/cpp/test_base.h"
@@ -84,9 +85,9 @@ class PIRCorrectnessTest
 
 TEST_P(PIRCorrectnessTest, TestCorrectness) {
   const auto desired_indices = get<5>(GetParam());
-  auto request = client_->CreateRequest(desired_indices).ValueOrDie();
-  auto response = server_->ProcessRequest(request).ValueOrDie();
-  auto results = client_->ProcessResponseString(response).ValueOrDie();
+  ASSIGN_OR_FAIL(auto request, client_->CreateRequest(desired_indices));
+  ASSIGN_OR_FAIL(auto response, server_->ProcessRequest(request));
+  ASSIGN_OR_FAIL(auto results, client_->ProcessResponseString(response));
 
   ASSERT_EQ(results.size(), desired_indices.size());
   for (size_t i = 0; i < results.size(); ++i) {

@@ -21,6 +21,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "pir/cpp/assign_or_fail.h"
 #include "pir/cpp/parameters.h"
 
 namespace pir {
@@ -76,7 +77,7 @@ TEST_F(StringEncoderTest, TestEncodeDecode) {
   auto status = encoder_->encode(value, pt);
   EXPECT_TRUE(status.ok()) << status.ToString();
   EXPECT_EQ(pt.coeff_count(), num_coeff);
-  auto result = encoder_->decode(pt).ValueOrDie();
+  ASSIGN_OR_FAIL(auto result, encoder_->decode(pt));
   ASSERT_GE(result.size(), value.size());
   EXPECT_EQ(result.substr(0, value.size()), value);
   EXPECT_THAT(result.substr(value.size()), Each(0));
@@ -90,7 +91,7 @@ TEST_F(StringEncoderTest, TestEncodeDecodePRN) {
   Plaintext pt;
   auto status = encoder_->encode(v, pt);
   EXPECT_TRUE(status.ok()) << status.ToString();
-  auto result = encoder_->decode(pt).ValueOrDie();
+  ASSIGN_OR_FAIL(auto result, encoder_->decode(pt));
   ASSERT_GE(result.size(), v.size());
   EXPECT_EQ(result.substr(0, v.size()), v);
   EXPECT_THAT(result.substr(v.size()), Each(0));
@@ -115,11 +116,9 @@ TEST_F(StringEncoderTest, TestEncodeDecodeVector) {
   EXPECT_TRUE(status.ok()) << status.ToString();
   size_t offset = 0;
   for (size_t i = 0; i < v.size(); ++i) {
-    auto result = encoder_->decode(pt, v[i].size(), offset);
+    ASSIGN_OR_FAIL(auto result, encoder_->decode(pt, v[i].size(), offset));
     offset += v[i].size();
-    ASSERT_THAT(result.ok(), IsTrue())
-        << "i = " << i << ", error: " << result.status().ToString();
-    EXPECT_THAT(result.ValueOrDie(), StrEq(v[i])) << "i = " << i;
+    EXPECT_THAT(result, StrEq(v[i])) << "i = " << i;
   }
 }
 
@@ -184,7 +183,7 @@ TEST_F(StringEncoderTest, TestEncOp) {
 
   Plaintext result_pt;
   decryptor_->decrypt(selection_vector_ct, result_pt);
-  auto result = encoder_->decode(result_pt).ValueOrDie();
+  ASSIGN_OR_FAIL(auto result, encoder_->decode(result_pt));
   ASSERT_GE(result.size(), v.size());
   EXPECT_EQ(result.substr(0, v.size()), v);
   EXPECT_THAT(result.substr(v.size()), Each(0));

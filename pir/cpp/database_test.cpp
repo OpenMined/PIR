@@ -20,6 +20,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "pir/cpp/assign_or_fail.h"
 #include "pir/cpp/client.h"
 #include "pir/cpp/server.h"
 #include "pir/cpp/string_encoder.h"
@@ -91,10 +92,7 @@ TEST_F(PIRDatabaseTest, TestMultiply) {
     expected += v[i] * int_db_[i];
   }
 
-  auto results_or = pir_db_->multiply(cts);
-  ASSERT_THAT(results_or.ok(), IsTrue())
-      << "Error: " << results_or.status().ToString();
-  auto result_ct = results_or.ValueOrDie();
+  ASSIGN_OR_FAIL(auto result_ct, pir_db_->multiply(cts));
 
   Plaintext pt;
   decryptor_->decrypt(result_ct, pt);
@@ -163,15 +161,12 @@ TEST_F(PIRDatabaseTest, TestMultiplyStringValues) {
     encryptor_->encrypt(selection_vector_pt[i], selection_vector_ct[i]);
   }
 
-  auto results_or = pir_db_->multiply(selection_vector_ct);
-  ASSERT_THAT(results_or.ok(), IsTrue())
-      << "Error: " << results_or.status().ToString();
-  auto result_ct = results_or.ValueOrDie();
+  ASSIGN_OR_FAIL(auto result_ct, pir_db_->multiply(selection_vector_ct));
 
   Plaintext result_pt;
   decryptor_->decrypt(result_ct, result_pt);
   auto string_encoder = make_unique<StringEncoder>(seal_context_);
-  auto result = string_encoder->decode(result_pt).ValueOrDie();
+  ASSIGN_OR_FAIL(auto result, string_encoder->decode(result_pt));
   // cout << "Result PT " << result_pt.to_string() << endl;
 
   EXPECT_THAT(result, Eq(string_db_[desired_index]));
@@ -210,15 +205,12 @@ TEST_F(PIRDatabaseTest, TestMultiplyStringValuesD2) {
   const auto sv = create_selection_vector(dims, indices, *encryptor_);
 
   auto relin_keys = keygen_->relin_keys_local();
-  auto results_or = pir_db_->multiply(sv, &relin_keys);
-  ASSERT_THAT(results_or.ok(), IsTrue())
-      << "Error: " << results_or.status().ToString();
-  auto result_ct = results_or.ValueOrDie();
+  ASSIGN_OR_FAIL(auto result_ct, pir_db_->multiply(sv, &relin_keys));
 
   Plaintext result_pt;
   decryptor_->decrypt(result_ct, result_pt);
   auto string_encoder = make_unique<StringEncoder>(seal_context_);
-  auto result = string_encoder->decode(result_pt).ValueOrDie();
+  ASSIGN_OR_FAIL(auto result, string_encoder->decode(result_pt));
 
   EXPECT_THAT(result.substr(0, string_db_[desired_index].size()),
               Eq(string_db_[desired_index]));
@@ -245,16 +237,13 @@ TEST_F(PIRDatabaseTest, TestMultiplyMultipleValuesPerPT) {
   const auto sv = create_selection_vector(dims, indices, *encryptor_);
 
   auto relin_keys = keygen_->relin_keys_local();
-  auto results_or = pir_db_->multiply(sv, &relin_keys);
-  ASSERT_THAT(results_or.ok(), IsTrue())
-      << "Error: " << results_or.status().ToString();
-  auto result_ct = results_or.ValueOrDie();
+  ASSIGN_OR_FAIL(auto result_ct, pir_db_->multiply(sv, &relin_keys));
 
   Plaintext result_pt;
   decryptor_->decrypt(result_ct, result_pt);
   auto string_encoder = make_unique<StringEncoder>(seal_context_);
-  auto result =
-      string_encoder->decode(result_pt, elem_size, desired_offset).ValueOrDie();
+  ASSIGN_OR_FAIL(auto result,
+                 string_encoder->decode(result_pt, elem_size, desired_offset));
 
   EXPECT_THAT(result, Eq(string_db_[desired_index]));
 }
@@ -294,10 +283,7 @@ TEST_P(MultiplyMultiDimTest, TestMultiply) {
   const auto cts = create_selection_vector(dims, indices, *encryptor_);
 
   auto relin_keys = keygen_->relin_keys_local();
-  auto results_or = pir_db_->multiply(cts, &relin_keys);
-  ASSERT_THAT(results_or.ok(), IsTrue())
-      << "Error: " << results_or.status().ToString();
-  auto result_ct = results_or.ValueOrDie();
+  ASSIGN_OR_FAIL(auto result_ct, pir_db_->multiply(cts, &relin_keys));
 
   Plaintext result_pt;
   decryptor_->decrypt(result_ct, result_pt);
@@ -305,7 +291,7 @@ TEST_P(MultiplyMultiDimTest, TestMultiply) {
   // EXPECT_THAT(result, Eq(int_db_[desired_index]));
 
   auto string_encoder = make_unique<StringEncoder>(seal_context_);
-  auto result = string_encoder->decode(result_pt, elem_size).ValueOrDie();
+  ASSIGN_OR_FAIL(auto result, string_encoder->decode(result_pt, elem_size));
   EXPECT_THAT(result, Eq(string_db_[desired_index]));
 }
 

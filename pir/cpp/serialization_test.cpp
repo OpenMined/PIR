@@ -18,6 +18,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "pir/cpp/assign_or_fail.h"
 #include "pir/cpp/context.h"
 #include "pir/cpp/utils.h"
 #include "seal/seal.h"
@@ -67,12 +68,8 @@ TEST_F(PIRSerializationTest, TestResponseSerialization) {
   Response response_proto;
   SaveCiphertexts(ct, response_proto.add_reply());
 
-  auto reloaded_or =
-      LoadCiphertexts(context_->SEALContext(), response_proto.reply(0));
-  ASSERT_TRUE(reloaded_or.ok())
-      << "Status is: " << reloaded_or.status().ToString();
-
-  auto reloaded = reloaded_or.ValueOrDie();
+  ASSIGN_OR_FAIL(auto reloaded, LoadCiphertexts(context_->SEALContext(),
+                                                response_proto.reply(0)));
   ASSERT_EQ(reloaded.size(), 1);
   decryptor_->decrypt(reloaded[0], reloaded_pt);
   EXPECT_THAT(reloaded_pt, pt);
@@ -95,28 +92,22 @@ TEST_F(PIRSerializationTest, TestRequestSerialization_IndividualMethods) {
   SEALSerialize<GaloisKeys>(gal_keys, request_proto.mutable_galois_keys());
   SEALSerialize<RelinKeys>(relin_keys, request_proto.mutable_relin_keys());
 
-  auto request_or =
-      LoadCiphertexts(context_->SEALContext(), request_proto.query(0));
-  ASSERT_TRUE(request_or.ok())
-      << "Status is: " << request_or.status().ToString();
-
-  auto request = request_or.ValueOrDie();
+  ASSIGN_OR_FAIL(auto request, LoadCiphertexts(context_->SEALContext(),
+                                               request_proto.query(0)));
   ASSERT_EQ(request.size(), 1);
   decryptor_->decrypt(request[0], reloaded_pt);
 
-  auto gal_keys_or = SEALDeserialize<GaloisKeys>(context_->SEALContext(),
-                                                 request_proto.galois_keys());
-  ASSERT_TRUE(gal_keys_or.ok())
-      << "Status is: " << gal_keys_or.status().ToString();
+  ASSIGN_OR_FAIL(auto gal_keys_post,
+                 SEALDeserialize<GaloisKeys>(context_->SEALContext(),
+                                             request_proto.galois_keys()));
   for (const auto& e : elts) {
-    // Can't really test equality of the keys, so just check that they exists.
-    ASSERT_TRUE(gal_keys_or.ValueOrDie().has_key(e));
+    // Can't really test equality of the keys, so just check that they exist.
+    ASSERT_TRUE(gal_keys_post.has_key(e));
   }
 
-  auto relin_keys_or = SEALDeserialize<RelinKeys>(context_->SEALContext(),
-                                                  request_proto.relin_keys());
-  ASSERT_TRUE(relin_keys_or.ok())
-      << "Status is: " << relin_keys_or.status().ToString();
+  ASSIGN_OR_FAIL(auto relin_keys_post,
+                 SEALDeserialize<RelinKeys>(context_->SEALContext(),
+                                            request_proto.relin_keys()));
   // Can't really check if the relin keys are valid. Just assume it's ok here.
 }
 
@@ -134,22 +125,17 @@ TEST_F(PIRSerializationTest, TestRequestSerialization_Shortcut) {
   Request request_proto;
   SaveRequest({ct}, gal_keys, &request_proto);
 
-  auto request_or =
-      LoadCiphertexts(context_->SEALContext(), request_proto.query(0));
-  ASSERT_TRUE(request_or.ok())
-      << "Status is: " << request_or.status().ToString();
-
-  auto request = request_or.ValueOrDie();
+  ASSIGN_OR_FAIL(auto request, LoadCiphertexts(context_->SEALContext(),
+                                               request_proto.query(0)));
   ASSERT_EQ(request.size(), 1);
   decryptor_->decrypt(request[0], reloaded_pt);
 
-  auto gal_keys_or = SEALDeserialize<GaloisKeys>(context_->SEALContext(),
-                                                 request_proto.galois_keys());
-  ASSERT_TRUE(gal_keys_or.ok())
-      << "Status is: " << gal_keys_or.status().ToString();
+  ASSIGN_OR_FAIL(auto gal_keys_post,
+                 SEALDeserialize<GaloisKeys>(context_->SEALContext(),
+                                             request_proto.galois_keys()));
   for (const auto& e : elts) {
     // Can't really test equality of the keys, so just check that they exists.
-    ASSERT_TRUE(gal_keys_or.ValueOrDie().has_key(e));
+    ASSERT_TRUE(gal_keys_post.has_key(e));
   }
 
   ASSERT_THAT(request_proto.relin_keys(), testing::IsEmpty());
@@ -170,28 +156,22 @@ TEST_F(PIRSerializationTest, TestRequestSerialization_ShortcutWithRelin) {
   Request request_proto;
   SaveRequest({ct}, gal_keys, relin_keys, &request_proto);
 
-  auto request_or =
-      LoadCiphertexts(context_->SEALContext(), request_proto.query(0));
-  ASSERT_TRUE(request_or.ok())
-      << "Status is: " << request_or.status().ToString();
-
-  auto request = request_or.ValueOrDie();
+  ASSIGN_OR_FAIL(auto request, LoadCiphertexts(context_->SEALContext(),
+                                               request_proto.query(0)));
   ASSERT_EQ(request.size(), 1);
   decryptor_->decrypt(request[0], reloaded_pt);
 
-  auto gal_keys_or = SEALDeserialize<GaloisKeys>(context_->SEALContext(),
-                                                 request_proto.galois_keys());
-  ASSERT_TRUE(gal_keys_or.ok())
-      << "Status is: " << gal_keys_or.status().ToString();
+  ASSIGN_OR_FAIL(auto gal_keys_post,
+                 SEALDeserialize<GaloisKeys>(context_->SEALContext(),
+                                             request_proto.galois_keys()));
   for (const auto& e : elts) {
     // Can't really test equality of the keys, so just check that they exists.
-    ASSERT_TRUE(gal_keys_or.ValueOrDie().has_key(e));
+    ASSERT_TRUE(gal_keys_post.has_key(e));
   }
 
-  auto relin_keys_or = SEALDeserialize<RelinKeys>(context_->SEALContext(),
-                                                  request_proto.relin_keys());
-  ASSERT_TRUE(relin_keys_or.ok())
-      << "Status is: " << relin_keys_or.status().ToString();
+  ASSIGN_OR_FAIL(auto relin_keys_post,
+                 SEALDeserialize<RelinKeys>(context_->SEALContext(),
+                                            request_proto.relin_keys()));
   // Can't really check if the relin keys are valid. Just assume it's ok here.
 }
 
@@ -200,11 +180,8 @@ TEST_F(PIRSerializationTest, TestEncryptionParamsSerialization) {
   std::string serial;
   auto status = SEALSerialize<EncryptionParameters>(params, &serial);
   ASSERT_TRUE(status.ok()) << "Status is: " << status.ToString();
-  auto decoded_params_or = SEALDeserialize<EncryptionParameters>(serial);
-  ASSERT_TRUE(decoded_params_or.ok())
-      << "Status is: " << decoded_params_or.status().ToString();
-  auto decoded_params = decoded_params_or.ValueOrDie();
-
+  ASSIGN_OR_FAIL(auto decoded_params,
+                 SEALDeserialize<EncryptionParameters>(serial));
   ASSERT_EQ(params.plain_modulus(), decoded_params.plain_modulus());
   ASSERT_EQ(params.poly_modulus_degree(), decoded_params.poly_modulus_degree());
 }

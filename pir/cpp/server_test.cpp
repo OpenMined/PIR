@@ -22,6 +22,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "pir/cpp/assign_or_fail.h"
 #include "pir/cpp/client.h"
 #include "pir/cpp/test_base.h"
 #include "pir/cpp/utils.h"
@@ -89,14 +90,10 @@ TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
   Request request_proto;
   SaveRequest({query}, gal_keys_, relin_keys_, &request_proto);
 
-  auto result_or = server_->ProcessRequest(request_proto);
-  ASSERT_THAT(result_or.ok(), IsTrue())
-      << "Error: " << result_or.status().ToString();
-  auto result_raw = result_or.ValueOrDie();
+  ASSIGN_OR_FAIL(auto result_raw, server_->ProcessRequest(request_proto));
   ASSERT_EQ(result_raw.reply_size(), 1);
-  auto result =
-      LoadCiphertexts(server_->Context()->SEALContext(), result_raw.reply(0))
-          .ValueOrDie();
+  ASSIGN_OR_FAIL(auto result, LoadCiphertexts(server_->Context()->SEALContext(),
+                                              result_raw.reply(0)));
   ASSERT_THAT(result, SizeIs(1));
 
   Plaintext result_pt;
@@ -120,14 +117,10 @@ TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
   Request request_proto;
   SaveRequest({query}, gal_keys_, relin_keys_, &request_proto);
 
-  auto result_or = server_->ProcessRequest(request_proto);
-  ASSERT_THAT(result_or.ok(), IsTrue())
-      << "Error: " << result_or.status().ToString();
-  auto result_raw = result_or.ValueOrDie();
+  ASSIGN_OR_FAIL(auto result_raw, server_->ProcessRequest(request_proto));
   ASSERT_EQ(result_raw.reply_size(), 1);
-  auto result =
-      LoadCiphertexts(server_->Context()->SEALContext(), result_raw.reply(0))
-          .ValueOrDie();
+  ASSIGN_OR_FAIL(auto result, LoadCiphertexts(server_->Context()->SEALContext(),
+                                              result_raw.reply(0)));
   ASSERT_THAT(result, SizeIs(1));
 
   Plaintext result_pt;
@@ -157,14 +150,11 @@ TEST_F(PIRServerTest, TestProcessBatchRequest) {
   Request request_proto;
   SaveRequest(queries, gal_keys_, relin_keys_, &request_proto);
 
-  auto result_or = server_->ProcessRequest(request_proto);
-  ASSERT_THAT(result_or.ok(), IsTrue())
-      << "Error: " << result_or.status().ToString();
-
+  ASSIGN_OR_FAIL(auto response, server_->ProcessRequest(request_proto));
   for (size_t idx = 0; idx < indexes.size(); ++idx) {
-    auto result = LoadCiphertexts(server_->Context()->SEALContext(),
-                                  result_or.ValueOrDie().reply(idx))
-                      .ValueOrDie();
+    ASSIGN_OR_FAIL(auto result,
+                   LoadCiphertexts(server_->Context()->SEALContext(),
+                                   response.reply(idx)));
     ASSERT_THAT(result, SizeIs(1));
 
     Plaintext result_pt;
@@ -186,13 +176,10 @@ TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
   Request request_proto;
   SaveRequest({query}, gal_keys_, relin_keys_, &request_proto);
 
-  auto result_or = server_->ProcessRequest(request_proto);
-  ASSERT_THAT(result_or.ok(), IsTrue());
-  auto result_raw = result_or.ValueOrDie();
+  ASSIGN_OR_FAIL(auto result_raw, server_->ProcessRequest(request_proto));
   ASSERT_EQ(result_raw.reply_size(), 1);
-  auto result =
-      LoadCiphertexts(server_->Context()->SEALContext(), result_raw.reply(0))
-          .ValueOrDie();
+  ASSIGN_OR_FAIL(auto result, LoadCiphertexts(server_->Context()->SEALContext(),
+                                              result_raw.reply(0)));
 
   ASSERT_THAT(result, SizeIs(1));
 
@@ -218,14 +205,10 @@ TEST_F(PIRServerTest, TestProcessRequest_2Dim) {
   Request request_proto;
   SaveRequest({query}, gal_keys_, relin_keys_, &request_proto);
 
-  auto result_or = server_->ProcessRequest(request_proto);
-  ASSERT_THAT(result_or.ok(), IsTrue())
-      << "Error: " << result_or.status().ToString();
-  auto result_raw = result_or.ValueOrDie();
+  ASSIGN_OR_FAIL(auto result_raw, server_->ProcessRequest(request_proto));
   ASSERT_EQ(result_raw.reply_size(), 1);
-  auto result =
-      LoadCiphertexts(server_->Context()->SEALContext(), result_raw.reply(0))
-          .ValueOrDie();
+  ASSIGN_OR_FAIL(auto result, LoadCiphertexts(server_->Context()->SEALContext(),
+                                              result_raw.reply(0)));
   ASSERT_THAT(result, SizeIs(1));
   EXPECT_THAT(result[0].size(), Eq(2))
       << "Ciphertext larger than expected. Were relin keys used?";
@@ -321,12 +304,11 @@ TEST_P(ObliviousExpansionTest, ObliviousExpansionExamples) {
   encryptor_->encrypt(input_pt, ct);
 
   auto expected = get<1>(GetParam());
-  auto results_or = server_->oblivious_expansion(
-      ct, expected.size(),
-      keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE)));
-
-  ASSERT_THAT(results_or.ok(), IsTrue());
-  auto results = results_or.ValueOrDie();
+  ASSIGN_OR_FAIL(auto results,
+                 server_->oblivious_expansion(
+                     ct, expected.size(),
+                     keygen_->galois_keys_local(
+                         generate_galois_elts(POLY_MODULUS_DEGREE))));
 
   vector<Plaintext> results_pt(results.size());
   for (size_t i = 0; i < results.size(); ++i) {
@@ -370,15 +352,13 @@ TEST_P(ObliviousExpansionTestMultiCT, MultiCTExamples) {
     encryptor_->encrypt(input_pt[i], input_ct[i]);
   }
 
-  auto results_or = server_->oblivious_expansion(
-      input_ct, num_items,
-      keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE)));
+  ASSIGN_OR_FAIL(auto results,
+                 server_->oblivious_expansion(
+                     input_ct, num_items,
+                     keygen_->galois_keys_local(
+                         generate_galois_elts(POLY_MODULUS_DEGREE))));
 
-  ASSERT_THAT(results_or.ok(), IsTrue())
-      << "Error: " << results_or.status().ToString();
-  auto results = results_or.ValueOrDie();
   ASSERT_THAT(results, SizeIs(num_items));
-
   for (size_t i = 0; i < results.size(); ++i) {
     Plaintext result_pt;
     decryptor_->decrypt(results[i], result_pt);

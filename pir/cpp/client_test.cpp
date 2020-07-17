@@ -18,6 +18,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "pir/cpp/assign_or_fail.h"
 #include "pir/cpp/server.h"
 #include "pir/cpp/utils.h"
 
@@ -62,10 +63,10 @@ TEST_F(PIRClientTest, TestCreateRequest) {
   const size_t desired_index = 5;
   const vector<size_t> indices = {desired_index};
 
-  auto req_proto = client_->CreateRequest(indices).ValueOrDie();
+  ASSIGN_OR_FAIL(auto req_proto, client_->CreateRequest(indices));
   ASSERT_EQ(req_proto.query_size(), 1);
-  auto req = LoadCiphertexts(Context()->SEALContext(), req_proto.query(0))
-                 .ValueOrDie();
+  ASSIGN_OR_FAIL(auto req,
+                 LoadCiphertexts(Context()->SEALContext(), req_proto.query(0)));
 
   Plaintext pt;
   ASSERT_EQ(req.size(), 1);
@@ -92,11 +93,10 @@ TEST_F(PIRClientTest, TestCreateRequestD2) {
   ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols));
 
-  auto request_proto = client_->CreateRequest(indices).ValueOrDie();
+  ASSIGN_OR_FAIL(auto request_proto, client_->CreateRequest(indices));
   ASSERT_EQ(request_proto.query_size(), 1);
-  auto request =
-      LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
-          .ValueOrDie();
+  ASSIGN_OR_FAIL(auto request, LoadCiphertexts(Context()->SEALContext(),
+                                               request_proto.query(0)));
   Plaintext pt;
   ASSERT_EQ(request.size(), 1);
   EXPECT_THAT(request_proto.galois_keys(), Not(IsEmpty()));
@@ -131,11 +131,10 @@ TEST_F(PIRClientTest, TestCreateRequestD3) {
   ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols, num_depth));
 
-  auto request_proto = client_->CreateRequest(indices).ValueOrDie();
+  ASSIGN_OR_FAIL(auto request_proto, client_->CreateRequest(indices));
   ASSERT_EQ(request_proto.query_size(), 1);
-  auto request =
-      LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
-          .ValueOrDie();
+  ASSIGN_OR_FAIL(auto request, LoadCiphertexts(Context()->SEALContext(),
+                                               request_proto.query(0)));
   Plaintext pt;
   ASSERT_EQ(request.size(), 1);
   EXPECT_THAT(request_proto.galois_keys(), Not(IsEmpty()));
@@ -171,11 +170,10 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT1) {
   ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols));
 
-  auto request_proto = client_->CreateRequest(indices).ValueOrDie();
+  ASSIGN_OR_FAIL(auto request_proto, client_->CreateRequest(indices));
   ASSERT_EQ(request_proto.query_size(), 1);
-  auto request =
-      LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
-          .ValueOrDie();
+  ASSIGN_OR_FAIL(auto request, LoadCiphertexts(Context()->SEALContext(),
+                                               request_proto.query(0)));
   ASSERT_EQ(request.size(), 3);
   EXPECT_THAT(request_proto.galois_keys(), Not(IsEmpty()));
   EXPECT_THAT(request_proto.relin_keys(), Not(IsEmpty()));
@@ -222,11 +220,10 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT2) {
   ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols));
 
-  auto request_proto = client_->CreateRequest(indices).ValueOrDie();
+  ASSIGN_OR_FAIL(auto request_proto, client_->CreateRequest(indices));
   ASSERT_EQ(request_proto.query_size(), 1);
-  auto request =
-      LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
-          .ValueOrDie();
+  ASSIGN_OR_FAIL(auto request, LoadCiphertexts(Context()->SEALContext(),
+                                               request_proto.query(0)));
   ASSERT_EQ(request.size(), 3);
   EXPECT_THAT(request_proto.galois_keys(), Not(IsEmpty()));
   EXPECT_THAT(request_proto.relin_keys(), Not(IsEmpty()));
@@ -276,7 +273,7 @@ TEST_F(PIRClientTest, TestProcessResponse) {
   Response response;
   SaveCiphertexts({ct}, response.add_reply());
 
-  auto result = client_->ProcessResponse(response).ValueOrDie();
+  ASSIGN_OR_FAIL(auto result, client_->ProcessResponse(response));
   ASSERT_EQ(result.size(), 1);
   ASSERT_EQ(result[0], value);
 }
@@ -293,7 +290,7 @@ TEST_F(PIRClientTest, TestProcessResponseBatch) {
 
     SaveCiphertexts(ct, response.add_reply());
   }
-  auto result = client_->ProcessResponse(response).ValueOrDie();
+  ASSIGN_OR_FAIL(auto result, client_->ProcessResponse(response));
   ASSERT_EQ(result.size(), 2);
   EXPECT_THAT(result, ElementsAreArray(values));
 }
@@ -316,19 +313,15 @@ TEST_P(CreateRequestTest, TestCreateRequest) {
   const auto poly_modulus_degree = encryption_params_.poly_modulus_degree();
   const auto plain_mod = encryption_params_.plain_modulus().value();
 
-  auto request_or = client_->CreateRequest(indices);
-  ASSERT_TRUE(request_or.ok())
-      << "Status is: " << request_or.status().ToString();
-
-  auto request = request_or.ValueOrDie();
+  ASSIGN_OR_FAIL(auto request, client_->CreateRequest(indices));
   ASSERT_EQ(request.query_size(), indices.size());
   EXPECT_THAT(request.galois_keys(), Not(IsEmpty()));
 
   auto m = get<2>(GetParam());
 
   for (size_t idx = 0; idx < indices.size(); ++idx) {
-    auto query = LoadCiphertexts(Context()->SEALContext(), request.query(idx))
-                     .ValueOrDie();
+    ASSIGN_OR_FAIL(auto query, LoadCiphertexts(Context()->SEALContext(),
+                                               request.query(idx)));
     ASSERT_EQ(query.size(), dbsize / poly_modulus_degree + 1);
     size_t desired_index = indices[idx];
 
