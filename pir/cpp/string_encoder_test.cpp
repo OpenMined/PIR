@@ -21,8 +21,8 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "pir/cpp/assign_or_fail.h"
 #include "pir/cpp/parameters.h"
+#include "pir/cpp/status_asserts.h"
 
 namespace pir {
 namespace {
@@ -74,8 +74,7 @@ TEST_F(StringEncoderTest, TestEncodeDecode) {
   string value("This is a string test for random VALUES@!#");
   size_t num_coeff = ceil((value.size() * 8) / 19.0);
   Plaintext pt;
-  auto status = encoder_->encode(value, pt);
-  EXPECT_TRUE(status.ok()) << status.ToString();
+  EXPECT_OK(encoder_->encode(value, pt));
   EXPECT_EQ(pt.coeff_count(), num_coeff);
   ASSIGN_OR_FAIL(auto result, encoder_->decode(pt));
   ASSERT_GE(result.size(), value.size());
@@ -89,8 +88,7 @@ TEST_F(StringEncoderTest, TestEncodeDecodePRN) {
   string v(9728, 0);
   prng->generate(v.size(), reinterpret_cast<SEAL_BYTE *>(v.data()));
   Plaintext pt;
-  auto status = encoder_->encode(v, pt);
-  EXPECT_TRUE(status.ok()) << status.ToString();
+  EXPECT_OK(encoder_->encode(v, pt));
   ASSIGN_OR_FAIL(auto result, encoder_->decode(pt));
   ASSERT_GE(result.size(), v.size());
   EXPECT_EQ(result.substr(0, v.size()), v);
@@ -112,8 +110,7 @@ TEST_F(StringEncoderTest, TestEncodeDecodeVector) {
   }
 
   Plaintext pt;
-  auto status = encoder_->encode(v.begin(), v.end(), pt);
-  EXPECT_TRUE(status.ok()) << status.ToString();
+  EXPECT_OK(encoder_->encode(v.begin(), v.end(), pt));
   size_t offset = 0;
   for (size_t i = 0; i < v.size(); ++i) {
     ASSIGN_OR_FAIL(auto result, encoder_->decode(pt, v[i].size(), offset));
@@ -156,8 +153,7 @@ TEST_F(StringEncoderTest, TestDecodeTooBig) {
   string v(9728, 0);
   prng->generate(v.size(), reinterpret_cast<SEAL_BYTE *>(v.data()));
   Plaintext pt;
-  auto status = encoder_->encode(v, pt);
-  EXPECT_TRUE(status.ok()) << status.ToString();
+  EXPECT_OK(encoder_->encode(v, pt));
   auto result_or = encoder_->decode(pt, 100, 9629);
   EXPECT_FALSE(result_or.status().ok());
   EXPECT_EQ(result_or.status().code(),
@@ -170,8 +166,7 @@ TEST_F(StringEncoderTest, TestEncOp) {
   string v(9728, 0);
   prng->generate(v.size(), reinterpret_cast<SEAL_BYTE *>(v.data()));
   Plaintext pt;
-  auto status = encoder_->encode(v, pt);
-  EXPECT_TRUE(status.ok()) << status.ToString();
+  EXPECT_OK(encoder_->encode(v, pt));
 
   Plaintext selection_vector_pt(POLY_MODULUS_DEGREE);
   selection_vector_pt.set_zero();

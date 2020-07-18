@@ -18,8 +18,8 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "pir/cpp/assign_or_fail.h"
 #include "pir/cpp/server.h"
+#include "pir/cpp/status_asserts.h"
 #include "pir/cpp/utils.h"
 
 namespace pir {

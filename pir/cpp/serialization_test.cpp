@@ -18,8 +18,8 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "pir/cpp/assign_or_fail.h"
 #include "pir/cpp/context.h"
+#include "pir/cpp/status_asserts.h"
 #include "pir/cpp/utils.h"
 #include "seal/seal.h"
 #include "util/statusor.h"
@@ -178,8 +178,7 @@ TEST_F(PIRSerializationTest, TestRequestSerialization_ShortcutWithRelin) {
 TEST_F(PIRSerializationTest, TestEncryptionParamsSerialization) {
   auto params = GenerateEncryptionParams();
   std::string serial;
-  auto status = SEALSerialize<EncryptionParameters>(params, &serial);
-  ASSERT_TRUE(status.ok()) << "Status is: " << status.ToString();
+  ASSERT_OK(SEALSerialize<EncryptionParameters>(params, &serial));
   ASSIGN_OR_FAIL(auto decoded_params,
                  SEALDeserialize<EncryptionParameters>(serial));
   ASSERT_EQ(params.plain_modulus(), decoded_params.plain_modulus());

@@ -22,8 +22,8 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "pir/cpp/assign_or_fail.h"
 #include "pir/cpp/client.h"
+#include "pir/cpp/status_asserts.h"
 #include "pir/cpp/test_base.h"
 #include "pir/cpp/utils.h"
 

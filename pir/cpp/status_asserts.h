@@ -14,6 +14,18 @@
 // limitations under the License.
 //
 
+#define ASSERT_OK(expr)                                           \
+  do {                                                            \
+    const Status _status = (expr);                                \
+    ASSERT_TRUE(_status.ok()) << "Error: " << _status.ToString(); \
+  } while (false)
+
+#define EXPECT_OK(expr)                                           \
+  do {                                                            \
+    const Status _status = (expr);                                \
+    EXPECT_TRUE(_status.ok()) << "Error: " << _status.ToString(); \
+  } while (false)
+
 #define ASSIGN_OR_FAIL(lhs, rexpr) \
   ASSIGN_OR_FAIL_IMPL_(CONCAT_NAME_(status_or_, __LINE__), lhs, rexpr)
 

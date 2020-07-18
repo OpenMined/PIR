@@ -18,8 +18,8 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "pir/cpp/assign_or_fail.h"
 #include "pir/cpp/serialization.h"
+#include "pir/cpp/status_asserts.h"
 
 namespace pir {
 namespace {
@@ -81,9 +81,7 @@ TEST(PIRParametersTest, EncryptionParamsSerialization) {
   // use something other than defaults
   auto params = GenerateEncryptionParams(8192);
   std::string serial;
-  auto status = SEALSerialize<EncryptionParameters>(params, &serial);
-  ASSERT_THAT(status.ok(), IsTrue())
-      << "Error serializing encryption params: " << status.ToString();
+  ASSERT_OK(SEALSerialize<EncryptionParameters>(params, &serial));
   ASSIGN_OR_FAIL(auto new_params,
                  SEALDeserialize<EncryptionParameters>(serial));
   ASSERT_THAT(new_params, Eq(params));

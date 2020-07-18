@@ -55,7 +55,7 @@ cc_library(
 cc_test(
     name = "pir_test",
     srcs = [
-        "assign_or_fail.h",
+        "status_asserts.h",
         "client_test.cpp",
         "correctness_test.cpp",
         "database_test.cpp",
