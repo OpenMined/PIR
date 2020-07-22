@@ -17,6 +17,7 @@
 
 #include "gtest/gtest.h"
 #include "pir/cpp/parameters.h"
+#include "pir/cpp/status_asserts.h"
 #include "pir/cpp/utils.h"
 
 namespace pir {
@@ -51,14 +52,14 @@ void PIRTestingBase::SetUpParams(size_t db_size, size_t elem_size,
            << seal_context_->parameter_error_message();
   }
 
-  pir_params_ = CreatePIRParameters(db_size, elem_size, dimensions,
-                                    encryption_params_, bits_per_coeff)
-                    .ValueOrDie();
+  ASSIGN_OR_FAIL(pir_params_,
+                 CreatePIRParameters(db_size, elem_size, dimensions,
+                                     encryption_params_, bits_per_coeff));
 }
 
 void PIRTestingBase::GenerateDB(uint32_t seed) {
   string_db_ = generate_test_db(db_size_, pir_params_->bytes_per_item(), seed);
-  pir_db_ = PIRDatabase::Create(string_db_, pir_params_).ValueOrDie();
+  ASSIGN_OR_FAIL(pir_db_, PIRDatabase::Create(string_db_, pir_params_));
 }
 
 void PIRTestingBase::GenerateIntDB(uint32_t seed) {
@@ -71,7 +72,7 @@ void PIRTestingBase::GenerateIntDB(uint32_t seed) {
     prng->generate(sizeof(int_db_[i]) - 2,
                    reinterpret_cast<seal::SEAL_BYTE*>(&int_db_[i]));
   }
-  pir_db_ = PIRDatabase::Create(int_db_, pir_params_).ValueOrDie();
+  ASSIGN_OR_FAIL(pir_db_, PIRDatabase::Create(int_db_, pir_params_));
 }
 
 void PIRTestingBase::SetUpSealTools() {

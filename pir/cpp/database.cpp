@@ -37,42 +37,66 @@ using seal::Plaintext;
 using std::vector;
 
 StatusOr<shared_ptr<PIRDatabase>> PIRDatabase::Create(
-    const vector<std::int64_t>& rawdb, shared_ptr<PIRParameters> params) {
-  if (rawdb.size() != params->num_items()) {
-    return InvalidArgumentError("Database size does not match params");
-  }
-  vector<Plaintext> db(rawdb.size());
+    shared_ptr<PIRParameters> params) {
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
-
-  for (size_t idx = 0; idx < rawdb.size(); ++idx) {
-    try {
-      context->Encoder()->encode(rawdb[idx], db[idx]);
-    } catch (std::exception& e) {
-      return InvalidArgumentError(e.what());
-    }
-  }
-  return std::make_shared<PIRDatabase>(db, std::move(context));
+  return std::make_shared<PIRDatabase>(std::move(context));
+}
+StatusOr<shared_ptr<PIRDatabase>> PIRDatabase::Create(
+    const vector<std::int64_t>& rawdb, shared_ptr<PIRParameters> params) {
+  ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
+  auto pir_db = std::make_shared<PIRDatabase>(std::move(context));
+  RETURN_IF_ERROR(pir_db->populate(rawdb));
+  return std::move(pir_db);
 }
 
 StatusOr<shared_ptr<PIRDatabase>> PIRDatabase::Create(
     const vector<string>& rawdb, shared_ptr<PIRParameters> params) {
-  if (rawdb.size() != params->num_items()) {
-    return InvalidArgumentError("Database size does not match params");
-  }
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
-  const auto items_per_pt = params->items_per_plaintext();
-  vector<Plaintext> db(params->num_pt());
-  auto encoder = std::make_unique<StringEncoder>(context->SEALContext());
-  if (params->bits_per_coeff() > 0) {
-    encoder->set_bits_per_coeff(params->bits_per_coeff());
+  auto pir_db = std::make_shared<PIRDatabase>(std::move(context));
+  RETURN_IF_ERROR(pir_db->populate(rawdb));
+  return std::move(pir_db);
+}
+
+Status PIRDatabase::populate(const vector<std::int64_t>& rawdb) {
+  if (rawdb.size() != context_->Params()->num_items()) {
+    return InvalidArgumentError(
+        "Database size " + std::to_string(rawdb.size()) +
+        " does not match params value " +
+        std::to_string(context_->Params()->num_items()));
+  }
+
+  db_.resize(rawdb.size());
+  for (size_t idx = 0; idx < rawdb.size(); ++idx) {
+    try {
+      context_->Encoder()->encode(rawdb[idx], db_[idx]);
+    } catch (std::exception& e) {
+      return InvalidArgumentError(e.what());
+    }
+  }
+  return Status::OK;
+}
+
+Status PIRDatabase::populate(const vector<string>& rawdb) {
+  if (rawdb.size() != context_->Params()->num_items()) {
+    return InvalidArgumentError(
+        "Database size " + std::to_string(rawdb.size()) +
+        " does not match params value " +
+        std::to_string(context_->Params()->num_items()));
+  }
+
+  const auto items_per_pt = context_->Params()->items_per_plaintext();
+  db_.resize(context_->Params()->num_pt());
+  auto encoder = std::make_unique<StringEncoder>(context_->SEALContext());
+  if (context_->Params()->bits_per_coeff() > 0) {
+    encoder->set_bits_per_coeff(context_->Params()->bits_per_coeff());
   }
   auto raw_it = rawdb.begin();
-  for (size_t i = 0; i < db.size(); ++i) {
+  for (size_t i = 0; i < db_.size(); ++i) {
     auto end_it = std::min(raw_it + items_per_pt, rawdb.end());
-    RETURN_IF_ERROR(encoder->encode(raw_it, end_it, db[i]));
+    RETURN_IF_ERROR(encoder->encode(raw_it, end_it, db_[i]));
     raw_it += items_per_pt;
   }
-  return std::make_shared<PIRDatabase>(db, std::move(context));
+  return Status::OK;
 }
 
 /**
@@ -223,14 +247,20 @@ StatusOr<Ciphertext> PIRDatabase::multiply(
   }
 }
 
-vector<uint32_t> PIRDatabase::calculate_indices(const vector<uint32_t>& dims,
-                                                uint32_t index) {
-  vector<uint32_t> results(dims.size(), 0);
+vector<uint32_t> PIRDatabase::calculate_indices(uint32_t index) {
+  uint32_t pt_index = index / context_->Params()->items_per_plaintext();
+  vector<uint32_t> results(context_->Params()->dimensions_size(), 0);
   for (int i = results.size() - 1; i >= 0; --i) {
-    results[i] = index % dims[i];
-    index = index / dims[i];
+    results[i] = pt_index % context_->Params()->dimensions(i);
+    pt_index = pt_index / context_->Params()->dimensions(i);
   }
   return results;
+}
+
+size_t PIRDatabase::calculate_item_offset(uint32_t index) {
+  uint32_t pt_index = index / context_->Params()->items_per_plaintext();
+  return (index - (pt_index * context_->Params()->items_per_plaintext())) *
+         context_->Params()->bytes_per_item();
 }
 
 vector<uint32_t> PIRDatabase::calculate_dimensions(uint32_t db_size,

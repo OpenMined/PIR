@@ -20,6 +20,7 @@
 #include "gtest/gtest.h"
 #include "pir/cpp/server.h"
 #include "pir/cpp/status_asserts.h"
+#include "pir/cpp/string_encoder.h"
 #include "pir/cpp/utils.h"
 
 namespace pir {
@@ -39,17 +40,18 @@ class PIRClientTest : public ::testing::Test {
  protected:
   void SetUp() { SetUpDB(100); }
 
-  void SetUpDB(size_t dbsize, size_t dimensions = 1) {
+  void SetUpDB(size_t dbsize, size_t dimensions = 1, size_t elem_size = 0) {
     db_size_ = dbsize;
-    encryption_params_ = GenerateEncryptionParams(POLY_MODULUS_DEGREE);
-    pir_params_ = CreatePIRParameters(dbsize, 0, dimensions, encryption_params_)
-                      .ValueOrDie();
+    encryption_params_ = GenerateEncryptionParams(POLY_MODULUS_DEGREE, 16);
+    pir_params_ =
+        CreatePIRParameters(dbsize, elem_size, dimensions, encryption_params_)
+            .ValueOrDie();
     client_ = PIRClient::Create(pir_params_).ValueOrDie();
 
     ASSERT_TRUE(client_ != nullptr);
   }
 
-  PIRContext* Context() { return client_->context_.get(); }
+  const auto& Context() { return client_->context_; }
   std::shared_ptr<seal::Decryptor> Decryptor() { return client_->decryptor_; }
   std::shared_ptr<seal::Encryptor> Encryptor() { return client_->encryptor_; }
 
@@ -264,7 +266,7 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT2) {
 TEST_F(PIRClientTest, TestProcessResponse) {
   int64_t value = 987654321;
 
-  // Create a fake request.
+  // Create a fake reply.
   Plaintext pt;
   Context()->Encoder()->encode(value, pt);
   vector<Ciphertext> ct(1);
@@ -293,6 +295,63 @@ TEST_F(PIRClientTest, TestProcessResponseBatch) {
   ASSIGN_OR_FAIL(auto result, client_->ProcessResponse(response));
   ASSERT_EQ(result.size(), 2);
   EXPECT_THAT(result, ElementsAreArray(values));
+}
+
+TEST_F(PIRClientTest, TestProcessResponseString) {
+  constexpr size_t elem_size = 64;
+  constexpr size_t pt_size = 7680;
+  SetUpDB(1000, 1, elem_size);
+  auto prng =
+      seal::UniformRandomGeneratorFactory::DefaultFactory()->create({99});
+  string value(pt_size, 0);
+  prng->generate(value.size(),
+                 reinterpret_cast<seal::SEAL_BYTE*>(value.data()));
+
+  // Create a fake reply.
+  StringEncoder encoder(Context()->SEALContext());
+  Plaintext pt;
+  encoder.encode(value, pt);
+  vector<Ciphertext> ct(1);
+  Encryptor()->encrypt(pt, ct[0]);
+
+  Response response;
+  SaveCiphertexts({ct}, response.add_reply());
+
+  ASSIGN_OR_FAIL(auto result, client_->ProcessResponseString({777}, response));
+  ASSERT_EQ(result.size(), 1);
+  ASSERT_EQ(result[0], value.substr(3648, elem_size));
+}
+
+TEST_F(PIRClientTest, TestProcessResponseStringBatch) {
+  constexpr size_t db_size = 1000;
+  constexpr size_t elem_size = 64;
+  constexpr size_t pt_size = 7680;
+  SetUpDB(db_size, 1, elem_size);
+
+  auto prng =
+      seal::UniformRandomGeneratorFactory::DefaultFactory()->create({99});
+  vector<string> values(3, string(pt_size, 0));
+  for (size_t i = 0; i < 3; ++i) {
+    prng->generate(values[i].size(),
+                   reinterpret_cast<seal::SEAL_BYTE*>(values[i].data()));
+  }
+
+  StringEncoder encoder(Context()->SEALContext());
+  Response response;
+  for (auto& value : values) {
+    Plaintext pt;
+    encoder.encode(value, pt);
+    vector<Ciphertext> ct(1);
+    Encryptor()->encrypt(pt, ct[0]);
+
+    SaveCiphertexts(ct, response.add_reply());
+  }
+
+  ASSIGN_OR_FAIL(auto result,
+                 client_->ProcessResponseString({720, 777, 839}, response));
+  ASSERT_THAT(result, ElementsAre(values[0].substr(0, elem_size),
+                                  values[1].substr(3648, elem_size),
+                                  values[2].substr(7616, elem_size)));
 }
 
 TEST_F(PIRClientTest, TestCreateRequest_InvalidIndex) {

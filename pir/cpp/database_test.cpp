@@ -105,7 +105,7 @@ TEST_F(PIRDatabaseTest, TestMultiplySelectionVectorTooSmall) {
   SetUpDB(100, 2);
   const uint32_t desired_index = 42;
   const auto dims = PIRDatabase::calculate_dimensions(db_size_, 2);
-  const auto indices = PIRDatabase::calculate_indices(dims, desired_index);
+  const auto indices = pir_db_->calculate_indices(desired_index);
 
   vector<Ciphertext> cts;
   for (size_t d = 0; d < dims.size(); ++d) {
@@ -126,7 +126,7 @@ TEST_F(PIRDatabaseTest, TestMultiplySelectionVectorTooBig) {
   SetUpDB(100, 2);
   const uint32_t desired_index = 42;
   const auto dims = PIRDatabase::calculate_dimensions(db_size_, 2);
-  const auto indices = PIRDatabase::calculate_indices(dims, desired_index);
+  const auto indices = pir_db_->calculate_indices(desired_index);
 
   vector<Ciphertext> cts;
   for (size_t d = 0; d < dims.size(); ++d) {
@@ -156,8 +156,6 @@ TEST_F(PIRDatabaseTest, TestMultiplyStringValues) {
     if (i == desired_index) {
       selection_vector_pt[i][0] = 1;
     }
-    // cout << "SV[" << i << "] = " << selection_vector_pt[i].to_string() <<
-    // endl;
     encryptor_->encrypt(selection_vector_pt[i], selection_vector_ct[i]);
   }
 
@@ -167,7 +165,6 @@ TEST_F(PIRDatabaseTest, TestMultiplyStringValues) {
   decryptor_->decrypt(result_ct, result_pt);
   auto string_encoder = make_unique<StringEncoder>(seal_context_);
   ASSIGN_OR_FAIL(auto result, string_encoder->decode(result_pt));
-  // cout << "Result PT " << result_pt.to_string() << endl;
 
   EXPECT_THAT(result, Eq(string_db_[desired_index]));
 }
@@ -201,7 +198,7 @@ TEST_F(PIRDatabaseTest, TestMultiplyStringValuesD2) {
   SetUpStringDB(db_size, d, POLY_MODULUS_DEGREE, 16);
 
   const auto dims = PIRDatabase::calculate_dimensions(db_size, d);
-  const auto indices = PIRDatabase::calculate_indices(dims, desired_index);
+  const auto indices = pir_db_->calculate_indices(desired_index);
   const auto sv = create_selection_vector(dims, indices, *encryptor_);
 
   auto relin_keys = keygen_->relin_keys_local();
@@ -233,7 +230,7 @@ TEST_F(PIRDatabaseTest, TestMultiplyMultipleValuesPerPT) {
       (desired_index - desired_pt_index * items_per_pt) * elem_size;
 
   const auto dims = PIRDatabase::calculate_dimensions(num_db_pt, d);
-  const auto indices = PIRDatabase::calculate_indices(dims, desired_pt_index);
+  const auto indices = pir_db_->calculate_indices(desired_index);
   const auto sv = create_selection_vector(dims, indices, *encryptor_);
 
   auto relin_keys = keygen_->relin_keys_local();
@@ -249,7 +246,7 @@ TEST_F(PIRDatabaseTest, TestMultiplyMultipleValuesPerPT) {
 }
 
 TEST_F(PIRDatabaseTest, TestCreateValueDoesntMatch) {
-  SetUpParams(10, 9728);
+  SetUpParams(10, 9728, 1, 4096, 20, 19);
 
   auto prng =
       seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
@@ -279,7 +276,7 @@ TEST_P(MultiplyMultiDimTest, TestMultiply) {
   SetUpStringDB(dbsize, d, poly_modulus_degree, plain_mod_bits);
   const size_t elem_size = pir_params_->bytes_per_item();
   const auto dims = PIRDatabase::calculate_dimensions(dbsize, d);
-  const auto indices = PIRDatabase::calculate_indices(dims, desired_index);
+  const auto indices = pir_db_->calculate_indices(desired_index);
   const auto cts = create_selection_vector(dims, indices, *encryptor_);
 
   auto relin_keys = keygen_->relin_keys_local();
@@ -307,30 +304,59 @@ INSTANTIATE_TEST_SUITE_P(PIRDatabaseMultiplies, MultiplyMultiDimTest,
 
 class CalculateIndicesTest
     : public testing::TestWithParam<
-          tuple<uint32_t, uint32_t, uint32_t, vector<uint32_t>>> {};
+          tuple<uint32_t, uint32_t, uint32_t, uint32_t, vector<uint32_t>>> {};
 
 TEST_P(CalculateIndicesTest, IndicesExamples) {
   const auto num_items = get<0>(GetParam());
-  const auto d = get<1>(GetParam());
-  const auto desired_index = get<2>(GetParam());
-  const auto& expected_indices = get<3>(GetParam());
+  const auto size_per_item = get<1>(GetParam());
+  const auto d = get<2>(GetParam());
+  const auto desired_index = get<3>(GetParam());
+  const auto& expected_indices = get<4>(GetParam());
+  ASSIGN_OR_FAIL(const auto pir_params,
+                 CreatePIRParameters(num_items, size_per_item, d,
+                                     GenerateEncryptionParams(4096, 16)));
+  ASSIGN_OR_FAIL(auto pir_db, PIRDatabase::Create(pir_params));
   ASSERT_THAT(expected_indices, SizeIs(d));
-  auto dims = PIRDatabase::calculate_dimensions(num_items, d);
-  auto indices = PIRDatabase::calculate_indices(dims, desired_index);
+  auto indices = pir_db->calculate_indices(desired_index);
   EXPECT_THAT(indices, ContainerEq(expected_indices));
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    CalculateIndices, CalculateIndicesTest,
-    Values(make_tuple(100, 1, 42, vector<uint32_t>{42}),
-           make_tuple(100, 1, 7, vector<uint32_t>{7}),
-           make_tuple(84, 2, 7, vector<uint32_t>{0, 7}),
-           make_tuple(87, 2, 27, vector<uint32_t>{3, 0}),
-           make_tuple(87, 2, 42, vector<uint32_t>{4, 6}),
-           make_tuple(87, 2, 86, vector<uint32_t>{9, 5}),
-           make_tuple(82, 3, 3, vector<uint32_t>{0, 0, 3}),
-           make_tuple(82, 3, 20, vector<uint32_t>{1, 0, 0}),
-           make_tuple(82, 3, 75, vector<uint32_t>{3, 3, 3})));
+    PIRDatabaseCalculateIndices, CalculateIndicesTest,
+    Values(make_tuple(100, 0, 1, 42, vector<uint32_t>{42}),
+           make_tuple(100, 0, 1, 7, vector<uint32_t>{7}),
+           make_tuple(84, 0, 2, 7, vector<uint32_t>{0, 7}),
+           make_tuple(87, 0, 2, 27, vector<uint32_t>{3, 0}),
+           make_tuple(87, 0, 2, 42, vector<uint32_t>{4, 6}),
+           make_tuple(87, 0, 2, 86, vector<uint32_t>{9, 5}),
+           make_tuple(82, 0, 3, 3, vector<uint32_t>{0, 0, 3}),
+           make_tuple(82, 0, 3, 20, vector<uint32_t>{1, 0, 0}),
+           make_tuple(82, 0, 3, 75, vector<uint32_t>{3, 3, 3}),
+           make_tuple(5000, 64, 1, 2222, vector<uint32_t>{18}),
+           make_tuple(5000, 64, 1, 1200, vector<uint32_t>{10})));
+
+class CalculateOffsetTest : public testing::TestWithParam<
+                                tuple<uint32_t, uint32_t, uint32_t, uint32_t>> {
+};
+
+TEST_P(CalculateOffsetTest, OffsetExamples) {
+  const auto num_items = get<0>(GetParam());
+  const auto size_per_item = get<1>(GetParam());
+  const auto desired_index = get<2>(GetParam());
+  const auto& expected_offset = get<3>(GetParam());
+  ASSIGN_OR_FAIL(const auto pir_params,
+                 CreatePIRParameters(num_items, size_per_item, 1,
+                                     GenerateEncryptionParams(4096, 16)));
+  ASSIGN_OR_FAIL(auto pir_db, PIRDatabase::Create(pir_params));
+  auto offset = pir_db->calculate_item_offset(desired_index);
+  EXPECT_EQ(offset, expected_offset);
+}
+
+INSTANTIATE_TEST_SUITE_P(PIRDatabaseCalculateOffset, CalculateOffsetTest,
+                         Values(make_tuple(100, 0, 42, 0),
+                                make_tuple(1000, 64, 42, 2688),
+                                make_tuple(1000, 64, 960, 0),
+                                make_tuple(1000, 64, 999, 2496)));
 
 class CalculateDimensionsTest
     : public testing::TestWithParam<

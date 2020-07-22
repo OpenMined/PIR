@@ -50,25 +50,20 @@ using namespace ::testing;
 using std::int64_t;
 using std::vector;
 
-#ifdef TEST_DEBUG
-#define DEBUG_OUT(x) std::cout << x << std::endl
-#else
-#define DEBUG_OUT(x)
-#endif  // TEST_DEBUG
-
-class PIRCorrectnessTest
-    : public ::testing::TestWithParam<tuple<
-          uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, vector<size_t>>>,
-      public PIRTestingBase {
+class PIRCorrectnessTest : public ::testing::TestWithParam<
+                               tuple<uint32_t, uint32_t, uint32_t, uint32_t,
+                                     uint32_t, uint32_t, vector<size_t>>>,
+                           public PIRTestingBase {
  protected:
   void SetUp() {
     const auto poly_modulus_degree = get<0>(GetParam());
     const auto plain_mod_bits = get<1>(GetParam());
-    const auto bits_per_coeff = get<2>(GetParam());
-    const auto dbsize = get<3>(GetParam());
-    const auto d = get<4>(GetParam());
+    const auto elem_size = get<2>(GetParam());
+    const auto bits_per_coeff = get<3>(GetParam());
+    const auto dbsize = get<4>(GetParam());
+    const auto d = get<5>(GetParam());
 
-    SetUpParams(dbsize, 0, d, poly_modulus_degree, plain_mod_bits,
+    SetUpParams(dbsize, elem_size, d, poly_modulus_degree, plain_mod_bits,
                 bits_per_coeff);
     GenerateDB();
     SetUpSealTools();
@@ -84,10 +79,11 @@ class PIRCorrectnessTest
 };
 
 TEST_P(PIRCorrectnessTest, TestCorrectness) {
-  const auto desired_indices = get<5>(GetParam());
+  const auto desired_indices = get<6>(GetParam());
   ASSIGN_OR_FAIL(auto request, client_->CreateRequest(desired_indices));
   ASSIGN_OR_FAIL(auto response, server_->ProcessRequest(request));
-  ASSIGN_OR_FAIL(auto results, client_->ProcessResponseString(response));
+  ASSIGN_OR_FAIL(auto results,
+                 client_->ProcessResponseString(desired_indices, response));
 
   ASSERT_EQ(results.size(), desired_indices.size());
   for (size_t i = 0; i < results.size(); ++i) {
@@ -95,21 +91,17 @@ TEST_P(PIRCorrectnessTest, TestCorrectness) {
   }
 }
 
-void print_hex_string(const string& desc, const string& s) {
-  cout << desc << ": ";
-  for (const auto c : s) {
-    cout << std::hex << std::setw(2) << std::setfill('0')
-         << (uint16_t)(uint8_t)c;
-  }
-  cout << std::dec << endl;
-}
-
 INSTANTIATE_TEST_SUITE_P(
     CorrectnessTest, PIRCorrectnessTest,
-    testing::Values(make_tuple(4096, 22, 0, 10, 1, vector<size_t>({0})),
-                    make_tuple(4096, 16, 10, 9, 2, vector<size_t>({1, 5})),
-                    make_tuple(8192, 42, 0, 87, 2, vector<size_t>({5, 33, 86})),
-                    make_tuple(4096, 16, 8, 500, 2, vector<size_t>({9, 125}))));
+    testing::Values(
+        make_tuple(4096, 22, 0, 0, 10, 1, vector<size_t>({0})),
+        make_tuple(4096, 16, 0, 10, 9, 2, vector<size_t>({1, 5})),
+        make_tuple(4096, 16, 0, 6, 500, 2, vector<size_t>({9, 125})),
+        make_tuple(8192, 42, 0, 0, 87, 2, vector<size_t>({5, 33, 86})),
+        make_tuple(4096, 16, 64, 10, 1200, 1,
+                   vector<size_t>({0, 80, 81, 123, 777, 1199})),
+        make_tuple(4096, 16, 289, 10, 1200, 1,
+                   vector<size_t>({0, 47, 777, 1199}))));
 
 //}  // namespace
 }  // namespace pir

@@ -60,7 +60,7 @@ class PIRClient {
       const Response& response) const;
 
   StatusOr<std::vector<std::string>> ProcessResponseString(
-      const Response& response) const;
+      const std::vector<std::size_t>& indexes, const Response& response) const;
 
   PIRClient() = delete;
 
