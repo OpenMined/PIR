@@ -33,7 +33,7 @@ void BM_DatabaseLoad(benchmark::State& state) {
       static_cast<double>(elements_processed), benchmark::Counter::kIsRate);
 }
 // Range is for the dbsize.
-BENCHMARK(BM_DatabaseLoad)->RangeMultiplier(2)->Range(1 << 12, 1 << 16);
+BENCHMARK(BM_DatabaseLoad)->RangeMultiplier(2)->Range(1 << 16, 1 << 16);
 
 void BM_ClientCreateRequest(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
@@ -57,7 +57,7 @@ void BM_ClientCreateRequest(benchmark::State& state) {
       static_cast<double>(elements_processed), benchmark::Counter::kIsRate);
 }
 // Range is for the dbsize.
-BENCHMARK(BM_ClientCreateRequest)->RangeMultiplier(2)->Range(1 << 12, 1 << 16);
+BENCHMARK(BM_ClientCreateRequest)->RangeMultiplier(2)->Range(1 << 16, 1 << 16);
 
 void BM_ServerProcessRequest(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
@@ -82,7 +82,7 @@ void BM_ServerProcessRequest(benchmark::State& state) {
       static_cast<double>(elements_processed), benchmark::Counter::kIsRate);
 }
 // Range is for the dbsize.
-BENCHMARK(BM_ServerProcessRequest)->RangeMultiplier(2)->Range(1 << 12, 1 << 16);
+BENCHMARK(BM_ServerProcessRequest)->RangeMultiplier(2)->Range(1 << 16, 1 << 16);
 
 void BM_ClientProcessResponse(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
@@ -108,43 +108,7 @@ void BM_ClientProcessResponse(benchmark::State& state) {
       static_cast<double>(elements_processed), benchmark::Counter::kIsRate);
 }
 // Range is for the dbsize.
-BENCHMARK(BM_ClientProcessResponse)
-    ->RangeMultiplier(2)
-    ->Range(1 << 12, 1 << 16);
+BENCHMARK(BM_ClientProcessResponse)->RangeMultiplier(2)->Range(1 << 16, 1 << 16);
 
-void BM_PayloadSize(benchmark::State& state) {
-  std::size_t dbsize = state.range(0);
-  auto db = generateDB(dbsize);
-
-  auto params = CreatePIRParameters(db.size(), dimensions).ValueOrDie();
-  auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
-  auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
-
-  int64_t total_bytes = 0;
-  int64_t network_bytes = 0;
-
-  auto client_ = PIRClient::Create(params).ValueOrDie();
-  std::vector<size_t> desiredIndex = {dbsize - 1};
-
-  auto request = client_->CreateRequest(desiredIndex).ValueOrDie();
-  int64_t raw_request = request.ByteSizeLong();
-
-  for (auto _ : state) {
-    total_bytes += raw_request;
-    auto request = client_->CreateRequest(desiredIndex).ValueOrDie();
-    ::benchmark::DoNotOptimize(request);
-    network_bytes += request.ByteSizeLong();
-    auto response = server_->ProcessRequest(request).ValueOrDie();
-    ::benchmark::DoNotOptimize(response);
-    auto out = client_->ProcessResponse(response).ValueOrDie();
-    ::benchmark::DoNotOptimize(out);
-  }
-  state.counters["NetworkBytes"] = benchmark::Counter(
-      static_cast<double>(network_bytes), benchmark::Counter::kIsRate);
-  state.counters["RawBytes"] = benchmark::Counter(
-      static_cast<double>(total_bytes), benchmark::Counter::kIsRate);
-}
-// Range is for the dbsize.
-BENCHMARK(BM_PayloadSize)->RangeMultiplier(2)->Range(1 << 12, 1 << 16);
 
 }  // namespace pir
