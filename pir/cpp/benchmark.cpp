@@ -108,7 +108,8 @@ void BM_ClientProcessResponse(benchmark::State& state) {
       static_cast<double>(elements_processed), benchmark::Counter::kIsRate);
 }
 // Range is for the dbsize.
-BENCHMARK(BM_ClientProcessResponse)->RangeMultiplier(2)->Range(1 << 16, 1 << 16);
-
+BENCHMARK(BM_ClientProcessResponse)
+    ->RangeMultiplier(2)
+    ->Range(1 << 16, 1 << 16);
 
 }  // namespace pir
