@@ -9,14 +9,18 @@ filegroup(
 cmake_external(
    name = "seal",
    cmake_options = [
+        "-DSEAL_USE_CXX17=17",
+        "-DSEAL_USE_INTRIN=ON",
         "-DSEAL_USE_MSGSL=OFF",
         "-DSEAL_USE_ZLIB=OFF",
-        "-DCMAKE_CXX_STANDARD=17",
+        "-DSEAL_BUILD_TESTS=OFF",
+        "-DBUILD_SHARED_LIBS=OFF",
+        "-DCMAKE_BUILD_TYPE=Release",
    ],
-   cache_entries = {
-        "MAKE_INSTALL_PREFIX": "$EXT_BUILD_DEPS/seal",
-        "SEAL_LIB_BUILD_TYPE": "Static_PIC",
-   },
+   make_commands = [
+        "make -j",
+        "make install"
+   ],
    lib_source = ":src",
    install_prefix = "native/src",
    out_include_dir = "include/SEAL-3.5",

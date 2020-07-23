@@ -24,4 +24,4 @@ Build and run benchmarks
 
 ```
 bazel run -c opt //pir/cpp:benchmark
-`
+```

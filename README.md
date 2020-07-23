@@ -1,6 +1,6 @@
 ![om-logo](https://github.com/OpenMined/design-assets/blob/master/logos/OM/horizontal-primary-trans.png)
 
-[![Tests](https://github.com/OpenMined/PSI/workflows/Tests/badge.svg?branch=master&event=push)](https://github.com/OpenMined/PSI/actions?query=workflow%3ATests+branch%3Amaster+event%3Apush)
+[![Tests](https://github.com/OpenMined/PIR/workflows/Tests/badge.svg?branch=master&event=push)](https://github.com/OpenMined/PIR/actions?query=workflow%3ATests+branch%3Amaster+event%3Apush)
 ![License](https://img.shields.io/github/license/OpenMined/PIR)
 ![OpenCollective](https://img.shields.io/opencollective/all/openmined)
 
