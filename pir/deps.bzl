@@ -65,19 +65,17 @@ def pir_deps():
             sha256 = "34af2f15cf7367513b352bdcd2493ab14ce43692d2dcd9dfc499492966c64dcf",
             strip_prefix = "gflags-2.2.2",
             urls = [
-                "https://mirror.bazel.build/github.com/gflags/gflags/archive/v2.2.2.tar.gz",
                 "https://github.com/gflags/gflags/archive/v2.2.2.tar.gz",
             ],
         )
-
 
     if "com_microsoft_seal" not in native.existing_rules():
         http_archive(
             name = "com_microsoft_seal",
             build_file = "//third_party:seal.BUILD",
-            sha256 = "9dfb1482d0bade6c1c76f2aa06aca6203f98aadc4ad94ca0f316be916b45fbd5",
-            strip_prefix = "SEAL-3.5.1",
-            urls = ["https://github.com/microsoft/SEAL/archive/v3.5.1.tar.gz"],
+            sha256 = "ae987c9df02a0a887eeb96032f307781b945183d3433e54a0a6d59207f4b8143",
+            strip_prefix = "SEAL-3.5.5",
+            urls = ["https://github.com/microsoft/SEAL/archive/v3.5.5.tar.gz"],
         )
 
     rules_proto_dependencies()
