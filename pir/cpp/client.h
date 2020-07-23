@@ -52,15 +52,24 @@ class PIRClient {
       const std::vector<std::size_t>& /*indexes*/) const;
 
   /**
-   * Extracts server response
+   * Extracts database value from server response message. Needs the indices
+   * from the original request since multiple values may be packed into each
+   * reply ciphertext.
+   * @param[in] indexes Original indices when request was created.
+   * @param[in] response Server response.
+   * @returns List of resulting strings of DB values, or an error.
+   */
+  StatusOr<std::vector<std::string>> ProcessResponse(
+      const std::vector<std::size_t>& indexes, const Response& response) const;
+
+  /**
+   * Extracts server response as an integer encoded in the plaintext.
+   * Should only be used for testing.
    * @param[in] response Server output
    * @returns InvalidArgument if the decryption fails
    **/
-  StatusOr<std::vector<int64_t>> ProcessResponse(
+  StatusOr<std::vector<int64_t>> ProcessResponseInteger(
       const Response& response) const;
-
-  StatusOr<std::vector<std::string>> ProcessResponseString(
-      const std::vector<std::size_t>& indexes, const Response& response) const;
 
   PIRClient() = delete;
 

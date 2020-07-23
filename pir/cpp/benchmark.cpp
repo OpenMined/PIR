@@ -84,7 +84,7 @@ void BM_ServerProcessRequest(benchmark::State& state) {
 // Range is for the dbsize.
 BENCHMARK(BM_ServerProcessRequest)->RangeMultiplier(10)->Range(10, 1000);
 
-void BM_ClientProcessResponse(benchmark::State& state) {
+void BM_ClientProcessResponseInteger(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
   auto db = generateDB(dbsize);
 
@@ -100,7 +100,7 @@ void BM_ClientProcessResponse(benchmark::State& state) {
   int64_t elements_processed = 0;
 
   for (auto _ : state) {
-    auto out = client_->ProcessResponse(response).ValueOrDie();
+    auto out = client_->ProcessResponseInteger(response).ValueOrDie();
     ::benchmark::DoNotOptimize(out);
     elements_processed += dbsize;
   }
@@ -108,7 +108,9 @@ void BM_ClientProcessResponse(benchmark::State& state) {
       static_cast<double>(elements_processed), benchmark::Counter::kIsRate);
 }
 // Range is for the dbsize.
-BENCHMARK(BM_ClientProcessResponse)->RangeMultiplier(10)->Range(10, 1000);
+BENCHMARK(BM_ClientProcessResponseInteger)
+    ->RangeMultiplier(10)
+    ->Range(10, 1000);
 
 void BM_PayloadSize(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
@@ -134,7 +136,7 @@ void BM_PayloadSize(benchmark::State& state) {
     network_bytes += request.ByteSizeLong();
     auto response = server_->ProcessRequest(request).ValueOrDie();
     ::benchmark::DoNotOptimize(response);
-    auto out = client_->ProcessResponse(response).ValueOrDie();
+    auto out = client_->ProcessResponseInteger(response).ValueOrDie();
     ::benchmark::DoNotOptimize(out);
   }
   state.counters["NetworkBytes"] = benchmark::Counter(

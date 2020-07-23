@@ -83,7 +83,7 @@ TEST_P(PIRCorrectnessTest, TestCorrectness) {
   ASSIGN_OR_FAIL(auto request, client_->CreateRequest(desired_indices));
   ASSIGN_OR_FAIL(auto response, server_->ProcessRequest(request));
   ASSIGN_OR_FAIL(auto results,
-                 client_->ProcessResponseString(desired_indices, response));
+                 client_->ProcessResponse(desired_indices, response));
 
   ASSERT_EQ(results.size(), desired_indices.size());
   for (size_t i = 0; i < results.size(); ++i) {

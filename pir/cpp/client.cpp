@@ -143,7 +143,7 @@ Status PIRClient::createQueryFor(size_t desired_index,
   return Status::OK;
 }
 
-StatusOr<std::vector<int64_t>> PIRClient::ProcessResponse(
+StatusOr<std::vector<int64_t>> PIRClient::ProcessResponseInteger(
     const Response& response_proto) const {
   vector<int64_t> result;
   result.reserve(response_proto.reply_size());
@@ -163,7 +163,7 @@ StatusOr<std::vector<int64_t>> PIRClient::ProcessResponse(
   return result;
 }
 
-StatusOr<std::vector<string>> PIRClient::ProcessResponseString(
+StatusOr<std::vector<string>> PIRClient::ProcessResponse(
     const std::vector<std::size_t>& indexes,
     const Response& response_proto) const {
   if (indexes.size() != response_proto.reply_size()) {

@@ -263,7 +263,7 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT2) {
   }
 }
 
-TEST_F(PIRClientTest, TestProcessResponse) {
+TEST_F(PIRClientTest, TestProcessResponseInteger) {
   int64_t value = 987654321;
 
   // Create a fake reply.
@@ -275,12 +275,12 @@ TEST_F(PIRClientTest, TestProcessResponse) {
   Response response;
   SaveCiphertexts({ct}, response.add_reply());
 
-  ASSIGN_OR_FAIL(auto result, client_->ProcessResponse(response));
+  ASSIGN_OR_FAIL(auto result, client_->ProcessResponseInteger(response));
   ASSERT_EQ(result.size(), 1);
   ASSERT_EQ(result[0], value);
 }
 
-TEST_F(PIRClientTest, TestProcessResponseBatch) {
+TEST_F(PIRClientTest, TestProcessResponseIntegerBatch) {
   vector<int64_t> values = {1234, 2345};
 
   Response response;
@@ -292,12 +292,12 @@ TEST_F(PIRClientTest, TestProcessResponseBatch) {
 
     SaveCiphertexts(ct, response.add_reply());
   }
-  ASSIGN_OR_FAIL(auto result, client_->ProcessResponse(response));
+  ASSIGN_OR_FAIL(auto result, client_->ProcessResponseInteger(response));
   ASSERT_EQ(result.size(), 2);
   EXPECT_THAT(result, ElementsAreArray(values));
 }
 
-TEST_F(PIRClientTest, TestProcessResponseString) {
+TEST_F(PIRClientTest, TestProcessResponse) {
   constexpr size_t elem_size = 64;
   constexpr size_t pt_size = 7680;
   SetUpDB(1000, 1, elem_size);
@@ -317,12 +317,12 @@ TEST_F(PIRClientTest, TestProcessResponseString) {
   Response response;
   SaveCiphertexts({ct}, response.add_reply());
 
-  ASSIGN_OR_FAIL(auto result, client_->ProcessResponseString({777}, response));
+  ASSIGN_OR_FAIL(auto result, client_->ProcessResponse({777}, response));
   ASSERT_EQ(result.size(), 1);
   ASSERT_EQ(result[0], value.substr(3648, elem_size));
 }
 
-TEST_F(PIRClientTest, TestProcessResponseStringBatch) {
+TEST_F(PIRClientTest, TestProcessResponseBatch) {
   constexpr size_t db_size = 1000;
   constexpr size_t elem_size = 64;
   constexpr size_t pt_size = 7680;
@@ -348,7 +348,7 @@ TEST_F(PIRClientTest, TestProcessResponseStringBatch) {
   }
 
   ASSIGN_OR_FAIL(auto result,
-                 client_->ProcessResponseString({720, 777, 839}, response));
+                 client_->ProcessResponse({720, 777, 839}, response));
   ASSERT_THAT(result, ElementsAre(values[0].substr(0, elem_size),
                                   values[1].substr(3648, elem_size),
                                   values[2].substr(7616, elem_size)));

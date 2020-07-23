@@ -31,6 +31,12 @@ using private_join_and_compute::StatusOr;
 using std::shared_ptr;
 using std::vector;
 
+/**
+ * Representation of a PIR database, helpful for both server and client. Server
+ * uses this class to process responses by multiplying a selection vector
+ * against database values in multi-dimensional format, while the client uses it
+ * without loading the backing data to calculate indices and offsets.
+ */
 class PIRDatabase {
  public:
   /**
