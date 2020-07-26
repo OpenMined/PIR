@@ -17,8 +17,9 @@ using namespace ::testing;
 constexpr uint32_t ITEM_SIZE = 288;
 constexpr uint32_t DIMENSIONS = 2;
 constexpr uint32_t POLY_MOD_DEGREE = 8192;
-constexpr uint32_t PLAIN_MOD_BITS = 42;
+constexpr uint32_t PLAIN_MOD_BITS = 45;
 constexpr uint32_t BITS_PER_COEFF = 0;
+constexpr uint32_t QUERIES_PER_REQUEST = 1;
 
 using std::cout;
 using std::endl;
@@ -37,10 +38,14 @@ class PIRFixture : public benchmark::Fixture, public PIRTestingBase {
     ASSERT_THAT(server_, NotNull());
   }
 
-  uint32_t GenerateRandomIndex() {
+  vector<size_t> GenerateRandomIndices() {
     static auto prng =
         seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
-    return prng->generate() % (db_size_);
+    vector<size_t> result(QUERIES_PER_REQUEST, 0);
+    for (auto& i : result) {
+      i = prng->generate() % (db_size_);
+    }
+    return result;
   }
 
   unique_ptr<PIRClient> client_;
@@ -56,15 +61,16 @@ BENCHMARK_DEFINE_F(PIRFixture, SetupDb)(benchmark::State& st) {
 BENCHMARK_DEFINE_F(PIRFixture, ClientCreateRequest)(benchmark::State& st) {
   SetUpDb(st);
   for (auto _ : st) {
-    ASSIGN_OR_FAIL(auto request,
-                   client_->CreateRequest({GenerateRandomIndex()}));
+    auto indices = GenerateRandomIndices();
+    ASSIGN_OR_FAIL(auto request, client_->CreateRequest(indices));
     ::benchmark::DoNotOptimize(request);
   }
 }
 
 BENCHMARK_DEFINE_F(PIRFixture, ServerProcessRequest)(benchmark::State& st) {
   SetUpDb(st);
-  ASSIGN_OR_FAIL(auto request, client_->CreateRequest({GenerateRandomIndex()}));
+  auto indices = GenerateRandomIndices();
+  ASSIGN_OR_FAIL(auto request, client_->CreateRequest(indices));
   for (auto _ : st) {
     ASSIGN_OR_FAIL(auto response, server_->ProcessRequest(request));
     ::benchmark::DoNotOptimize(response);
@@ -73,16 +79,15 @@ BENCHMARK_DEFINE_F(PIRFixture, ServerProcessRequest)(benchmark::State& st) {
 
 BENCHMARK_DEFINE_F(PIRFixture, ClientProcessResponse)(benchmark::State& st) {
   SetUpDb(st);
-  vector<size_t> desired_indices = {GenerateRandomIndex()};
-  ASSIGN_OR_FAIL(auto request, client_->CreateRequest(desired_indices));
+  auto indices = GenerateRandomIndices();
+  ASSIGN_OR_FAIL(auto request, client_->CreateRequest(indices));
   ASSIGN_OR_FAIL(auto response, server_->ProcessRequest(request));
 
   for (auto _ : st) {
-    ASSIGN_OR_FAIL(auto results,
-                   client_->ProcessResponse(desired_indices, response));
-    ASSERT_EQ(results.size(), desired_indices.size());
+    ASSIGN_OR_FAIL(auto results, client_->ProcessResponse(indices, response));
+    ASSERT_EQ(results.size(), indices.size());
     for (size_t i = 0; i < results.size(); ++i) {
-      ASSERT_EQ(results[i], string_db_[desired_indices[i]]) << "i = " << i;
+      ASSERT_EQ(results[i], string_db_[indices[i]]) << "i = " << i;
     }
   }
 }
