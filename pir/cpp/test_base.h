@@ -62,15 +62,11 @@ class PIRTestingBase {
   size_t db_size_;
   vector<string> string_db_;
   vector<int64_t> int_db_;
-  EncryptionParameters encryption_params_;
   shared_ptr<SEALContext> seal_context_;
   shared_ptr<PIRParameters> pir_params_;
   shared_ptr<PIRDatabase> pir_db_;
-  GaloisKeys gal_keys_;
-  RelinKeys relin_keys_;
   unique_ptr<KeyGenerator> keygen_;
   unique_ptr<Encryptor> encryptor_;
-  unique_ptr<Evaluator> evaluator_;
   unique_ptr<Decryptor> decryptor_;
 };
 }  // namespace pir
