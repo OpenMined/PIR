@@ -79,7 +79,12 @@ cc_test(
 
 cc_binary(
     name = "benchmark",
-    srcs = ["benchmark.cpp", "status_asserts.h", "test_base.cpp", "test_base.h"],
+    srcs = [
+        "benchmark.cpp",
+        "status_asserts.h",
+        "test_base.cpp",
+        "test_base.h",
+    ],
     copts = PIR_DEFAULT_COPTS,
     includes = PIR_DEFAULT_INCLUDES,
     linkstatic = True,
