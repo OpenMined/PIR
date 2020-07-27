@@ -19,6 +19,8 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "pir/cpp/server.h"
+#include "pir/cpp/status_asserts.h"
+#include "pir/cpp/string_encoder.h"
 #include "pir/cpp/utils.h"
 
 namespace pir {
@@ -38,17 +40,18 @@ class PIRClientTest : public ::testing::Test {
  protected:
   void SetUp() { SetUpDB(100); }
 
-  void SetUpDB(size_t dbsize, size_t dimensions = 1) {
+  void SetUpDB(size_t dbsize, size_t dimensions = 1, size_t elem_size = 0) {
     db_size_ = dbsize;
-    encryption_params_ = GenerateEncryptionParams(POLY_MODULUS_DEGREE);
-    pir_params_ = CreatePIRParameters(dbsize, dimensions, encryption_params_)
-                      .ValueOrDie();
+    encryption_params_ = GenerateEncryptionParams(POLY_MODULUS_DEGREE, 16);
+    pir_params_ =
+        CreatePIRParameters(dbsize, elem_size, dimensions, encryption_params_)
+            .ValueOrDie();
     client_ = PIRClient::Create(pir_params_).ValueOrDie();
 
     ASSERT_TRUE(client_ != nullptr);
   }
 
-  PIRContext* Context() { return client_->context_.get(); }
+  const auto& Context() { return client_->context_; }
   std::shared_ptr<seal::Decryptor> Decryptor() { return client_->decryptor_; }
   std::shared_ptr<seal::Encryptor> Encryptor() { return client_->encryptor_; }
 
@@ -62,10 +65,10 @@ TEST_F(PIRClientTest, TestCreateRequest) {
   const size_t desired_index = 5;
   const vector<size_t> indices = {desired_index};
 
-  auto req_proto = client_->CreateRequest(indices).ValueOrDie();
+  ASSIGN_OR_FAIL(auto req_proto, client_->CreateRequest(indices));
   ASSERT_EQ(req_proto.query_size(), 1);
-  auto req = LoadCiphertexts(Context()->SEALContext(), req_proto.query(0))
-                 .ValueOrDie();
+  ASSIGN_OR_FAIL(auto req,
+                 LoadCiphertexts(Context()->SEALContext(), req_proto.query(0)));
 
   Plaintext pt;
   ASSERT_EQ(req.size(), 1);
@@ -92,11 +95,10 @@ TEST_F(PIRClientTest, TestCreateRequestD2) {
   ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols));
 
-  auto request_proto = client_->CreateRequest(indices).ValueOrDie();
+  ASSIGN_OR_FAIL(auto request_proto, client_->CreateRequest(indices));
   ASSERT_EQ(request_proto.query_size(), 1);
-  auto request =
-      LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
-          .ValueOrDie();
+  ASSIGN_OR_FAIL(auto request, LoadCiphertexts(Context()->SEALContext(),
+                                               request_proto.query(0)));
   Plaintext pt;
   ASSERT_EQ(request.size(), 1);
   EXPECT_THAT(request_proto.galois_keys(), Not(IsEmpty()));
@@ -131,11 +133,10 @@ TEST_F(PIRClientTest, TestCreateRequestD3) {
   ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols, num_depth));
 
-  auto request_proto = client_->CreateRequest(indices).ValueOrDie();
+  ASSIGN_OR_FAIL(auto request_proto, client_->CreateRequest(indices));
   ASSERT_EQ(request_proto.query_size(), 1);
-  auto request =
-      LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
-          .ValueOrDie();
+  ASSIGN_OR_FAIL(auto request, LoadCiphertexts(Context()->SEALContext(),
+                                               request_proto.query(0)));
   Plaintext pt;
   ASSERT_EQ(request.size(), 1);
   EXPECT_THAT(request_proto.galois_keys(), Not(IsEmpty()));
@@ -171,11 +172,10 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT1) {
   ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols));
 
-  auto request_proto = client_->CreateRequest(indices).ValueOrDie();
+  ASSIGN_OR_FAIL(auto request_proto, client_->CreateRequest(indices));
   ASSERT_EQ(request_proto.query_size(), 1);
-  auto request =
-      LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
-          .ValueOrDie();
+  ASSIGN_OR_FAIL(auto request, LoadCiphertexts(Context()->SEALContext(),
+                                               request_proto.query(0)));
   ASSERT_EQ(request.size(), 3);
   EXPECT_THAT(request_proto.galois_keys(), Not(IsEmpty()));
   EXPECT_THAT(request_proto.relin_keys(), Not(IsEmpty()));
@@ -222,11 +222,10 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT2) {
   ASSERT_THAT(Context()->Params()->dimensions(),
               ElementsAre(num_rows, num_cols));
 
-  auto request_proto = client_->CreateRequest(indices).ValueOrDie();
+  ASSIGN_OR_FAIL(auto request_proto, client_->CreateRequest(indices));
   ASSERT_EQ(request_proto.query_size(), 1);
-  auto request =
-      LoadCiphertexts(Context()->SEALContext(), request_proto.query(0))
-          .ValueOrDie();
+  ASSIGN_OR_FAIL(auto request, LoadCiphertexts(Context()->SEALContext(),
+                                               request_proto.query(0)));
   ASSERT_EQ(request.size(), 3);
   EXPECT_THAT(request_proto.galois_keys(), Not(IsEmpty()));
   EXPECT_THAT(request_proto.relin_keys(), Not(IsEmpty()));
@@ -264,10 +263,10 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT2) {
   }
 }
 
-TEST_F(PIRClientTest, TestProcessResponse) {
+TEST_F(PIRClientTest, TestProcessResponseInteger) {
   int64_t value = 987654321;
 
-  // Create a fake request.
+  // Create a fake reply.
   Plaintext pt;
   Context()->Encoder()->encode(value, pt);
   vector<Ciphertext> ct(1);
@@ -276,12 +275,12 @@ TEST_F(PIRClientTest, TestProcessResponse) {
   Response response;
   SaveCiphertexts({ct}, response.add_reply());
 
-  auto result = client_->ProcessResponse(response).ValueOrDie();
+  ASSIGN_OR_FAIL(auto result, client_->ProcessResponseInteger(response));
   ASSERT_EQ(result.size(), 1);
   ASSERT_EQ(result[0], value);
 }
 
-TEST_F(PIRClientTest, TestProcessResponseBatch) {
+TEST_F(PIRClientTest, TestProcessResponseIntegerBatch) {
   vector<int64_t> values = {1234, 2345};
 
   Response response;
@@ -293,9 +292,66 @@ TEST_F(PIRClientTest, TestProcessResponseBatch) {
 
     SaveCiphertexts(ct, response.add_reply());
   }
-  auto result = client_->ProcessResponse(response).ValueOrDie();
+  ASSIGN_OR_FAIL(auto result, client_->ProcessResponseInteger(response));
   ASSERT_EQ(result.size(), 2);
   EXPECT_THAT(result, ElementsAreArray(values));
+}
+
+TEST_F(PIRClientTest, TestProcessResponse) {
+  constexpr size_t elem_size = 64;
+  constexpr size_t pt_size = 7680;
+  SetUpDB(1000, 1, elem_size);
+  auto prng =
+      seal::UniformRandomGeneratorFactory::DefaultFactory()->create({99});
+  string value(pt_size, 0);
+  prng->generate(value.size(),
+                 reinterpret_cast<seal::SEAL_BYTE*>(value.data()));
+
+  // Create a fake reply.
+  StringEncoder encoder(Context()->SEALContext());
+  Plaintext pt;
+  encoder.encode(value, pt);
+  vector<Ciphertext> ct(1);
+  Encryptor()->encrypt(pt, ct[0]);
+
+  Response response;
+  SaveCiphertexts({ct}, response.add_reply());
+
+  ASSIGN_OR_FAIL(auto result, client_->ProcessResponse({777}, response));
+  ASSERT_EQ(result.size(), 1);
+  ASSERT_EQ(result[0], value.substr(3648, elem_size));
+}
+
+TEST_F(PIRClientTest, TestProcessResponseBatch) {
+  constexpr size_t db_size = 1000;
+  constexpr size_t elem_size = 64;
+  constexpr size_t pt_size = 7680;
+  SetUpDB(db_size, 1, elem_size);
+
+  auto prng =
+      seal::UniformRandomGeneratorFactory::DefaultFactory()->create({99});
+  vector<string> values(3, string(pt_size, 0));
+  for (size_t i = 0; i < 3; ++i) {
+    prng->generate(values[i].size(),
+                   reinterpret_cast<seal::SEAL_BYTE*>(values[i].data()));
+  }
+
+  StringEncoder encoder(Context()->SEALContext());
+  Response response;
+  for (auto& value : values) {
+    Plaintext pt;
+    encoder.encode(value, pt);
+    vector<Ciphertext> ct(1);
+    Encryptor()->encrypt(pt, ct[0]);
+
+    SaveCiphertexts(ct, response.add_reply());
+  }
+
+  ASSIGN_OR_FAIL(auto result,
+                 client_->ProcessResponse({720, 777, 839}, response));
+  ASSERT_THAT(result, ElementsAre(values[0].substr(0, elem_size),
+                                  values[1].substr(3648, elem_size),
+                                  values[2].substr(7616, elem_size)));
 }
 
 TEST_F(PIRClientTest, TestCreateRequest_InvalidIndex) {
@@ -316,19 +372,15 @@ TEST_P(CreateRequestTest, TestCreateRequest) {
   const auto poly_modulus_degree = encryption_params_.poly_modulus_degree();
   const auto plain_mod = encryption_params_.plain_modulus().value();
 
-  auto request_or = client_->CreateRequest(indices);
-  ASSERT_TRUE(request_or.ok())
-      << "Status is: " << request_or.status().ToString();
-
-  auto request = request_or.ValueOrDie();
+  ASSIGN_OR_FAIL(auto request, client_->CreateRequest(indices));
   ASSERT_EQ(request.query_size(), indices.size());
   EXPECT_THAT(request.galois_keys(), Not(IsEmpty()));
 
   auto m = get<2>(GetParam());
 
   for (size_t idx = 0; idx < indices.size(); ++idx) {
-    auto query = LoadCiphertexts(Context()->SEALContext(), request.query(idx))
-                     .ValueOrDie();
+    ASSIGN_OR_FAIL(auto query, LoadCiphertexts(Context()->SEALContext(),
+                                               request.query(idx)));
     ASSERT_EQ(query.size(), dbsize / poly_modulus_degree + 1);
     size_t desired_index = indices[idx];
 

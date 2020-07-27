@@ -59,14 +59,18 @@ EncryptionParameters GenerateEncryptionParams(uint32_t poly_mod_degree,
 
 /**
  * Helper function to create the PIRParameters
- * @param[in] the database size
- * @param[in] the encryption parameters
- * @param[in] the database dimensions
+ * @param[in] dbsize The number of individual items in the database.
+ * @param[in] bytes_per_item Size in bytes of each item in the database.
+ * @param[in] dimensions Number of dimensions in the database representation.
+ * @param[in] enc_params SEAL Encryption Parameters to be used.
+ * @param[in] bits_per_coeff If non-zero, number of bits to encode per plaintext
+ *    plaintext coefficient in the database.
  * @returns InvalidArgument if EncryptionParameters serialization fails.
  */
 StatusOr<std::shared_ptr<PIRParameters>> CreatePIRParameters(
-    size_t dbsize, size_t dimensions = 1,
-    EncryptionParameters enc_params = GenerateEncryptionParams());
+    size_t dbsize, size_t bytes_per_item, size_t dimensions = 1,
+    EncryptionParameters enc_params = GenerateEncryptionParams(),
+    size_t bits_per_coeff = 0);
 }  // namespace pir
 
 #endif  // PIR_PARAMETERS_H_

@@ -26,15 +26,32 @@
 
 namespace pir {
 
+using private_join_and_compute::Status;
 using private_join_and_compute::StatusOr;
 using std::shared_ptr;
 using std::vector;
 
+/**
+ * Representation of a PIR database, helpful for both server and client. Server
+ * uses this class to process responses by multiplying a selection vector
+ * against database values in multi-dimensional format, while the client uses it
+ * without loading the backing data to calculate indices and offsets.
+ */
 class PIRDatabase {
  public:
   /**
-   * Creates and returns a new PIR database instance.
-   * @param[in] db Database to load
+   * Creates and returns an empty PIR database with the params used to generate
+   * a context.
+   * @param[in] PIR parameters
+   **/
+  static StatusOr<shared_ptr<PIRDatabase>> Create(
+      shared_ptr<PIRParameters> params);
+
+  /**
+   * Shortcut to create and return a new PIR database instance using a vector of
+   *integers encoded one per database plaintext using IntegerEncoder. Only
+   *really used for testing, not intended for actual PIR use.
+   * @param[in] db Vector of integers to encode into database of plaintexts
    * @param[in] PIR parameters
    **/
   static StatusOr<shared_ptr<PIRDatabase>> Create(
@@ -42,12 +59,25 @@ class PIRDatabase {
       shared_ptr<PIRParameters> params);
 
   /**
-   * Creates and returns a new PIR database instance.
+   * Shortcut to create and return a new PIR database instance using the values
+   *given. Values are packed into the database as per the parameters given.
    * @param[in] db Database to load
    * @param[in] PIR parameters
    **/
   static StatusOr<shared_ptr<PIRDatabase>> Create(
       const vector<string>& /*database*/, shared_ptr<PIRParameters> params);
+
+  /**
+   * Populate the database plaintexts from a list of integers. Only really used
+   * for testing.
+   */
+  Status populate(const vector<std::int64_t>& /*database*/);
+
+  /**
+   * Populate the database plaintexts from a list of strings. Items must match
+   * the settings in the context or InvalidArgumentError will be returned.
+   */
+  Status populate(const vector<string>& /*database*/);
 
   /**
    * Multiplies the database represented as a multi-dimensional hypercube with
@@ -74,8 +104,14 @@ class PIRDatabase {
    * @param[in] index Index in the flat representation.
    * @returns Vector of indices.
    */
-  static vector<uint32_t> calculate_indices(const vector<uint32_t>& dims,
-                                            uint32_t index);
+  vector<uint32_t> calculate_indices(uint32_t index);
+
+  /**
+   * Calculate the offset of an item within a plaintext.
+   * @param[in] index Item index in the database
+   * @returns Offset in bytes from start of the plaintext that contains item.
+   */
+  size_t calculate_item_offset(uint32_t index);
 
   /**
    * Helper function to calculate the multi-dimensional representation of the
@@ -87,9 +123,8 @@ class PIRDatabase {
   static vector<uint32_t> calculate_dimensions(uint32_t db_size,
                                                uint32_t num_dimensions);
 
-  PIRDatabase(const vector<seal::Plaintext>& db,
-              std::unique_ptr<PIRContext> context)
-      : db_(db), context_(std::move(context)) {}
+  PIRDatabase(std::unique_ptr<PIRContext> context)
+      : context_(std::move(context)) {}
 
  private:
   vector<seal::Plaintext> db_;

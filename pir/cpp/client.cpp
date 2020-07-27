@@ -90,7 +90,7 @@ StatusOr<Request> PIRClient::CreateRequest(
 
 Status PIRClient::createQueryFor(size_t desired_index,
                                  vector<Ciphertext>& query) const {
-  if (desired_index >= context_->Params()->database_size()) {
+  if (desired_index >= context_->Params()->num_items()) {
     return InvalidArgumentError("invalid index " +
                                 std::to_string(desired_index));
   }
@@ -98,9 +98,10 @@ Status PIRClient::createQueryFor(size_t desired_index,
   const auto poly_modulus_degree =
       context_->EncryptionParams().poly_modulus_degree();
 
+  ASSIGN_OR_RETURN(auto pirdb, PIRDatabase::Create(context_->Params()));
   auto dims = std::vector<uint32_t>(context_->Params()->dimensions().begin(),
                                     context_->Params()->dimensions().end());
-  auto indices = PIRDatabase::calculate_indices(dims, desired_index);
+  auto indices = pirdb->calculate_indices(desired_index);
 
   const size_t dim_sum = context_->DimensionsSum();
 
@@ -142,7 +143,7 @@ Status PIRClient::createQueryFor(size_t desired_index,
   return Status::OK;
 }
 
-StatusOr<std::vector<int64_t>> PIRClient::ProcessResponse(
+StatusOr<std::vector<int64_t>> PIRClient::ProcessResponseInteger(
     const Response& response_proto) const {
   vector<int64_t> result;
   result.reserve(response_proto.reply_size());
@@ -162,23 +163,37 @@ StatusOr<std::vector<int64_t>> PIRClient::ProcessResponse(
   return result;
 }
 
-StatusOr<std::vector<string>> PIRClient::ProcessResponseString(
+StatusOr<std::vector<string>> PIRClient::ProcessResponse(
+    const std::vector<std::size_t>& indexes,
     const Response& response_proto) const {
+  if (indexes.size() != response_proto.reply_size()) {
+    return InvalidArgumentError(
+        "Number of indexes must match number of replies");
+  }
+
+  ASSIGN_OR_RETURN(auto pirdb, PIRDatabase::Create(context_->Params()));
+  StringEncoder encoder(context_->SEALContext());
+  if (context_->Params()->bits_per_coeff() > 0) {
+    encoder.set_bits_per_coeff(context_->Params()->bits_per_coeff());
+  }
   vector<string> result;
   result.reserve(response_proto.reply_size());
-  for (const auto& r : response_proto.reply()) {
-    ASSIGN_OR_RETURN(auto reply, LoadCiphertexts(context_->SEALContext(), r));
+  for (size_t i = 0; i < indexes.size(); ++i) {
+    ASSIGN_OR_RETURN(auto reply, LoadCiphertexts(context_->SEALContext(),
+                                                 response_proto.reply(i)));
     if (reply.size() != 1) {
       return InvalidArgumentError("Number of ciphertexts in reply must be 1");
     }
-    StringEncoder encoder(context_->SEALContext());
     seal::Plaintext plaintext;
     try {
       decryptor_->decrypt(reply[0], plaintext);
-      result.push_back(encoder.decode(plaintext));
     } catch (const std::exception& e) {
       return InternalError(e.what());
     }
+    ASSIGN_OR_RETURN(
+        auto v, encoder.decode(plaintext, context_->Params()->bytes_per_item(),
+                               pirdb->calculate_item_offset(indexes[i])));
+    result.push_back(v);
   }
   return result;
 }

@@ -17,6 +17,7 @@
 
 #include "pir/cpp/database.h"
 #include "pir/cpp/serialization.h"
+#include "pir/cpp/string_encoder.h"
 #include "pir/cpp/utils.h"
 #include "seal/seal.h"
 #include "util/canonical_errors.h"
@@ -54,14 +55,51 @@ EncryptionParameters GenerateEncryptionParams(
 }
 
 StatusOr<shared_ptr<PIRParameters>> CreatePIRParameters(
-    size_t dbsize, size_t dimensions, EncryptionParameters encParams) {
+    size_t dbsize, size_t bytes_per_item, size_t dimensions,
+    EncryptionParameters seal_params, size_t bits_per_coeff) {
+  // Make sure SEAL Parameter are valid
+  auto seal_context = seal::SEALContext::Create(seal_params);
+  if (!seal_context->parameters_set()) {
+    return InvalidArgumentError(
+        string("Error setting encryption parameters: ") +
+        seal_context->parameter_error_message());
+  }
+  StringEncoder encoder(seal_context);
+
   auto parameters = std::make_shared<PIRParameters>();
-  parameters->set_database_size(dbsize);
+  parameters->set_num_items(dbsize);
+
+  if (bits_per_coeff > 0) {
+    if (bits_per_coeff > encoder.bits_per_coeff()) {
+      return InvalidArgumentError("Bits per coefficient greater than max");
+    }
+    encoder.set_bits_per_coeff(bits_per_coeff);
+    parameters->set_bits_per_coeff(bits_per_coeff);
+  }
+
+  if (bytes_per_item > 0) {
+    parameters->set_bytes_per_item(bytes_per_item);
+    parameters->set_items_per_plaintext(
+        encoder.num_items_per_plaintext(bytes_per_item));
+    if (parameters->items_per_plaintext() <= 0) {
+      return InvalidArgumentError("Cannot fit an item within one plaintext");
+    }
+    size_t num_pt = dbsize / parameters->items_per_plaintext();
+    while (dbsize > num_pt * parameters->items_per_plaintext()) {
+      ++num_pt;
+    }
+    parameters->set_num_pt(num_pt);
+  } else {
+    parameters->set_bytes_per_item(encoder.max_bytes_per_plaintext());
+    parameters->set_items_per_plaintext(1);
+    parameters->set_num_pt(dbsize);
+  }
 
   RETURN_IF_ERROR(SEALSerialize<EncryptionParameters>(
-      encParams, parameters->mutable_encryption_parameters()));
+      seal_params, parameters->mutable_encryption_parameters()));
 
-  for (auto& dim : PIRDatabase::calculate_dimensions(dbsize, dimensions))
+  for (auto& dim :
+       PIRDatabase::calculate_dimensions(parameters->num_pt(), dimensions))
     parameters->add_dimensions(dim);
 
   return parameters;

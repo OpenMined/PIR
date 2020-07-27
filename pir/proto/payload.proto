@@ -43,10 +43,24 @@ message Response {
 
 // Private information retrieval setup parameters
 message PIRParameters {
-    // Number of items in the database
-    uint64 database_size = 1;
+    // Number of items in the database (NOT number of plaintexts)
+    uint64 num_items = 1;
+
+    // Number of plaintexts in the database
+    uint64 num_pt = 4;
+
     // Size of each dimension in the database representation
     repeated uint32 dimensions = 2;
+
     // Serialized homomorphic encryption parameters
     bytes encryption_parameters = 3;
+
+    // Number of bytes per database item
+    uint32 bytes_per_item = 5;
+
+    // Number of database items packed into each plaintext
+    uint32 items_per_plaintext = 6;
+
+    // Number of bits to pack into each plaintext coefficient
+    uint32 bits_per_coeff = 7;
 }

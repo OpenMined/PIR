@@ -39,17 +39,11 @@ PIRServer::PIRServer(std::unique_ptr<PIRContext> context,
 
 StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
     std::shared_ptr<PIRDatabase> db, shared_ptr<PIRParameters> params) {
-  if (params->database_size() != db->size()) {
+  if (params->num_pt() != db->size()) {
     return InvalidArgumentError("database size mismatch");
   }
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
   return absl::WrapUnique(new PIRServer(std::move(context), db));
-}
-
-StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
-    std::shared_ptr<PIRDatabase> db) {
-  ASSIGN_OR_RETURN(auto params, CreatePIRParameters(db->size()));
-  return PIRServer::Create(db, params);
 }
 
 StatusOr<Response> PIRServer::ProcessRequest(const Request& request) const {

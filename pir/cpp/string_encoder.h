@@ -21,13 +21,16 @@
 
 #include "seal/seal.h"
 #include "util/status.h"
+#include "util/statusor.h"
 
 namespace pir {
 
 using private_join_and_compute::Status;
+using private_join_and_compute::StatusOr;
 using seal::Plaintext;
 using std::shared_ptr;
 using std::string;
+using std::vector;
 
 class StringEncoder {
  public:
@@ -35,22 +38,73 @@ class StringEncoder {
   StringEncoder(shared_ptr<seal::SEALContext> context);
 
   /**
+   * Calculate the number of items that can be encoded into a single plaintext.
+   * @param[in] item_size Size of each item in database
+   * @returns Number of items per plaintext
+   */
+  size_t num_items_per_plaintext(size_t item_size);
+
+  /**
+   * Calculate the maximum number of bytes that can be encded in a single pt.
+   */
+  size_t max_bytes_per_plaintext();
+
+  /**
    * Encode a string of binary value into the destination using a
    * minimal amount of coefficients.
    * @param[in] value String to encode
-   * @param[in] destination Plaintext to populate with encoded value
+   * @param[out] destination Plaintext to populate with encoded value
+   * @returns Invalid argument if string is too big for plaintext polynomial
    */
   Status encode(const string& value, Plaintext& destination) const;
 
   /**
-   * Decode a plaintext assumed to be in packed form into a string.
+   * Encodes several strings into a plaintext using the
+   * minimal amount of coefficients.
+   * @param[in] v Iterator pointing to the start of values to encode
+   * @param[in] end End of the sequence of values to
+   * @param[out] destination Plaintext to populate with encoded value
+   * @returns Invalid argument if total string length is too big for plaintext
+   * polynomial
    */
-  string decode(const Plaintext& pt) const;
+  Status encode(vector<string>::const_iterator v,
+                const vector<string>::const_iterator end,
+                Plaintext& destination) const;
+
+  /**
+   * Decode a plaintext assumed to be in packed form into a string.
+   * @param[in] pt The plaintext value to decode from.
+   * @param[in] length The length in bytes of the string to decode. If not
+   *     provided or set to zero, decodes the values from all significant
+   * coefficients in plaintext polynomial.
+   * @param[in] offset Offset in bytes from the start of the plaintext from
+   *    which to decode.
+   * @returns String decoded or Error
+   */
+  StatusOr<string> decode(const Plaintext& pt, size_t length = 0,
+                          size_t offset = 0) const;
+
+  /**
+   * Allows overriding number of bits to pack per coefficient.
+   */
+  void set_bits_per_coeff(size_t bits_per_coeff) {
+    bits_per_coeff_ = bits_per_coeff;
+  }
+
+  /**
+   * Number of bits to use per coefficient.
+   */
+  size_t bits_per_coeff() { return bits_per_coeff_; }
 
  private:
   shared_ptr<seal::SEALContext> context_;
   size_t poly_modulus_degree_;
   size_t bits_per_coeff_;
+
+  // Helper to calculate the number of coefficients needed to encode a number of
+  // bytes of input in the current context, or InvalidArgumentError if the input
+  // is too long.
+  StatusOr<size_t> calc_num_coeff(size_t num_bytes) const;
 };
 
 }  // namespace pir

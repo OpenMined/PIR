@@ -7,7 +7,8 @@
 
 namespace pir {
 
-uint32_t dimensions = 2;
+constexpr std::size_t ITEM_SIZE = 0;
+constexpr uint32_t DIMENSIONS = 2;
 
 std::vector<std::int64_t> generateDB(std::size_t dbsize) {
   std::vector<std::int64_t> db(dbsize, 0);
@@ -22,7 +23,8 @@ void BM_DatabaseLoad(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
   auto db = generateDB(dbsize);
   int64_t elements_processed = 0;
-  auto params = CreatePIRParameters(db.size(), dimensions).ValueOrDie();
+  auto params =
+      CreatePIRParameters(db.size(), ITEM_SIZE, DIMENSIONS).ValueOrDie();
 
   for (auto _ : state) {
     auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
@@ -39,7 +41,8 @@ void BM_ClientCreateRequest(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
   auto db = generateDB(dbsize);
 
-  auto params = CreatePIRParameters(db.size(), dimensions).ValueOrDie();
+  auto params =
+      CreatePIRParameters(db.size(), ITEM_SIZE, DIMENSIONS).ValueOrDie();
   auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
   auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
 
@@ -63,7 +66,8 @@ void BM_ServerProcessRequest(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
   auto db = generateDB(dbsize);
 
-  auto params = CreatePIRParameters(db.size(), dimensions).ValueOrDie();
+  auto params =
+      CreatePIRParameters(db.size(), ITEM_SIZE, DIMENSIONS).ValueOrDie();
   auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
   auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
 
@@ -88,7 +92,8 @@ void BM_ClientProcessResponse(benchmark::State& state) {
   std::size_t dbsize = state.range(0);
   auto db = generateDB(dbsize);
 
-  auto params = CreatePIRParameters(db.size(), dimensions).ValueOrDie();
+  auto params =
+      CreatePIRParameters(db.size(), ITEM_SIZE, DIMENSIONS).ValueOrDie();
   auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
   auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
 
@@ -100,7 +105,7 @@ void BM_ClientProcessResponse(benchmark::State& state) {
   int64_t elements_processed = 0;
 
   for (auto _ : state) {
-    auto out = client_->ProcessResponse(response).ValueOrDie();
+    auto out = client_->ProcessResponseInteger(response).ValueOrDie();
     ::benchmark::DoNotOptimize(out);
     elements_processed += dbsize;
   }
