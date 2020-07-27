@@ -79,12 +79,18 @@ cc_test(
 
 cc_binary(
     name = "benchmark",
-    srcs = ["benchmark.cpp"],
+    srcs = [
+        "benchmark.cpp",
+        "status_asserts.h",
+        "test_base.cpp",
+        "test_base.h",
+    ],
     copts = PIR_DEFAULT_COPTS,
     includes = PIR_DEFAULT_INCLUDES,
     linkstatic = True,
     deps = [
         ":pir",
         "@com_google_benchmark//:benchmark_main",
+        "@com_google_googletest//:gtest",
     ],
 )

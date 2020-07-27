@@ -71,11 +71,17 @@ class PIRServerTest : public ::testing::Test, public PIRTestingBase {
     GenerateIntDB();
     SetUpSealTools();
 
+    gal_keys_ =
+        keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
+    relin_keys_ = keygen_->relin_keys_local();
+
     server_ = PIRServer::Create(pir_db_, pir_params_).ValueOrDie();
     ASSERT_THAT(server_, NotNull());
   }
 
   unique_ptr<PIRServer> server_;
+  GaloisKeys gal_keys_;
+  RelinKeys relin_keys_;
 };
 
 TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {

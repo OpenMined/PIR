@@ -43,10 +43,10 @@ void PIRTestingBase::SetUpParams(size_t db_size, size_t elem_size,
                                  uint32_t bits_per_coeff) {
   db_size_ = db_size;
 
-  encryption_params_ =
+  auto encryption_params =
       GenerateEncryptionParams(poly_modulus_degree, plain_mod_bit_size);
 
-  seal_context_ = seal::SEALContext::Create(encryption_params_);
+  seal_context_ = seal::SEALContext::Create(encryption_params);
   if (!seal_context_->parameters_set()) {
     FAIL() << "Error setting encryption parameters: "
            << seal_context_->parameter_error_message();
@@ -54,7 +54,7 @@ void PIRTestingBase::SetUpParams(size_t db_size, size_t elem_size,
 
   ASSIGN_OR_FAIL(pir_params_,
                  CreatePIRParameters(db_size, elem_size, dimensions,
-                                     encryption_params_, bits_per_coeff));
+                                     encryption_params, bits_per_coeff));
 }
 
 void PIRTestingBase::GenerateDB(uint32_t seed) {
@@ -77,11 +77,7 @@ void PIRTestingBase::GenerateIntDB(uint32_t seed) {
 
 void PIRTestingBase::SetUpSealTools() {
   keygen_ = make_unique<KeyGenerator>(seal_context_);
-  gal_keys_ =
-      keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
-  relin_keys_ = keygen_->relin_keys_local();
   encryptor_ = make_unique<Encryptor>(seal_context_, keygen_->public_key());
-  evaluator_ = make_unique<Evaluator>(seal_context_);
   decryptor_ = make_unique<Decryptor>(seal_context_, keygen_->secret_key());
 }
 

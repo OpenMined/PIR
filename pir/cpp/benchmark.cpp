@@ -1,120 +1,108 @@
 #include "benchmark/benchmark.h"
 
-#include <random>
+#include <iostream>
 
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 #include "pir/cpp/client.h"
 #include "pir/cpp/server.h"
+#include "pir/cpp/status_asserts.h"
+#include "pir/cpp/test_base.h"
+#include "seal/seal.h"
 
 namespace pir {
 
-constexpr std::size_t ITEM_SIZE = 0;
+using namespace ::testing;
+
+constexpr uint32_t ITEM_SIZE = 288;
 constexpr uint32_t DIMENSIONS = 2;
+constexpr uint32_t POLY_MOD_DEGREE = 8192;
+constexpr uint32_t PLAIN_MOD_BITS = 45;
+constexpr uint32_t BITS_PER_COEFF = 0;
+constexpr uint32_t QUERIES_PER_REQUEST = 1;
 
-std::vector<std::int64_t> generateDB(std::size_t dbsize) {
-  std::vector<std::int64_t> db(dbsize, 0);
+using std::cout;
+using std::endl;
 
-  std::random_device rd;
-  std::generate(db.begin(), db.end(), [&]() mutable { return rd(); });
+class PIRFixture : public benchmark::Fixture, public PIRTestingBase {
+ public:
+  void SetUpDb(const ::benchmark::State& state) {
+    SetUpParams(state.range(0), ITEM_SIZE, DIMENSIONS, POLY_MOD_DEGREE,
+                PLAIN_MOD_BITS, BITS_PER_COEFF);
+    GenerateDB();
+    SetUpSealTools();
 
-  return db;
-}
-
-void BM_DatabaseLoad(benchmark::State& state) {
-  std::size_t dbsize = state.range(0);
-  auto db = generateDB(dbsize);
-  int64_t elements_processed = 0;
-  auto params =
-      CreatePIRParameters(db.size(), ITEM_SIZE, DIMENSIONS).ValueOrDie();
-
-  for (auto _ : state) {
-    auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
-    ::benchmark::DoNotOptimize(pirdb);
-    elements_processed += dbsize;
+    client_ = PIRClient::Create(pir_params_).ValueOrDie();
+    server_ = PIRServer::Create(pir_db_, pir_params_).ValueOrDie();
+    ASSERT_THAT(client_, NotNull());
+    ASSERT_THAT(server_, NotNull());
   }
-  state.counters["ElementsProcessed"] = benchmark::Counter(
-      static_cast<double>(elements_processed), benchmark::Counter::kIsRate);
+
+  vector<size_t> GenerateRandomIndices() {
+    static auto prng =
+        seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
+    vector<size_t> result(QUERIES_PER_REQUEST, 0);
+    for (auto& i : result) {
+      i = prng->generate() % (db_size_);
+    }
+    return result;
+  }
+
+  unique_ptr<PIRClient> client_;
+  unique_ptr<PIRServer> server_;
+};
+
+BENCHMARK_DEFINE_F(PIRFixture, SetupDb)(benchmark::State& st) {
+  for (auto _ : st) {
+    SetUpDb(st);
+  }
 }
-// Range is for the dbsize.
-BENCHMARK(BM_DatabaseLoad)->RangeMultiplier(2)->Range(1 << 16, 1 << 16);
 
-void BM_ClientCreateRequest(benchmark::State& state) {
-  std::size_t dbsize = state.range(0);
-  auto db = generateDB(dbsize);
-
-  auto params =
-      CreatePIRParameters(db.size(), ITEM_SIZE, DIMENSIONS).ValueOrDie();
-  auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
-  auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
-
-  auto client_ = PIRClient::Create(params).ValueOrDie();
-  std::vector<size_t> indexes = {dbsize - 1};
-
-  int64_t elements_processed = 0;
-
-  for (auto _ : state) {
-    auto request = client_->CreateRequest(indexes).ValueOrDie();
+BENCHMARK_DEFINE_F(PIRFixture, ClientCreateRequest)(benchmark::State& st) {
+  SetUpDb(st);
+  for (auto _ : st) {
+    auto indices = GenerateRandomIndices();
+    ASSIGN_OR_FAIL(auto request, client_->CreateRequest(indices));
     ::benchmark::DoNotOptimize(request);
-    elements_processed += dbsize;
   }
-  state.counters["ElementsProcessed"] = benchmark::Counter(
-      static_cast<double>(elements_processed), benchmark::Counter::kIsRate);
 }
-// Range is for the dbsize.
-BENCHMARK(BM_ClientCreateRequest)->RangeMultiplier(2)->Range(1 << 16, 1 << 16);
 
-void BM_ServerProcessRequest(benchmark::State& state) {
-  std::size_t dbsize = state.range(0);
-  auto db = generateDB(dbsize);
-
-  auto params =
-      CreatePIRParameters(db.size(), ITEM_SIZE, DIMENSIONS).ValueOrDie();
-  auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
-  auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
-
-  auto client_ = PIRClient::Create(params).ValueOrDie();
-  std::vector<size_t> desiredIndex = {dbsize - 1};
-  auto request = client_->CreateRequest(desiredIndex).ValueOrDie();
-
-  int64_t elements_processed = 0;
-
-  for (auto _ : state) {
-    auto response = server_->ProcessRequest(request).ValueOrDie();
+BENCHMARK_DEFINE_F(PIRFixture, ServerProcessRequest)(benchmark::State& st) {
+  SetUpDb(st);
+  auto indices = GenerateRandomIndices();
+  ASSIGN_OR_FAIL(auto request, client_->CreateRequest(indices));
+  for (auto _ : st) {
+    ASSIGN_OR_FAIL(auto response, server_->ProcessRequest(request));
     ::benchmark::DoNotOptimize(response);
-    elements_processed += dbsize;
   }
-  state.counters["ElementsProcessed"] = benchmark::Counter(
-      static_cast<double>(elements_processed), benchmark::Counter::kIsRate);
 }
-// Range is for the dbsize.
-BENCHMARK(BM_ServerProcessRequest)->RangeMultiplier(2)->Range(1 << 16, 1 << 16);
 
-void BM_ClientProcessResponse(benchmark::State& state) {
-  std::size_t dbsize = state.range(0);
-  auto db = generateDB(dbsize);
+BENCHMARK_DEFINE_F(PIRFixture, ClientProcessResponse)(benchmark::State& st) {
+  SetUpDb(st);
+  auto indices = GenerateRandomIndices();
+  ASSIGN_OR_FAIL(auto request, client_->CreateRequest(indices));
+  ASSIGN_OR_FAIL(auto response, server_->ProcessRequest(request));
 
-  auto params =
-      CreatePIRParameters(db.size(), ITEM_SIZE, DIMENSIONS).ValueOrDie();
-  auto pirdb = PIRDatabase::Create(db, params).ValueOrDie();
-  auto server_ = PIRServer::Create(pirdb, params).ValueOrDie();
-
-  auto client_ = PIRClient::Create(params).ValueOrDie();
-  std::vector<size_t> desiredIndex = {dbsize - 1};
-  auto request = client_->CreateRequest(desiredIndex).ValueOrDie();
-  auto response = server_->ProcessRequest(request).ValueOrDie();
-
-  int64_t elements_processed = 0;
-
-  for (auto _ : state) {
-    auto out = client_->ProcessResponseInteger(response).ValueOrDie();
-    ::benchmark::DoNotOptimize(out);
-    elements_processed += dbsize;
+  for (auto _ : st) {
+    ASSIGN_OR_FAIL(auto results, client_->ProcessResponse(indices, response));
+    ASSERT_EQ(results.size(), indices.size());
+    for (size_t i = 0; i < results.size(); ++i) {
+      ASSERT_EQ(results[i], string_db_[indices[i]]) << "i = " << i;
+    }
   }
-  state.counters["ElementsProcessed"] = benchmark::Counter(
-      static_cast<double>(elements_processed), benchmark::Counter::kIsRate);
 }
-// Range is for the dbsize.
-BENCHMARK(BM_ClientProcessResponse)
+
+BENCHMARK_REGISTER_F(PIRFixture, SetupDb)
     ->RangeMultiplier(2)
-    ->Range(1 << 16, 1 << 16);
+    ->Range(1 << 8, 1 << 16);
+BENCHMARK_REGISTER_F(PIRFixture, ClientCreateRequest)
+    ->RangeMultiplier(2)
+    ->Range(1 << 8, 1 << 16);
+BENCHMARK_REGISTER_F(PIRFixture, ServerProcessRequest)
+    ->RangeMultiplier(2)
+    ->Range(1 << 8, 1 << 16);
+BENCHMARK_REGISTER_F(PIRFixture, ClientProcessResponse)
+    ->RangeMultiplier(2)
+    ->Range(1 << 8, 1 << 16);
 
 }  // namespace pir

@@ -66,7 +66,6 @@ class PIRCorrectnessTest : public ::testing::TestWithParam<
     SetUpParams(dbsize, elem_size, d, poly_modulus_degree, plain_mod_bits,
                 bits_per_coeff);
     GenerateDB();
-    SetUpSealTools();
 
     client_ = PIRClient::Create(pir_params_).ValueOrDie();
     server_ = PIRServer::Create(pir_db_, pir_params_).ValueOrDie();
