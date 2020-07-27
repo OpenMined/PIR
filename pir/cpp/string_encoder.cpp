@@ -132,7 +132,6 @@ StatusOr<string> StringEncoder::decode(const Plaintext& pt, size_t length,
   size_t coeff_bits =
       ((start_coeff_index + 1) * bits_per_coeff_) - (byte_offset * 8);
   if (coeff_bits <= 0) {
-    // ++start_coeff_index;
     coeff_bits = bits_per_coeff_;
   }
   if (length <= 0) {
