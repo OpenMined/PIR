@@ -9,7 +9,7 @@ filegroup(
 cmake_external(
    name = "seal",
    cmake_options = [
-        "-DSEAL_USE_CXX17=17",
+        "-DSEAL_USE_CXX17=ON",
         "-DSEAL_USE_INTRIN=ON",
         "-DSEAL_USE_MSGSL=OFF",
         "-DSEAL_USE_ZLIB=OFF",
