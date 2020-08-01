@@ -148,7 +148,7 @@ StatusOr<std::vector<int64_t>> PIRClient::ProcessResponseInteger(
   vector<int64_t> result;
   result.reserve(response_proto.reply_size());
   const auto poly_modulus_degree =
-    context_->EncryptionParams().poly_modulus_degree();
+      context_->EncryptionParams().poly_modulus_degree();
   seal::Plaintext plaintext(poly_modulus_degree, 0);
   for (const auto& r : response_proto.reply()) {
     ASSIGN_OR_RETURN(auto reply, LoadCiphertexts(context_->SEALContext(), r));
@@ -181,7 +181,7 @@ StatusOr<std::vector<string>> PIRClient::ProcessResponse(
   vector<string> result;
   result.reserve(response_proto.reply_size());
   const auto poly_modulus_degree =
-    context_->EncryptionParams().poly_modulus_degree();
+      context_->EncryptionParams().poly_modulus_degree();
   seal::Plaintext plaintext(poly_modulus_degree, 0);
   for (size_t i = 0; i < indexes.size(); ++i) {
     ASSIGN_OR_RETURN(auto reply, LoadCiphertexts(context_->SEALContext(),
