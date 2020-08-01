@@ -27,13 +27,18 @@ std::vector<uint32_t> generate_galois_elts(uint64_t N);
 
 // Utility function to find the next highest power of 2 of a given number.
 template <typename t>
-t next_power_two(t n) {
-  if (n == 0) return 1;
-  --n;
-  for (size_t i = 1; i < sizeof(n) * 8; i = i << 1) {
-    n |= n >> i;
+t next_power_two(t v) {
+  if (v < 1) {
+    return 1;
   }
-  return n + 1;
+  v--;
+  v |= v >> 1;
+  v |= v >> 2;
+  v |= v >> 4;
+  v |= v >> 8;
+  v |= v >> 16;
+  v++;
+  return v;
 }
 
 // Utility function to find the log base 2 of v rounded up.
