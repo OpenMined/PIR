@@ -107,8 +107,8 @@ Status PIRClient::createQueryFor(size_t desired_index,
 
   size_t offset = 0;
   query.resize(dim_sum / poly_modulus_degree + 1);
+  Plaintext pt(poly_modulus_degree);
   for (size_t c = 0; c < query.size(); ++c) {
-    Plaintext pt(poly_modulus_degree);
     pt.set_zero();
 
     while (!indices.empty()) {
@@ -147,12 +147,14 @@ StatusOr<std::vector<int64_t>> PIRClient::ProcessResponseInteger(
     const Response& response_proto) const {
   vector<int64_t> result;
   result.reserve(response_proto.reply_size());
+  const auto poly_modulus_degree =
+      context_->EncryptionParams().poly_modulus_degree();
+  seal::Plaintext plaintext(poly_modulus_degree, 0);
   for (const auto& r : response_proto.reply()) {
     ASSIGN_OR_RETURN(auto reply, LoadCiphertexts(context_->SEALContext(), r));
     if (reply.size() != 1) {
       return InvalidArgumentError("Number of ciphertexts in reply must be 1");
     }
-    seal::Plaintext plaintext;
     try {
       decryptor_->decrypt(reply[0], plaintext);
       result.push_back(context_->Encoder()->decode_int64(plaintext));
@@ -178,13 +180,16 @@ StatusOr<std::vector<string>> PIRClient::ProcessResponse(
   }
   vector<string> result;
   result.reserve(response_proto.reply_size());
+  const auto poly_modulus_degree =
+      context_->EncryptionParams().poly_modulus_degree();
+  seal::Plaintext plaintext(poly_modulus_degree, 0);
   for (size_t i = 0; i < indexes.size(); ++i) {
     ASSIGN_OR_RETURN(auto reply, LoadCiphertexts(context_->SEALContext(),
                                                  response_proto.reply(i)));
     if (reply.size() != 1) {
       return InvalidArgumentError("Number of ciphertexts in reply must be 1");
     }
-    seal::Plaintext plaintext;
+
     try {
       decryptor_->decrypt(reply[0], plaintext);
     } catch (const std::exception& e) {
