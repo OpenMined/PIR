@@ -56,20 +56,19 @@ Status SaveCiphertexts(const vector<Ciphertext>& ciphertexts,
   return Status::OK;
 }
 
-Status SaveRequest(const vector<vector<Ciphertext>>& cts,
-                   const GaloisKeys& galois_keys, Request* request) {
+Status SaveRequest(const vector<vector<Ciphertext>>& cts, Request* request) {
   for (const auto& ct : cts) {
     RETURN_IF_ERROR(SaveCiphertexts(ct, request->add_query()));
   }
-  RETURN_IF_ERROR(
-      SEALSerialize<GaloisKeys>(galois_keys, request->mutable_galois_keys()));
   return Status::OK;
 }
 
 Status SaveRequest(const vector<vector<Ciphertext>>& cts,
                    const seal::GaloisKeys& galois_keys,
                    const seal::RelinKeys& relin_keys, Request* request) {
-  RETURN_IF_ERROR(SaveRequest(cts, galois_keys, request));
+  RETURN_IF_ERROR(SaveRequest(cts, request));
+  RETURN_IF_ERROR(
+      SEALSerialize<GaloisKeys>(galois_keys, request->mutable_galois_keys()));
   RETURN_IF_ERROR(
       SEALSerialize<RelinKeys>(relin_keys, request->mutable_relin_keys()));
   return Status::OK;

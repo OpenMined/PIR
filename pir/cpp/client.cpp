@@ -46,11 +46,14 @@ Status PIRClient::initialize() {
         std::make_shared<seal::Encryptor>(sealctx, keygen_->public_key());
     decryptor_ =
         std::make_shared<seal::Decryptor>(sealctx, keygen_->secret_key());
-    auto gal_keys = keygen_->galois_keys_local(generate_galois_elts(
+    auto gal_keys = keygen_->galois_keys(generate_galois_elts(
         context_->EncryptionParams().poly_modulus_degree()));
-    gal_keys_ = absl::WrapUnique(new GaloisKeys(std::move(gal_keys)));
     auto relin_keys = keygen_->relin_keys_local();
-    relin_keys_ = absl::WrapUnique(new RelinKeys(std::move(relin_keys)));
+    request_proto_ = std::make_unique<Request>();
+    RETURN_IF_ERROR(
+        SEALSerialize<>(gal_keys, request_proto_->mutable_galois_keys()));
+    RETURN_IF_ERROR(
+        SEALSerialize<>(relin_keys, request_proto_->mutable_relin_keys()));
   } catch (const std::exception& ex) {
     return InternalError(ex.what());
   }
@@ -83,9 +86,8 @@ StatusOr<Request> PIRClient::CreateRequest(
     RETURN_IF_ERROR(createQueryFor(indexes[i], queries[i]));
   }
 
-  Request request_proto;
-  RETURN_IF_ERROR(
-      SaveRequest(queries, *gal_keys_, *relin_keys_, &request_proto));
+  Request request_proto(*request_proto_);
+  RETURN_IF_ERROR(SaveRequest(queries, &request_proto));
   return request_proto;
 }
 

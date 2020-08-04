@@ -85,8 +85,7 @@ class PIRClient {
   std::unique_ptr<seal::KeyGenerator> keygen_;
   std::shared_ptr<seal::Encryptor> encryptor_;
   std::shared_ptr<seal::Decryptor> decryptor_;
-  std::unique_ptr<seal::GaloisKeys> gal_keys_;
-  std::unique_ptr<seal::RelinKeys> relin_keys_;
+  std::unique_ptr<Request> request_proto_;
 };
 
 }  // namespace pir
