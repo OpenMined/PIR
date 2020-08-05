@@ -21,6 +21,8 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "pir/cpp/parameters.h"
+#include "pir/cpp/status_asserts.h"
+#include "pir/cpp/string_encoder.h"
 
 namespace pir {
 namespace {
@@ -36,6 +38,14 @@ using namespace ::testing;
 
 constexpr size_t POLY_MODULUS_DEGREE = 4096;
 
+string generate_string(size_t size) {
+  static auto prng =
+      seal::UniformRandomGeneratorFactory::DefaultFactory()->create({42});
+  string result(size, 0);
+  prng->generate(size, reinterpret_cast<seal::SEAL_BYTE*>(result.data()));
+  return result;
+}
+
 class CiphertextReencoderTest : public ::testing::Test {
  protected:
   void SetUp() {
@@ -48,13 +58,17 @@ class CiphertextReencoderTest : public ::testing::Test {
     keygen_ = make_unique<KeyGenerator>(seal_context_);
     encryptor_ = make_unique<Encryptor>(seal_context_, keygen_->public_key());
     decryptor_ = make_unique<Decryptor>(seal_context_, keygen_->secret_key());
-    encoder_ = make_unique<IntegerEncoder>(seal_context_);
+    encoder_ = make_unique<StringEncoder>(seal_context_);
     ct_reencoder_ = CiphertextReencoder::Create(seal_context_).ValueOrDie();
+  }
+
+  string GenerateSampleString() {
+    return generate_string(encoder_->max_bytes_per_plaintext());
   }
 
   shared_ptr<SEALContext> seal_context_;
   unique_ptr<CiphertextReencoder> ct_reencoder_;
-  unique_ptr<IntegerEncoder> encoder_;
+  unique_ptr<StringEncoder> encoder_;
   unique_ptr<KeyGenerator> keygen_;
   unique_ptr<Encryptor> encryptor_;
   unique_ptr<Decryptor> decryptor_;
@@ -65,7 +79,7 @@ TEST_F(CiphertextReencoderTest, TextExpansionRatio) {
 }
 
 TEST_F(CiphertextReencoderTest, TestEncodeDecode) {
-  uint64_t value = 0xDEADBEEF12345678LL;
+  string value = GenerateSampleString();
   Plaintext pt;
   encoder_->encode(value, pt);
   Ciphertext ct;
@@ -76,12 +90,12 @@ TEST_F(CiphertextReencoderTest, TestEncodeDecode) {
   Plaintext result_pt;
   decryptor_->decrypt(result_ct, result_pt);
   EXPECT_EQ(result_pt, pt);
-  auto result = encoder_->decode_uint64(result_pt);
+  ASSIGN_OR_FAIL(auto result, encoder_->decode(result_pt));
   EXPECT_EQ(result, value);
 }
 
 TEST_F(CiphertextReencoderTest, TestEncryptDecrypt) {
-  uint64_t value = 0xDEADBEEF12345678LL;
+  string value = GenerateSampleString();
   Plaintext pt;
   encoder_->encode(value, pt);
   Ciphertext ct;
@@ -103,12 +117,12 @@ TEST_F(CiphertextReencoderTest, TestEncryptDecrypt) {
   Plaintext result_pt;
   decryptor_->decrypt(result_ct, result_pt);
   EXPECT_EQ(result_pt, pt);
-  auto result = encoder_->decode_uint64(result_pt);
+  ASSIGN_OR_FAIL(auto result, encoder_->decode(result_pt));
   EXPECT_EQ(result, value);
 }
 
 TEST_F(CiphertextReencoderTest, TestMultOneEnc) {
-  uint64_t value = 0xDEADBEEF12345678LL;
+  string value = GenerateSampleString();
   Plaintext pt;
   encoder_->encode(value, pt);
   Ciphertext ct;
@@ -135,8 +149,7 @@ TEST_F(CiphertextReencoderTest, TestMultOneEnc) {
   auto result_ct = ct_reencoder_->Decode(pts);
   Plaintext result_pt;
   decryptor_->decrypt(result_ct, result_pt);
-  // EXPECT_EQ(result_pt, pt);
-  auto result = encoder_->decode_uint64(result_pt);
+  ASSIGN_OR_FAIL(auto result, encoder_->decode(result_pt));
   EXPECT_EQ(result, value);
 }
 
