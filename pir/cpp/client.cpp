@@ -48,7 +48,7 @@ Status PIRClient::initialize() {
         std::make_shared<seal::Decryptor>(sealctx, keygen_->secret_key());
     auto gal_keys = keygen_->galois_keys(generate_galois_elts(
         context_->EncryptionParams().poly_modulus_degree()));
-    auto relin_keys = keygen_->relin_keys_local();
+    auto relin_keys = keygen_->relin_keys();
     request_proto_ = std::make_unique<Request>();
     RETURN_IF_ERROR(
         SEALSerialize<>(gal_keys, request_proto_->mutable_galois_keys()));

@@ -54,7 +54,7 @@ Status SaveCiphertexts(const vector<Ciphertext>& buff, Ciphertexts* output);
 
 /**
  * Shortcut to save response data to a protocol buffer based on a list of
- * Ciphertexts. It is assumed that Galois keys will added elsewhere.
+ * Ciphertexts. It is assumed that Galois keys will be added elsewhere.
  * @param[in] cts The list of Ciphertexts in the query.
  * @param[out] request Point to the request protocol buffer to fill in.
  * @returns InvalidArgument if the encoding fails.
