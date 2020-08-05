@@ -20,6 +20,7 @@
 #include <string>
 
 #include "pir/cpp/context.h"
+#include "pir/cpp/database.h"
 #include "pir/cpp/serialization.h"
 #include "util/statusor.h"
 
@@ -75,13 +76,16 @@ class PIRClient {
 
  private:
   PIRClient(std::unique_ptr<PIRContext>);
+  Status initialize();
   Status createQueryFor(size_t desired_index, vector<Ciphertext>& query) const;
 
   std::unique_ptr<PIRContext> context_;
+  std::shared_ptr<PIRDatabase> db_;
 
   std::unique_ptr<seal::KeyGenerator> keygen_;
   std::shared_ptr<seal::Encryptor> encryptor_;
   std::shared_ptr<seal::Decryptor> decryptor_;
+  std::unique_ptr<Request> request_proto_;
 };
 
 }  // namespace pir

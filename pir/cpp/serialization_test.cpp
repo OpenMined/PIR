@@ -118,26 +118,15 @@ TEST_F(PIRSerializationTest, TestRequestSerialization_Shortcut) {
   vector<Ciphertext> ct(1);
   encryptor_->encrypt(pt, ct[0]);
 
-  auto keygen_ = make_unique<KeyGenerator>(context_->SEALContext());
-  auto elts = generate_galois_elts(DEFAULT_POLY_MODULUS_DEGREE);
-  GaloisKeys gal_keys = keygen_->galois_keys_local(elts);
-
   Request request_proto;
-  SaveRequest({ct}, gal_keys, &request_proto);
+  SaveRequest({ct}, &request_proto);
 
   ASSIGN_OR_FAIL(auto request, LoadCiphertexts(context_->SEALContext(),
                                                request_proto.query(0)));
   ASSERT_EQ(request.size(), 1);
   decryptor_->decrypt(request[0], reloaded_pt);
 
-  ASSIGN_OR_FAIL(auto gal_keys_post,
-                 SEALDeserialize<GaloisKeys>(context_->SEALContext(),
-                                             request_proto.galois_keys()));
-  for (const auto& e : elts) {
-    // Can't really test equality of the keys, so just check that they exists.
-    ASSERT_TRUE(gal_keys_post.has_key(e));
-  }
-
+  ASSERT_THAT(request_proto.galois_keys(), testing::IsEmpty());
   ASSERT_THAT(request_proto.relin_keys(), testing::IsEmpty());
 }
 

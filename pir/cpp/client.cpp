@@ -35,19 +35,37 @@ using ::seal::Plaintext;
 using ::seal::RelinKeys;
 
 PIRClient::PIRClient(std::unique_ptr<PIRContext> context)
-    : context_(std::move(context)) {
-  auto sealctx = context_->SEALContext();
-  keygen_ = std::make_unique<seal::KeyGenerator>(sealctx);
-  encryptor_ =
-      std::make_shared<seal::Encryptor>(sealctx, keygen_->public_key());
-  decryptor_ =
-      std::make_shared<seal::Decryptor>(sealctx, keygen_->secret_key());
+    : context_(std::move(context)) {}
+
+Status PIRClient::initialize() {
+  ASSIGN_OR_RETURN(db_, PIRDatabase::Create(context_->Params()));
+  try {
+    auto sealctx = context_->SEALContext();
+    keygen_ = std::make_unique<seal::KeyGenerator>(sealctx);
+    encryptor_ =
+        std::make_shared<seal::Encryptor>(sealctx, keygen_->public_key());
+    decryptor_ =
+        std::make_shared<seal::Decryptor>(sealctx, keygen_->secret_key());
+    auto gal_keys = keygen_->galois_keys(generate_galois_elts(
+        context_->EncryptionParams().poly_modulus_degree()));
+    auto relin_keys = keygen_->relin_keys();
+    request_proto_ = std::make_unique<Request>();
+    RETURN_IF_ERROR(
+        SEALSerialize<>(gal_keys, request_proto_->mutable_galois_keys()));
+    RETURN_IF_ERROR(
+        SEALSerialize<>(relin_keys, request_proto_->mutable_relin_keys()));
+  } catch (const std::exception& ex) {
+    return InternalError(ex.what());
+  }
+  return Status::OK;
 }
 
 StatusOr<std::unique_ptr<PIRClient>> PIRClient::Create(
     shared_ptr<PIRParameters> params) {
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
-  return absl::WrapUnique(new PIRClient(std::move(context)));
+  auto client = absl::WrapUnique(new PIRClient(std::move(context)));
+  RETURN_IF_ERROR(client->initialize());
+  return client;
 }
 
 StatusOr<uint64_t> InvertMod(uint64_t m, const seal::Modulus& mod) {
@@ -63,28 +81,13 @@ StatusOr<uint64_t> InvertMod(uint64_t m, const seal::Modulus& mod) {
 
 StatusOr<Request> PIRClient::CreateRequest(
     const std::vector<std::size_t>& indexes) const {
-  const auto poly_modulus_degree =
-      context_->EncryptionParams().poly_modulus_degree();
-
   vector<vector<Ciphertext>> queries(indexes.size());
-
   for (size_t i = 0; i < indexes.size(); ++i) {
     RETURN_IF_ERROR(createQueryFor(indexes[i], queries[i]));
   }
 
-  GaloisKeys gal_keys;
-  RelinKeys relin_keys;
-  try {
-    gal_keys =
-        keygen_->galois_keys_local(generate_galois_elts(poly_modulus_degree));
-    relin_keys = keygen_->relin_keys_local();
-  } catch (const std::exception& e) {
-    return InternalError(e.what());
-  }
-
-  Request request_proto;
-  RETURN_IF_ERROR(SaveRequest(queries, gal_keys, relin_keys, &request_proto));
-
+  Request request_proto(*request_proto_);
+  RETURN_IF_ERROR(SaveRequest(queries, &request_proto));
   return request_proto;
 }
 
@@ -98,10 +101,9 @@ Status PIRClient::createQueryFor(size_t desired_index,
   const auto poly_modulus_degree =
       context_->EncryptionParams().poly_modulus_degree();
 
-  ASSIGN_OR_RETURN(auto pirdb, PIRDatabase::Create(context_->Params()));
   auto dims = std::vector<uint32_t>(context_->Params()->dimensions().begin(),
                                     context_->Params()->dimensions().end());
-  auto indices = pirdb->calculate_indices(desired_index);
+  auto indices = db_->calculate_indices(desired_index);
 
   const size_t dim_sum = context_->DimensionsSum();
 
@@ -173,7 +175,6 @@ StatusOr<std::vector<string>> PIRClient::ProcessResponse(
         "Number of indexes must match number of replies");
   }
 
-  ASSIGN_OR_RETURN(auto pirdb, PIRDatabase::Create(context_->Params()));
   StringEncoder encoder(context_->SEALContext());
   if (context_->Params()->bits_per_coeff() > 0) {
     encoder.set_bits_per_coeff(context_->Params()->bits_per_coeff());
@@ -197,7 +198,7 @@ StatusOr<std::vector<string>> PIRClient::ProcessResponse(
     }
     ASSIGN_OR_RETURN(
         auto v, encoder.decode(plaintext, context_->Params()->bytes_per_item(),
-                               pirdb->calculate_item_offset(indexes[i])));
+                               db_->calculate_item_offset(indexes[i])));
     result.push_back(v);
   }
   return result;
