@@ -38,21 +38,37 @@ class CiphertextReencoder {
   uint32_t ExpansionRatio() const;
 
   /**
-   * Reencode a ciphertext as a set of Plaintexts.
-   * @param[in] ct Ciphertext to reencode
-   * @returns Vector of plaintexts created by decomposing CT
+   * Reencode a ciphertext as a set of plaintexts.
+   * @param[in] ct Ciphertext to reencode.
+   * @returns Vector of plaintexts created by decomposing CT.
    */
   vector<Plaintext> Encode(const Ciphertext& ct);
 
   /**
+   * Reencode a set of ciphertext as a set of plaintexts.
+   * @param[in] cts Vector of ciphertexts to reencode.
+   * @returns Vector of vectors of plaintexts created by decomposing cts.
+   */
+  vector<vector<Plaintext>> Encode(const vector<Ciphertext>& cts);
+
+  /**
    * Recompose a ciphertext from a set of plaintexts.
-   * @param[in] pts Vector of plaintexts to decode
-   * @returns Ciphertext recomposed from plaintexts
+   * @param[in] pts Vector of plaintexts to decode.
+   * @returns Ciphertext recomposed from plaintexts.
    */
   Ciphertext Decode(const vector<Plaintext>& pts);
 
+  /**
+   * Recompose a set of ciphertexts from a set of plaintext sets.
+   * @param[in] pts Vector of vectors of plaintexts to decode.
+   * @returns Vector of ciphertexts recomposed from plaintexts vectors.
+   */
+  vector<Ciphertext> Decode(const vector<vector<Plaintext>>& pts);
+
  private:
   CiphertextReencoder(shared_ptr<SEALContext> context) : context_(context) {}
+
+  void Encode(const Ciphertext& ct, vector<Plaintext>::iterator pt_iter);
 
   shared_ptr<SEALContext> context_;
 };

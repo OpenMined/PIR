@@ -94,6 +94,35 @@ TEST_F(CiphertextReencoderTest, TestEncodeDecode) {
   EXPECT_EQ(result, value);
 }
 
+TEST_F(CiphertextReencoderTest, TestEncodeDecodeMultiple) {
+  constexpr size_t num_values = 5;
+  vector<string> values(num_values);
+  vector<Plaintext> pts(num_values);
+  vector<Ciphertext> cts(num_values);
+  for (size_t i = 0; i < num_values; ++i) {
+    values[i] = GenerateSampleString();
+    encoder_->encode(values[i], pts[i]);
+    encryptor_->encrypt(pts[i], cts[i]);
+  }
+  auto pt_decomp_vector = ct_reencoder_->Encode(cts);
+  ASSERT_EQ(pt_decomp_vector.size(), num_values);
+  for (size_t i = 0; i < num_values; ++i) {
+    ASSERT_EQ(pt_decomp_vector[i].size(),
+              cts[i].size() * ct_reencoder_->ExpansionRatio());
+  }
+
+  auto result_cts = ct_reencoder_->Decode(pt_decomp_vector);
+  ASSERT_EQ(result_cts.size(), cts.size());
+  for (size_t i = 0; i < num_values; ++i) {
+    ASSERT_EQ(result_cts[i].size(), cts[i].size());
+    Plaintext result_pt;
+    decryptor_->decrypt(result_cts[i], result_pt);
+    EXPECT_EQ(result_pt, pts[i]);
+    ASSIGN_OR_FAIL(auto result, encoder_->decode(result_pt));
+    EXPECT_EQ(result, values[i]);
+  }
+}
+
 TEST_F(CiphertextReencoderTest, TestEncryptDecrypt) {
   string value = GenerateSampleString();
   Plaintext pt;

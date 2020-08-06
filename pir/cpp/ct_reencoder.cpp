@@ -73,6 +73,15 @@ vector<Plaintext> CiphertextReencoder::Encode(const Ciphertext& ct) {
   return result;
 }
 
+vector<vector<Plaintext>> CiphertextReencoder::Encode(
+    const vector<Ciphertext>& cts) {
+  vector<vector<Plaintext>> results(cts.size());
+  for (size_t i = 0; i < cts.size(); ++i) {
+    results[i] = Encode(cts[i]);
+  }
+  return results;
+}
+
 Ciphertext CiphertextReencoder::Decode(const vector<Plaintext>& pts) {
   const auto params = context_->first_context_data()->parms();
   const uint32_t pt_bits_per_coeff = log2(params.plain_modulus().value());
@@ -108,6 +117,15 @@ Ciphertext CiphertextReencoder::Decode(const vector<Plaintext>& pts) {
     }
   }
   return ct;
+}
+
+vector<Ciphertext> CiphertextReencoder::Decode(
+    const vector<vector<Plaintext>>& pts) {
+  vector<Ciphertext> results(pts.size());
+  for (size_t i = 0; i < pts.size(); ++i) {
+    results[i] = Decode(pts[i]);
+  }
+  return results;
 }
 
 }  // namespace pir
