@@ -186,15 +186,15 @@ Status PIRServer::processQuery(const Ciphertexts& query_proto,
   ASSIGN_OR_RETURN(auto selection_vector,
                    oblivious_expansion(query, dim_sum, galois_keys));
 
-  seal::Ciphertext result(context_->SEALContext());
+  vector<seal::Ciphertext> results;
   if (relin_keys) {
-    ASSIGN_OR_RETURN(result,
+    ASSIGN_OR_RETURN(results,
                      db_->multiply(selection_vector, &relin_keys.value()));
   } else {
-    ASSIGN_OR_RETURN(result, db_->multiply(selection_vector));
+    ASSIGN_OR_RETURN(results, db_->multiply(selection_vector));
   }
 
-  RETURN_IF_ERROR(SaveCiphertexts(vector<seal::Ciphertext>{result}, output));
+  RETURN_IF_ERROR(SaveCiphertexts(results, output));
 
   return Status::OK;
 }

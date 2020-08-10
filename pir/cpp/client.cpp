@@ -16,6 +16,7 @@
 #include "pir/cpp/client.h"
 
 #include "absl/memory/memory.h"
+#include "pir/cpp/ct_reencoder.h"
 #include "pir/cpp/database.h"
 #include "pir/cpp/string_encoder.h"
 #include "pir/cpp/utils.h"
@@ -149,17 +150,10 @@ StatusOr<std::vector<int64_t>> PIRClient::ProcessResponseInteger(
     const Response& response_proto) const {
   vector<int64_t> result;
   result.reserve(response_proto.reply_size());
-  const auto poly_modulus_degree =
-      context_->EncryptionParams().poly_modulus_degree();
-  seal::Plaintext plaintext(poly_modulus_degree, 0);
   for (const auto& r : response_proto.reply()) {
-    ASSIGN_OR_RETURN(auto reply, LoadCiphertexts(context_->SEALContext(), r));
-    if (reply.size() != 1) {
-      return InvalidArgumentError("Number of ciphertexts in reply must be 1");
-    }
+    ASSIGN_OR_RETURN(auto result_pt, ProcessReply(r));
     try {
-      decryptor_->decrypt(reply[0], plaintext);
-      result.push_back(context_->Encoder()->decode_int64(plaintext));
+      result.push_back(context_->Encoder()->decode_int64(result_pt));
     } catch (const std::exception& e) {
       return InternalError(e.what());
     }
@@ -181,26 +175,53 @@ StatusOr<std::vector<string>> PIRClient::ProcessResponse(
   }
   vector<string> result;
   result.reserve(response_proto.reply_size());
-  const auto poly_modulus_degree =
-      context_->EncryptionParams().poly_modulus_degree();
-  seal::Plaintext plaintext(poly_modulus_degree, 0);
-  for (size_t i = 0; i < indexes.size(); ++i) {
-    ASSIGN_OR_RETURN(auto reply, LoadCiphertexts(context_->SEALContext(),
-                                                 response_proto.reply(i)));
-    if (reply.size() != 1) {
-      return InvalidArgumentError("Number of ciphertexts in reply must be 1");
-    }
 
-    try {
-      decryptor_->decrypt(reply[0], plaintext);
-    } catch (const std::exception& e) {
-      return InternalError(e.what());
-    }
+  for (size_t i = 0; i < indexes.size(); ++i) {
+    ASSIGN_OR_RETURN(auto result_pt, ProcessReply(response_proto.reply(i)));
+
     ASSIGN_OR_RETURN(
-        auto v, encoder.decode(plaintext, context_->Params()->bytes_per_item(),
+        auto v, encoder.decode(result_pt, context_->Params()->bytes_per_item(),
                                db_->calculate_item_offset(indexes[i])));
     result.push_back(v);
   }
   return result;
+}
+
+StatusOr<Plaintext> PIRClient::ProcessReply(
+    const Ciphertexts& reply_proto) const {
+  ASSIGN_OR_RETURN(auto ct_reencoder,
+                   CiphertextReencoder::Create(context_->SEALContext()));
+  // TODO: this should use the original CT size
+  const size_t exp_ratio = ct_reencoder->ExpansionRatio() * 2;
+  const size_t num_dims = context_->Params()->dimensions_size();
+  const size_t num_ct_per_reply = ipow(exp_ratio, num_dims - 1);
+
+  ASSIGN_OR_RETURN(auto reply_cts,
+                   LoadCiphertexts(context_->SEALContext(), reply_proto));
+  if (reply_cts.size() != num_ct_per_reply) {
+    return InvalidArgumentError(
+        "Number of ciphertexts in reply does not match expected");
+  }
+  vector<Plaintext> reply_pts;
+
+  for (size_t d = 0; d < num_dims; ++d) {
+    reply_pts.resize(reply_cts.size());
+    try {
+      for (size_t i = 0; i < reply_cts.size(); ++i) {
+        decryptor_->decrypt(reply_cts[i], reply_pts[i]);
+      }
+    } catch (const std::exception& e) {
+      return InternalError(e.what());
+    }
+
+    if (reply_pts.size() <= 1) break;
+
+    reply_cts.resize(reply_cts.size() / exp_ratio);
+    for (size_t i = 0; i < reply_cts.size(); ++i) {
+      reply_cts[i] = ct_reencoder->Decode(reply_pts.begin() + i * exp_ratio, 2);
+    }
+  }
+
+  return reply_pts[0];
 }
 }  // namespace pir

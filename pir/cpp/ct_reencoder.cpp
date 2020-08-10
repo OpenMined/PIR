@@ -73,36 +73,35 @@ vector<Plaintext> CiphertextReencoder::Encode(const Ciphertext& ct) {
   return result;
 }
 
-vector<vector<Plaintext>> CiphertextReencoder::Encode(
-    const vector<Ciphertext>& cts) {
-  vector<vector<Plaintext>> results(cts.size());
-  for (size_t i = 0; i < cts.size(); ++i) {
-    results[i] = Encode(cts[i]);
-  }
-  return results;
+Ciphertext CiphertextReencoder::Decode(const vector<Plaintext>& pts) {
+  return Decode(pts.begin(), pts.size() / ExpansionRatio());
 }
 
-Ciphertext CiphertextReencoder::Decode(const vector<Plaintext>& pts) {
+Ciphertext CiphertextReencoder::Decode(
+    vector<Plaintext>::const_iterator pt_iter, const size_t ct_poly_count) {
   const auto params = context_->first_context_data()->parms();
   const uint32_t pt_bits_per_coeff = log2(params.plain_modulus().value());
   const auto coeff_count = params.poly_modulus_degree();
   const auto coeff_mod_count = params.coeff_modulus().size();
-  const size_t ct_poly_count = pts.size() / ExpansionRatio();
+  // size_t pt_count = 0;
   // TODO: should check here if numbers match
 
   Ciphertext ct(context_);
   ct.resize(ct_poly_count);
-  auto pt_iter = pts.begin();
   for (size_t poly_index = 0; poly_index < ct_poly_count; ++poly_index) {
     for (size_t coeff_mod_index = 0; coeff_mod_index < coeff_mod_count;
          ++coeff_mod_index) {
+      // std::cout << "coeff mod index " << coeff_mod_index << std::endl;
       const double coeff_bit_size =
           log2(params.coeff_modulus()[coeff_mod_index].value());
       const size_t local_expansion_ratio =
           ceil(coeff_bit_size / pt_bits_per_coeff);
       size_t shift = 0;
       for (size_t i = 0; i < local_expansion_ratio; ++i) {
-        for (size_t c = 0; c < coeff_count; ++c) {
+        //   std::cout << "PT count " << pt_count++ << " size "
+        //             << pt_iter->coeff_count();
+        for (size_t c = 0; c < pt_iter->coeff_count(); ++c) {
+          // std::cout << c << " = " << (*pt_iter)[c] << ", ";
           if (shift == 0) {
             ct.data(poly_index)[coeff_mod_index * coeff_count + c] =
                 (*pt_iter)[c];
@@ -111,21 +110,13 @@ Ciphertext CiphertextReencoder::Decode(const vector<Plaintext>& pts) {
                 ((*pt_iter)[c] << shift);
           }
         }
+        // std::cout << " done." << std::endl;
         ++pt_iter;
         shift += pt_bits_per_coeff;
       }
     }
   }
   return ct;
-}
-
-vector<Ciphertext> CiphertextReencoder::Decode(
-    const vector<vector<Plaintext>>& pts) {
-  vector<Ciphertext> results(pts.size());
-  for (size_t i = 0; i < pts.size(); ++i) {
-    results[i] = Decode(pts[i]);
-  }
-  return results;
 }
 
 }  // namespace pir

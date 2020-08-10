@@ -86,6 +86,8 @@ class PIRClient {
   std::shared_ptr<seal::Encryptor> encryptor_;
   std::shared_ptr<seal::Decryptor> decryptor_;
   std::unique_ptr<Request> request_proto_;
+
+  StatusOr<seal::Plaintext> ProcessReply(const Ciphertexts& reply_proto) const;
 };
 
 }  // namespace pir

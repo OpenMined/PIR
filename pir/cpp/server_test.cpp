@@ -23,6 +23,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "pir/cpp/client.h"
+#include "pir/cpp/ct_reencoder.h"
 #include "pir/cpp/status_asserts.h"
 #include "pir/cpp/test_base.h"
 #include "pir/cpp/utils.h"
@@ -198,12 +199,18 @@ TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
 TEST_F(PIRServerTest, TestProcessRequest_2Dim) {
   SetUpDB(82, 2);
   const size_t desired_index = 42;
+
+  uint64_t m_inv;
+  ASSERT_TRUE(seal::util::try_invert_uint_mod(
+      next_power_two(server_->Context()->DimensionsSum()),
+      server_->Context()->EncryptionParams().plain_modulus().value(), m_inv));
+
   Plaintext pt(POLY_MODULUS_DEGREE);
   pt.set_zero();
   // select 4th row
-  pt[4] = 1;
+  pt[4] = m_inv;
   // select 6th column (after 10-item selection vector for rows)
-  pt[16] = 1;
+  pt[16] = m_inv;
 
   vector<Ciphertext> query(1);
   encryptor_->encrypt(pt, query[0]);
@@ -211,19 +218,24 @@ TEST_F(PIRServerTest, TestProcessRequest_2Dim) {
   Request request_proto;
   SaveRequest({query}, gal_keys_, relin_keys_, &request_proto);
 
-  ASSIGN_OR_FAIL(auto result_raw, server_->ProcessRequest(request_proto));
-  ASSERT_EQ(result_raw.reply_size(), 1);
-  ASSIGN_OR_FAIL(auto result, LoadCiphertexts(server_->Context()->SEALContext(),
-                                              result_raw.reply(0)));
-  ASSERT_THAT(result, SizeIs(1));
-  EXPECT_THAT(result[0].size(), Eq(2))
-      << "Ciphertext larger than expected. Were relin keys used?";
+  ASSIGN_OR_FAIL(auto response, server_->ProcessRequest(request_proto));
+  ASSERT_EQ(response.reply_size(), 1);
+  ASSIGN_OR_FAIL(auto reply, LoadCiphertexts(server_->Context()->SEALContext(),
+                                             response.reply(0)));
 
+  ASSIGN_OR_FAIL(auto ct_reencoder, CiphertextReencoder::Create(
+                                        server_->Context()->SEALContext()));
+  ASSERT_THAT(reply, SizeIs(ct_reencoder->ExpansionRatio() * query[0].size()));
+  vector<Plaintext> reply_pts(reply.size());
+  for (size_t i = 0; i < reply_pts.size(); ++i) {
+    decryptor_->decrypt(reply[i], reply_pts[i]);
+  }
+  auto result_ct = ct_reencoder->Decode(reply_pts);
+  EXPECT_EQ(result_ct.size(), query[0].size());
   Plaintext result_pt;
-  decryptor_->decrypt(result[0], result_pt);
+  decryptor_->decrypt(result_ct, result_pt);
   auto encoder = server_->Context()->Encoder();
-  ASSERT_THAT(encoder->decode_int64(result_pt),
-              Eq(int_db_[desired_index] * 32 * 32));
+  ASSERT_THAT(encoder->decode_int64(result_pt), Eq(int_db_[desired_index]));
 }
 
 class SubstituteOperatorTest

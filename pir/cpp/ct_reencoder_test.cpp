@@ -94,33 +94,44 @@ TEST_F(CiphertextReencoderTest, TestEncodeDecode) {
   EXPECT_EQ(result, value);
 }
 
-TEST_F(CiphertextReencoderTest, TestEncodeDecodeMultiple) {
-  constexpr size_t num_values = 5;
-  vector<string> values(num_values);
-  vector<Plaintext> pts(num_values);
-  vector<Ciphertext> cts(num_values);
-  for (size_t i = 0; i < num_values; ++i) {
-    values[i] = GenerateSampleString();
-    encoder_->encode(values[i], pts[i]);
-    encryptor_->encrypt(pts[i], cts[i]);
+TEST_F(CiphertextReencoderTest, TestRecursion) {
+  string value = GenerateSampleString();
+  Plaintext pt;
+  encoder_->encode(value, pt);
+
+  // level 1
+  Ciphertext ct;
+  encryptor_->encrypt(pt, ct);
+  auto pt_lvl_1 = ct_reencoder_->Encode(ct);
+  size_t exp_ratio = ct.size() * ct_reencoder_->ExpansionRatio();
+  ASSERT_EQ(pt_lvl_1.size(), exp_ratio);
+
+  // level 2
+  vector<Plaintext> pt_lvl_2;
+  pt_lvl_2.reserve(pt_lvl_1.size() * exp_ratio);
+  for (size_t i = 0; i < pt_lvl_1.size(); ++i) {
+    Ciphertext ct;
+    encryptor_->encrypt(pt_lvl_1[i], ct);
+    auto pts = ct_reencoder_->Encode(ct);
+    pt_lvl_2.insert(pt_lvl_2.end(), pts.begin(), pts.end());
   }
-  auto pt_decomp_vector = ct_reencoder_->Encode(cts);
-  ASSERT_EQ(pt_decomp_vector.size(), num_values);
-  for (size_t i = 0; i < num_values; ++i) {
-    ASSERT_EQ(pt_decomp_vector[i].size(),
-              cts[i].size() * ct_reencoder_->ExpansionRatio());
+  ASSERT_EQ(pt_lvl_2.size(), exp_ratio * exp_ratio);
+
+  // decode level 2
+  vector<Plaintext> result_pt_lvl_1(exp_ratio);
+  for (size_t i = 0; i < exp_ratio; ++i) {
+    auto result_ct =
+        ct_reencoder_->Decode(pt_lvl_2.begin() + (i * exp_ratio), ct.size());
+    decryptor_->decrypt(result_ct, result_pt_lvl_1[i]);
   }
 
-  auto result_cts = ct_reencoder_->Decode(pt_decomp_vector);
-  ASSERT_EQ(result_cts.size(), cts.size());
-  for (size_t i = 0; i < num_values; ++i) {
-    ASSERT_EQ(result_cts[i].size(), cts[i].size());
-    Plaintext result_pt;
-    decryptor_->decrypt(result_cts[i], result_pt);
-    EXPECT_EQ(result_pt, pts[i]);
-    ASSIGN_OR_FAIL(auto result, encoder_->decode(result_pt));
-    EXPECT_EQ(result, values[i]);
-  }
+  // decode level 1
+  auto result_ct = ct_reencoder_->Decode(result_pt_lvl_1);
+  Plaintext result_pt;
+  decryptor_->decrypt(result_ct, result_pt);
+  EXPECT_EQ(result_pt, pt);
+  ASSIGN_OR_FAIL(auto result, encoder_->decode(result_pt));
+  EXPECT_EQ(result, value);
 }
 
 TEST_F(CiphertextReencoderTest, TestEncryptDecrypt) {
