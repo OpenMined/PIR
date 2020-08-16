@@ -130,7 +130,8 @@ class DatabaseMultiplier {
         selection_vector_(selection_vector),
         evaluator_(evaluator),
         ct_reencoder_(std::move(ct_reencoder)),
-        exp_ratio_(ct_reencoder_->ExpansionRatio()),
+        exp_ratio_(ct_reencoder_ == nullptr ? 1
+                                            : ct_reencoder_->ExpansionRatio()),
         relin_keys_(relin_keys),
         decryptor_(decryptor) {}
 
@@ -185,17 +186,33 @@ class DatabaseMultiplier {
                      depth + 1);
         print_noise(depth, "recurse", lower_result[0], i);
 
-        // TODO: check that all CT are size 2
-        temp_ct.resize(lower_result.size() * exp_ratio_ * 2);
-        auto temp_ct_it = temp_ct.begin();
-        for (const auto& ct : lower_result) {
-          auto pt_decomp = ct_reencoder_->Encode(ct);
-          size_t k = 0;
-          for (const auto& pt : pt_decomp) {
-            evaluator_->multiply_plain(*(selection_vector_it + i), pt,
-                                       *temp_ct_it);
-            print_noise(depth, "mult", *temp_ct_it, k++);
-            ++temp_ct_it;
+        if (ct_reencoder_ == nullptr) {
+          std::cout << "Starting multiply, lower result size "
+                    << lower_result.size() << std::endl;
+          temp_ct.resize(1);
+          evaluator_->multiply(lower_result[0], *(selection_vector_it + i),
+                               temp_ct[0]);
+          print_noise(depth, "mult", temp_ct[0], i);
+
+          if (relin_keys_ != nullptr) {
+            evaluator_->relinearize_inplace(temp_ct[0], *relin_keys_);
+            print_noise(depth, "relin", temp_ct[0], i);
+          }
+
+        } else {
+          std::cout << "Starting CT decomp" << std::endl;
+          // TODO: check that all CT are size 2
+          temp_ct.resize(lower_result.size() * exp_ratio_ * 2);
+          auto temp_ct_it = temp_ct.begin();
+          for (const auto& ct : lower_result) {
+            auto pt_decomp = ct_reencoder_->Encode(ct);
+            size_t k = 0;
+            for (const auto& pt : pt_decomp) {
+              evaluator_->multiply_plain(*(selection_vector_it + i), pt,
+                                         *temp_ct_it);
+              print_noise(depth, "mult", *temp_ct_it, k++);
+              ++temp_ct_it;
+            }
           }
         }
       }
@@ -257,8 +274,11 @@ StatusOr<vector<Ciphertext>> PIRDatabase::multiply(
         "Selection vector size does not match dimensions");
   }
 
-  ASSIGN_OR_RETURN(auto ct_reencoder,
-                   CiphertextReencoder::Create(context_->SEALContext()));
+  unique_ptr<CiphertextReencoder> ct_reencoder = nullptr;
+  if (!context_->Params()->use_ciphertext_multiplication()) {
+    ASSIGN_OR_RETURN(ct_reencoder,
+                     CiphertextReencoder::Create(context_->SEALContext()));
+  }
 
   try {
     DatabaseMultiplier dbm(db_, selection_vector, context_->Evaluator(),
