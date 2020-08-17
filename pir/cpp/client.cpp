@@ -189,6 +189,37 @@ StatusOr<std::vector<string>> PIRClient::ProcessResponse(
 
 StatusOr<Plaintext> PIRClient::ProcessReply(
     const Ciphertexts& reply_proto) const {
+  if (context_->Params()->use_ciphertext_multiplication()) {
+    return ProcessReplyCiphertextMult(reply_proto);
+  } else {
+    return ProcessReplyCiphertextDecomp(reply_proto);
+  }
+}
+
+StatusOr<Plaintext> PIRClient::ProcessReplyCiphertextMult(
+    const Ciphertexts& reply_proto) const {
+  ASSIGN_OR_RETURN(auto reply_cts,
+                   LoadCiphertexts(context_->SEALContext(), reply_proto));
+  if (reply_cts.size() != 1) {
+    return InvalidArgumentError(
+        "Number of ciphertexts in reply must be 1 when using CT multiplcation");
+  }
+
+  const auto poly_modulus_degree =
+      context_->EncryptionParams().poly_modulus_degree();
+  seal::Plaintext pt(poly_modulus_degree, 0);
+
+  try {
+    decryptor_->decrypt(reply_cts[0], pt);
+  } catch (const std::exception& e) {
+    return InternalError(e.what());
+  }
+
+  return pt;
+}
+
+StatusOr<Plaintext> PIRClient::ProcessReplyCiphertextDecomp(
+    const Ciphertexts& reply_proto) const {
   ASSIGN_OR_RETURN(auto ct_reencoder,
                    CiphertextReencoder::Create(context_->SEALContext()));
   // TODO: this should use the original CT size

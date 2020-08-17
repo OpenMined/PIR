@@ -88,6 +88,10 @@ class PIRClient {
   std::unique_ptr<Request> request_proto_;
 
   StatusOr<seal::Plaintext> ProcessReply(const Ciphertexts& reply_proto) const;
+  StatusOr<seal::Plaintext> ProcessReplyCiphertextMult(
+      const Ciphertexts& reply_proto) const;
+  StatusOr<seal::Plaintext> ProcessReplyCiphertextDecomp(
+      const Ciphertexts& reply_proto) const;
 };
 
 }  // namespace pir

@@ -42,11 +42,13 @@ class PIRClientTest : public ::testing::Test {
  protected:
   void SetUp() { SetUpDB(100); }
 
-  void SetUpDB(size_t dbsize, size_t dimensions = 1, size_t elem_size = 0) {
+  void SetUpDB(size_t dbsize, size_t dimensions = 1, size_t elem_size = 0,
+               bool use_ciphertext_multiplication = false) {
     db_size_ = dbsize;
     encryption_params_ = GenerateEncryptionParams(POLY_MODULUS_DEGREE, 16);
     pir_params_ =
-        CreatePIRParameters(dbsize, elem_size, dimensions, encryption_params_)
+        CreatePIRParameters(dbsize, elem_size, dimensions, encryption_params_,
+                            use_ciphertext_multiplication)
             .ValueOrDie();
     client_ = PIRClient::Create(pir_params_).ValueOrDie();
 
@@ -352,7 +354,7 @@ class ProcessResponseTest
       public testing::WithParamInterface<tuple<
           size_t, size_t, size_t, size_t, vector<size_t>, vector<size_t>>> {
  protected:
-  void SetUp() {
+  void SetUp(bool use_ciphertext_multiplication) {
     const auto dbsize = get<0>(GetParam());
     d_ = get<1>(GetParam());
     elem_size_ = get<2>(GetParam());
@@ -361,7 +363,7 @@ class ProcessResponseTest
     result_offsets_ = get<5>(GetParam());
     ASSERT_EQ(desired_indices_.size(), result_offsets_.size());
 
-    SetUpDB(dbsize, d_, elem_size_);
+    SetUpDB(dbsize, d_, elem_size_, use_ciphertext_multiplication);
 
     prng_ = seal::UniformRandomGeneratorFactory::DefaultFactory()->create({99});
 
@@ -397,7 +399,8 @@ class ProcessResponseTest
   unique_ptr<CiphertextReencoder> ct_reencoder_;
 };
 
-TEST_P(ProcessResponseTest, TestProcessResponseBatch) {
+TEST_P(ProcessResponseTest, TestProcessResponse) {
+  SetUp(false);
   vector<string> values(desired_indices_.size(), string(pt_size_, 0));
   for (size_t i = 0; i < values.size(); ++i) {
     prng_->generate(values[i].size(),
@@ -424,7 +427,36 @@ TEST_P(ProcessResponseTest, TestProcessResponseBatch) {
   }
 }
 
+TEST_P(ProcessResponseTest, TestProcessResponseCTMultiply) {
+  SetUp(true);
+  vector<string> values(desired_indices_.size(), string(pt_size_, 0));
+  for (size_t i = 0; i < values.size(); ++i) {
+    prng_->generate(values[i].size(),
+                    reinterpret_cast<seal::SEAL_BYTE*>(values[i].data()));
+  }
+
+  StringEncoder encoder(Context()->SEALContext());
+  Response response;
+  for (auto& value : values) {
+    Plaintext pt;
+    encoder.encode(value, pt);
+    Ciphertext ct;
+    Encryptor()->encrypt(pt, ct);
+    SaveCiphertexts({ct}, response.add_reply());
+  }
+
+  ASSIGN_OR_FAIL(auto result,
+                 client_->ProcessResponse(desired_indices_, response));
+
+  ASSERT_EQ(result.size(), values.size());
+  for (size_t i = 0; i < result.size(); ++i) {
+    EXPECT_EQ(result[i], values[i].substr(result_offsets_[i], elem_size_))
+        << "i = " << i;
+  }
+}
+
 TEST_P(ProcessResponseTest, TestProcessResponseInteger) {
+  SetUp(false);
   vector<int64_t> values(desired_indices_.size());
   for (size_t i = 0; i < values.size(); ++i) {
     prng_->generate(sizeof(values[i]),
@@ -437,7 +469,32 @@ TEST_P(ProcessResponseTest, TestProcessResponseInteger) {
     Context()->Encoder()->encode(value, pt);
     Ciphertext ct;
     Encryptor()->encrypt(pt, ct);
-    SaveCiphertexts(DecompCT(ct), response.add_reply());
+    auto decomp_cts = DecompCT(ct);
+    SaveCiphertexts(decomp_cts, response.add_reply());
+  }
+
+  ASSIGN_OR_FAIL(auto result, client_->ProcessResponseInteger(response));
+  ASSERT_EQ(result.size(), values.size());
+  for (size_t i = 0; i < result.size(); ++i) {
+    ASSERT_EQ(result[i], values[i]);
+  }
+}
+
+TEST_P(ProcessResponseTest, TestProcessResponseIntegerCTMultiply) {
+  SetUp(true);
+  vector<int64_t> values(desired_indices_.size());
+  for (size_t i = 0; i < values.size(); ++i) {
+    prng_->generate(sizeof(values[i]),
+                    reinterpret_cast<seal::SEAL_BYTE*>(&values[i]));
+  }
+
+  Response response;
+  for (auto& value : values) {
+    Plaintext pt;
+    Context()->Encoder()->encode(value, pt);
+    Ciphertext ct;
+    Encryptor()->encrypt(pt, ct);
+    SaveCiphertexts({ct}, response.add_reply());
   }
 
   ASSIGN_OR_FAIL(auto result, client_->ProcessResponseInteger(response));
