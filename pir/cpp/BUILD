@@ -24,10 +24,10 @@ cc_library(
     name = "pir",
     srcs = [
         "client.cpp",
-        "ct_reencoder.cpp",
-        "ct_reencoder.h",
         "context.cpp",
         "context.h",
+        "ct_reencoder.cpp",
+        "ct_reencoder.h",
         "database.cpp",
         "database.h",
         "parameters.cpp",
