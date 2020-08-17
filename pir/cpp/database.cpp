@@ -187,8 +187,6 @@ class DatabaseMultiplier {
         print_noise(depth, "recurse", lower_result[0], i);
 
         if (ct_reencoder_ == nullptr) {
-          std::cout << "Starting multiply, lower result size "
-                    << lower_result.size() << std::endl;
           temp_ct.resize(1);
           evaluator_->multiply(lower_result[0], *(selection_vector_it + i),
                                temp_ct[0]);
@@ -200,7 +198,6 @@ class DatabaseMultiplier {
           }
 
         } else {
-          std::cout << "Starting CT decomp" << std::endl;
           // TODO: check that all CT are size 2
           temp_ct.resize(lower_result.size() * exp_ratio_ * 2);
           auto temp_ct_it = temp_ct.begin();
