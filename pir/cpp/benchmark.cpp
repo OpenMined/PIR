@@ -14,10 +14,11 @@ namespace pir {
 
 using namespace ::testing;
 
+constexpr bool USE_CIPHERTEXT_MULTIPLICATION = true;
 constexpr uint32_t ITEM_SIZE = 288;
 constexpr uint32_t DIMENSIONS = 2;
-constexpr uint32_t POLY_MOD_DEGREE = 8192;
-constexpr uint32_t PLAIN_MOD_BITS = 45;
+constexpr uint32_t POLY_MOD_DEGREE = 4096;
+constexpr uint32_t PLAIN_MOD_BITS = 24;
 constexpr uint32_t BITS_PER_COEFF = 0;
 constexpr uint32_t QUERIES_PER_REQUEST = 1;
 
@@ -28,7 +29,7 @@ class PIRFixture : public benchmark::Fixture, public PIRTestingBase {
  public:
   void SetUpDb(const ::benchmark::State& state) {
     SetUpParams(state.range(0), ITEM_SIZE, DIMENSIONS, POLY_MOD_DEGREE,
-                PLAIN_MOD_BITS, BITS_PER_COEFF);
+                PLAIN_MOD_BITS, BITS_PER_COEFF, USE_CIPHERTEXT_MULTIPLICATION);
     GenerateDB();
     SetUpSealTools();
 
