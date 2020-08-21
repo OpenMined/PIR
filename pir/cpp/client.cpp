@@ -202,7 +202,8 @@ StatusOr<Plaintext> PIRClient::ProcessReplyCiphertextMult(
                    LoadCiphertexts(context_->SEALContext(), reply_proto));
   if (reply_cts.size() != 1) {
     return InvalidArgumentError(
-        "Number of ciphertexts in reply must be 1 when using CT multiplcation");
+        "Number of ciphertexts in reply must be 1 when using CT "
+        "multiplication");
   }
 
   const auto poly_modulus_degree =
