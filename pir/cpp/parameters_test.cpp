@@ -77,6 +77,26 @@ TEST(PIRParametersTest, CreateMultiDim) {
       << context->parameter_error_message();
 }
 
+TEST(PIRParametersTest, CreateAllParams) {
+  ASSIGN_OR_FAIL(auto pir_params,
+                 CreatePIRParameters(77412, 777, 2,
+                                     GenerateEncryptionParams(8192), true, 12));
+  EXPECT_THAT(pir_params->num_items(), Eq(77412));
+  EXPECT_THAT(pir_params->num_pt(), Eq(5161));
+  EXPECT_THAT(pir_params->bytes_per_item(), Eq(777));
+  EXPECT_THAT(pir_params->items_per_plaintext(), Eq(15));
+  EXPECT_THAT(pir_params->dimensions(), ElementsAre(72, 72));
+  EXPECT_THAT(pir_params->use_ciphertext_multiplication(), IsTrue());
+  EXPECT_THAT(pir_params->bits_per_coeff(), Eq(12));
+  ASSIGN_OR_FAIL(auto encryption_params,
+                 SEALDeserialize<EncryptionParameters>(
+                     pir_params->encryption_parameters()));
+  auto context = seal::SEALContext::Create(encryption_params);
+  EXPECT_THAT(context->parameters_set(), IsTrue())
+      << "Error setting encryption parameters: "
+      << context->parameter_error_message();
+}
+
 TEST(PIRParametersTest, EncryptionParamsSerialization) {
   // use something other than defaults
   auto params = GenerateEncryptionParams(8192);

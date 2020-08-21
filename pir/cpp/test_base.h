@@ -51,7 +51,8 @@ class PIRTestingBase {
   void SetUpParams(size_t db_size, size_t elem_size, size_t dimensions = 1,
                    uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE,
                    uint32_t plain_mod_bit_size = 20,
-                   uint32_t bits_per_coeff = 0);
+                   uint32_t bits_per_coeff = 0,
+                   bool use_ciphertext_multiplication = false);
 
   // Genrate a DB of random values
   void GenerateDB(uint32_t seed = 42);

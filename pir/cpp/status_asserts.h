@@ -35,4 +35,4 @@
 #define ASSIGN_OR_FAIL_IMPL_(statusor, lhs, rexpr)                         \
   auto statusor = (rexpr);                                                 \
   ASSERT_TRUE(statusor.ok()) << "Error: " << statusor.status().ToString(); \
-  lhs = statusor.ValueOrDie();
+  lhs = std::move(statusor.ValueOrDie());

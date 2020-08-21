@@ -56,7 +56,8 @@ EncryptionParameters GenerateEncryptionParams(
 
 StatusOr<shared_ptr<PIRParameters>> CreatePIRParameters(
     size_t dbsize, size_t bytes_per_item, size_t dimensions,
-    EncryptionParameters seal_params, size_t bits_per_coeff) {
+    EncryptionParameters seal_params, bool use_ciphertext_multiplication,
+    size_t bits_per_coeff) {
   // Make sure SEAL Parameter are valid
   auto seal_context = seal::SEALContext::Create(seal_params);
   if (!seal_context->parameters_set()) {
@@ -68,6 +69,7 @@ StatusOr<shared_ptr<PIRParameters>> CreatePIRParameters(
 
   auto parameters = std::make_shared<PIRParameters>();
   parameters->set_num_items(dbsize);
+  parameters->set_use_ciphertext_multiplication(use_ciphertext_multiplication);
 
   if (bits_per_coeff > 0) {
     if (bits_per_coeff > encoder.bits_per_coeff()) {

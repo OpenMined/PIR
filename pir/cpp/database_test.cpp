@@ -21,6 +21,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "pir/cpp/client.h"
+#include "pir/cpp/ct_reencoder.h"
 #include "pir/cpp/server.h"
 #include "pir/cpp/status_asserts.h"
 #include "pir/cpp/string_encoder.h"
@@ -52,32 +53,106 @@ using std::vector;
 
 constexpr uint32_t POLY_MODULUS_DEGREE = 4096;
 
-class PIRDatabaseTest : public ::testing::Test, public PIRTestingBase {
+class PIRDatabaseTestBase : public PIRTestingBase {
+ protected:
+  void SetUpDBImpl(size_t dbsize, size_t dimensions,
+                   uint32_t poly_modulus_degree, uint32_t plain_mod_bit_size,
+                   bool use_ciphertext_multiplication) {
+    SetUpParams(dbsize, 0, dimensions, poly_modulus_degree, plain_mod_bit_size,
+                0, use_ciphertext_multiplication);
+    GenerateIntDB();
+    SetUpSealTools();
+    encoder_ = make_unique<seal::IntegerEncoder>(seal_context_);
+  }
+
+  void SetUpStringDBImpl(size_t dbsize, size_t dimensions = 1,
+                         uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE,
+                         uint32_t plain_mod_bit_size = 20, size_t elem_size = 0,
+                         bool use_ciphertext_multiplication = false) {
+    SetUpParams(dbsize, elem_size, dimensions, poly_modulus_degree,
+                plain_mod_bit_size, 0, use_ciphertext_multiplication);
+    GenerateDB();
+    SetUpSealTools();
+  }
+
+  void decode_result(vector<Ciphertext> result_cts, Plaintext& result_pt,
+                     size_t input_ct_size, size_t d,
+                     bool use_ciphertext_multiplication) {
+    if (use_ciphertext_multiplication) {
+      ASSERT_EQ(result_cts.size(), 1);
+      decryptor_->decrypt(result_cts[0], result_pt);
+    } else {
+      decode_from_decomp(result_cts, result_pt, input_ct_size, d);
+    }
+  }
+  void decode_from_decomp(vector<Ciphertext> result_cts, Plaintext& result_pt,
+                          size_t input_ct_size, size_t d) {
+    ASSERT_GT(d, 0);
+    if (d <= 1) {
+      ASSERT_EQ(result_cts.size(), 1);
+      decryptor_->decrypt(result_cts[0], result_pt);
+      return;
+    }
+
+    ASSIGN_OR_FAIL(auto ct_reencoder,
+                   CiphertextReencoder::Create(seal_context_));
+    ASSERT_EQ(result_cts.size(),
+              ipow(ct_reencoder->ExpansionRatio() * input_ct_size, d - 1));
+
+    auto result_pts =
+        decode_recursion(result_cts, input_ct_size, d, ct_reencoder.get());
+    ASSERT_EQ(result_pts.size(), 1);
+    result_pt = result_pts[0];
+  }
+
+  vector<Plaintext> decode_recursion(vector<Ciphertext> cts,
+                                     size_t input_ct_size, size_t d,
+                                     CiphertextReencoder* ct_reencoder) {
+    vector<Plaintext> pts(cts.size());
+    for (size_t i = 0; i < pts.size(); ++i) {
+      decryptor_->decrypt(cts[i], pts[i]);
+    }
+
+    if (d <= 1) {
+      return pts;
+    }
+
+    size_t expansion_ratio = ct_reencoder->ExpansionRatio() * input_ct_size;
+    vector<Ciphertext> result_cts(cts.size() / expansion_ratio);
+    for (size_t i = 0; i < result_cts.size(); ++i) {
+      result_cts[i] = ct_reencoder->Decode(pts.begin() + (i * expansion_ratio),
+                                           input_ct_size);
+    }
+    return decode_recursion(result_cts, input_ct_size, d - 1, ct_reencoder);
+  }
+
+  unique_ptr<seal::IntegerEncoder> encoder_;
+};
+
+class PIRDatabaseTest : public PIRDatabaseTestBase,
+                        public ::testing::TestWithParam<bool> {
  protected:
   void SetUp() { SetUpDB(100); }
 
   void SetUpDB(size_t dbsize, size_t dimensions = 1,
                uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE,
                uint32_t plain_mod_bit_size = 20) {
-    SetUpParams(dbsize, 0, dimensions, poly_modulus_degree, plain_mod_bit_size);
-    GenerateIntDB();
-    SetUpSealTools();
-    encoder_ = make_unique<seal::IntegerEncoder>(seal_context_);
+    bool use_ciphertext_multiplication = GetParam();
+    SetUpDBImpl(dbsize, dimensions, poly_modulus_degree, plain_mod_bit_size,
+                use_ciphertext_multiplication);
   }
 
   void SetUpStringDB(size_t dbsize, size_t dimensions = 1,
                      uint32_t poly_modulus_degree = POLY_MODULUS_DEGREE,
                      uint32_t plain_mod_bit_size = 20, size_t elem_size = 0) {
-    SetUpParams(dbsize, elem_size, dimensions, poly_modulus_degree,
-                plain_mod_bit_size);
-    GenerateDB();
-    SetUpSealTools();
+    bool use_ciphertext_multiplication = GetParam();
+    SetUpStringDBImpl(dbsize, dimensions, poly_modulus_degree,
+                      plain_mod_bit_size, elem_size,
+                      use_ciphertext_multiplication);
   }
-
-  unique_ptr<seal::IntegerEncoder> encoder_;
 };
 
-TEST_F(PIRDatabaseTest, TestMultiply) {
+TEST_P(PIRDatabaseTest, TestMultiply) {
   vector<int32_t> v(db_size_);
   std::generate(v.begin(), v.end(),
                 [n = -db_size_ / 2]() mutable { return n; });
@@ -92,16 +167,17 @@ TEST_F(PIRDatabaseTest, TestMultiply) {
     expected += v[i] * int_db_[i];
   }
 
-  ASSIGN_OR_FAIL(auto result_ct, pir_db_->multiply(cts));
+  ASSIGN_OR_FAIL(auto result_cts, pir_db_->multiply(cts, nullptr));
+  ASSERT_EQ(result_cts.size(), 1);
 
   Plaintext pt;
-  decryptor_->decrypt(result_ct, pt);
+  decryptor_->decrypt(result_cts[0], pt);
   auto result = encoder_->decode_int64(pt);
 
   EXPECT_THAT(result, Eq(expected));
 }
 
-TEST_F(PIRDatabaseTest, TestMultiplySelectionVectorTooSmall) {
+TEST_P(PIRDatabaseTest, TestMultiplySelectionVectorTooSmall) {
   SetUpDB(100, 2);
   const uint32_t desired_index = 42;
   const auto dims = PIRDatabase::calculate_dimensions(db_size_, 2);
@@ -122,7 +198,7 @@ TEST_F(PIRDatabaseTest, TestMultiplySelectionVectorTooSmall) {
               Eq(private_join_and_compute::StatusCode::kInvalidArgument));
 }
 
-TEST_F(PIRDatabaseTest, TestMultiplySelectionVectorTooBig) {
+TEST_P(PIRDatabaseTest, TestMultiplySelectionVectorTooBig) {
   SetUpDB(100, 2);
   const uint32_t desired_index = 42;
   const auto dims = PIRDatabase::calculate_dimensions(db_size_, 2);
@@ -142,7 +218,7 @@ TEST_F(PIRDatabaseTest, TestMultiplySelectionVectorTooBig) {
               Eq(private_join_and_compute::StatusCode::kInvalidArgument));
 }
 
-TEST_F(PIRDatabaseTest, TestMultiplyStringValues) {
+TEST_P(PIRDatabaseTest, TestMultiplyStringValues) {
   constexpr size_t db_size = 10;
   constexpr size_t desired_index = 7;
 
@@ -159,10 +235,11 @@ TEST_F(PIRDatabaseTest, TestMultiplyStringValues) {
     encryptor_->encrypt(selection_vector_pt[i], selection_vector_ct[i]);
   }
 
-  ASSIGN_OR_FAIL(auto result_ct, pir_db_->multiply(selection_vector_ct));
+  ASSIGN_OR_FAIL(auto result_cts, pir_db_->multiply(selection_vector_ct));
+  ASSERT_EQ(result_cts.size(), 1);
 
   Plaintext result_pt;
-  decryptor_->decrypt(result_ct, result_pt);
+  decryptor_->decrypt(result_cts[0], result_pt);
   auto string_encoder = make_unique<StringEncoder>(seal_context_);
   ASSIGN_OR_FAIL(auto result, string_encoder->decode(result_pt));
 
@@ -190,7 +267,7 @@ vector<Ciphertext> create_selection_vector(const vector<uint32_t>& dims,
   return cts;
 }
 
-TEST_F(PIRDatabaseTest, TestMultiplyStringValuesD2) {
+TEST_P(PIRDatabaseTest, TestMultiplyStringValuesD2) {
   constexpr size_t d = 2;
   constexpr size_t db_size = 9;
   constexpr size_t desired_index = 5;
@@ -202,10 +279,10 @@ TEST_F(PIRDatabaseTest, TestMultiplyStringValuesD2) {
   const auto sv = create_selection_vector(dims, indices, *encryptor_);
 
   auto relin_keys = keygen_->relin_keys_local();
-  ASSIGN_OR_FAIL(auto result_ct, pir_db_->multiply(sv, &relin_keys));
-
+  ASSIGN_OR_FAIL(auto result_cts, pir_db_->multiply(sv, &relin_keys));
   Plaintext result_pt;
-  decryptor_->decrypt(result_ct, result_pt);
+  decode_result(result_cts, result_pt, sv[0].size(), d, GetParam());
+
   auto string_encoder = make_unique<StringEncoder>(seal_context_);
   ASSIGN_OR_FAIL(auto result, string_encoder->decode(result_pt));
 
@@ -213,7 +290,7 @@ TEST_F(PIRDatabaseTest, TestMultiplyStringValuesD2) {
               Eq(string_db_[desired_index]));
 }
 
-TEST_F(PIRDatabaseTest, TestMultiplyMultipleValuesPerPT) {
+TEST_P(PIRDatabaseTest, TestMultiplyMultipleValuesPerPT) {
   constexpr size_t d = 2;
   constexpr size_t db_size = 1000;
   constexpr size_t elem_size = 128;
@@ -234,10 +311,10 @@ TEST_F(PIRDatabaseTest, TestMultiplyMultipleValuesPerPT) {
   const auto sv = create_selection_vector(dims, indices, *encryptor_);
 
   auto relin_keys = keygen_->relin_keys_local();
-  ASSIGN_OR_FAIL(auto result_ct, pir_db_->multiply(sv, &relin_keys));
+  ASSIGN_OR_FAIL(auto result_cts, pir_db_->multiply(sv, &relin_keys));
 
   Plaintext result_pt;
-  decryptor_->decrypt(result_ct, result_pt);
+  decode_result(result_cts, result_pt, sv[0].size(), d, GetParam());
   auto string_encoder = make_unique<StringEncoder>(seal_context_);
   ASSIGN_OR_FAIL(auto result,
                  string_encoder->decode(result_pt, elem_size, desired_offset));
@@ -245,7 +322,7 @@ TEST_F(PIRDatabaseTest, TestMultiplyMultipleValuesPerPT) {
   EXPECT_THAT(result, Eq(string_db_[desired_index]));
 }
 
-TEST_F(PIRDatabaseTest, TestCreateValueDoesntMatch) {
+TEST_P(PIRDatabaseTest, TestCreateValueDoesntMatch) {
   SetUpParams(10, 9728, 1, 4096, 20, 19);
 
   auto prng =
@@ -262,35 +339,45 @@ TEST_F(PIRDatabaseTest, TestCreateValueDoesntMatch) {
             private_join_and_compute::StatusCode::kInvalidArgument);
 }
 
+INSTANTIATE_TEST_SUITE_P(PIRDatabaseTests, PIRDatabaseTest,
+                         testing::Values(false, true));
+
 class MultiplyMultiDimTest
-    : public PIRDatabaseTest,
-      public testing::WithParamInterface<
-          tuple<uint32_t, uint32_t, uint32_t, uint32_t, uint32_t>> {};
+    : public PIRDatabaseTestBase,
+      public testing::TestWithParam<
+          tuple<uint32_t, uint32_t, uint32_t, uint32_t, uint32_t>> {
+ protected:
+  void TestMultiply(bool use_ciphertext_multiplication) {
+    const auto poly_modulus_degree = get<0>(GetParam());
+    const auto plain_mod_bits = get<1>(GetParam());
+    const auto dbsize = get<2>(GetParam());
+    const auto d = get<3>(GetParam());
+    const auto desired_index = get<4>(GetParam());
+    SetUpStringDBImpl(dbsize, d, poly_modulus_degree, plain_mod_bits, 0,
+                      use_ciphertext_multiplication);
+    const size_t elem_size = pir_params_->bytes_per_item();
+    const auto dims = PIRDatabase::calculate_dimensions(dbsize, d);
+    const auto indices = pir_db_->calculate_indices(desired_index);
+    const auto cts = create_selection_vector(dims, indices, *encryptor_);
 
-TEST_P(MultiplyMultiDimTest, TestMultiply) {
-  const auto poly_modulus_degree = get<0>(GetParam());
-  const auto plain_mod_bits = get<1>(GetParam());
-  const auto dbsize = get<2>(GetParam());
-  const auto d = get<3>(GetParam());
-  const auto desired_index = get<4>(GetParam());
-  SetUpStringDB(dbsize, d, poly_modulus_degree, plain_mod_bits);
-  const size_t elem_size = pir_params_->bytes_per_item();
-  const auto dims = PIRDatabase::calculate_dimensions(dbsize, d);
-  const auto indices = pir_db_->calculate_indices(desired_index);
-  const auto cts = create_selection_vector(dims, indices, *encryptor_);
+    unique_ptr<RelinKeys> relin_keys;
+    if (use_ciphertext_multiplication) {
+      relin_keys = make_unique<RelinKeys>(keygen_->relin_keys_local());
+    }
+    ASSIGN_OR_FAIL(auto result_cts, pir_db_->multiply(cts, relin_keys.get()));
 
-  auto relin_keys = keygen_->relin_keys_local();
-  ASSIGN_OR_FAIL(auto result_ct, pir_db_->multiply(cts, &relin_keys));
+    Plaintext result_pt;
+    decode_result(result_cts, result_pt, cts[0].size(), d,
+                  use_ciphertext_multiplication);
+    auto string_encoder = make_unique<StringEncoder>(seal_context_);
+    ASSIGN_OR_FAIL(auto result, string_encoder->decode(result_pt, elem_size));
+    EXPECT_THAT(result, Eq(string_db_[desired_index]));
+  }
+};
 
-  Plaintext result_pt;
-  decryptor_->decrypt(result_ct, result_pt);
-  // auto result = encoder_->decode_int64(result_pt);
-  // EXPECT_THAT(result, Eq(int_db_[desired_index]));
+TEST_P(MultiplyMultiDimTest, CTDecomp) { TestMultiply(false); }
 
-  auto string_encoder = make_unique<StringEncoder>(seal_context_);
-  ASSIGN_OR_FAIL(auto result, string_encoder->decode(result_pt, elem_size));
-  EXPECT_THAT(result, Eq(string_db_[desired_index]));
-}
+TEST_P(MultiplyMultiDimTest, CTMultiply) { TestMultiply(true); }
 
 INSTANTIATE_TEST_SUITE_P(PIRDatabaseMultiplies, MultiplyMultiDimTest,
                          testing::Values(make_tuple(4096, 16, 10, 1, 7),
@@ -299,8 +386,7 @@ INSTANTIATE_TEST_SUITE_P(PIRDatabaseMultiplies, MultiplyMultiDimTest,
                                          make_tuple(4096, 16, 16, 2, 15),
                                          make_tuple(4096, 16, 82, 2, 42),
                                          make_tuple(8192, 20, 27, 3, 2),
-                                         make_tuple(8192, 20, 117, 3, 17),
-                                         make_tuple(8192, 20, 222, 4, 111)));
+                                         make_tuple(8192, 20, 117, 3, 17)));
 
 class CalculateIndicesTest
     : public testing::TestWithParam<

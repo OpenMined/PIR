@@ -40,7 +40,8 @@ void PIRTestingBase::SetUpParams(size_t db_size, size_t elem_size,
                                  size_t dimensions,
                                  uint32_t poly_modulus_degree,
                                  uint32_t plain_mod_bit_size,
-                                 uint32_t bits_per_coeff) {
+                                 uint32_t bits_per_coeff,
+                                 bool use_ciphertext_multiplication) {
   db_size_ = db_size;
 
   auto encryption_params =
@@ -52,9 +53,10 @@ void PIRTestingBase::SetUpParams(size_t db_size, size_t elem_size,
            << seal_context_->parameter_error_message();
   }
 
-  ASSIGN_OR_FAIL(pir_params_,
-                 CreatePIRParameters(db_size, elem_size, dimensions,
-                                     encryption_params, bits_per_coeff));
+  ASSIGN_OR_FAIL(
+      pir_params_,
+      CreatePIRParameters(db_size, elem_size, dimensions, encryption_params,
+                          use_ciphertext_multiplication, bits_per_coeff));
 }
 
 void PIRTestingBase::GenerateDB(uint32_t seed) {

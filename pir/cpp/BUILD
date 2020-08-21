@@ -26,6 +26,8 @@ cc_library(
         "client.cpp",
         "context.cpp",
         "context.h",
+        "ct_reencoder.cpp",
+        "ct_reencoder.h",
         "database.cpp",
         "database.h",
         "parameters.cpp",
@@ -57,6 +59,7 @@ cc_test(
     srcs = [
         "client_test.cpp",
         "correctness_test.cpp",
+        "ct_reencoder_test.cpp",
         "database_test.cpp",
         "parameters_test.cpp",
         "serialization_test.cpp",

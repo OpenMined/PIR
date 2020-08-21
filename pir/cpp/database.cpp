@@ -16,8 +16,10 @@
 #include "pir/cpp/database.h"
 
 #include <iostream>
+#include <memory>
 
 #include "absl/memory/memory.h"
+#include "pir/cpp/ct_reencoder.h"
 #include "pir/cpp/string_encoder.h"
 #include "pir/cpp/utils.h"
 #include "seal/seal.h"
@@ -34,6 +36,7 @@ using private_join_and_compute::StatusOr;
 using seal::Ciphertext;
 using seal::Evaluator;
 using seal::Plaintext;
+using std::unique_ptr;
 using std::vector;
 
 StatusOr<shared_ptr<PIRDatabase>> PIRDatabase::Create(
@@ -120,18 +123,22 @@ class DatabaseMultiplier {
   DatabaseMultiplier(const vector<Plaintext>& database,
                      const vector<Ciphertext>& selection_vector,
                      shared_ptr<Evaluator> evaluator,
+                     unique_ptr<CiphertextReencoder> ct_reencoder,
                      const seal::RelinKeys* const relin_keys,
                      seal::Decryptor* const decryptor)
       : database_(database),
         selection_vector_(selection_vector),
         evaluator_(evaluator),
+        ct_reencoder_(std::move(ct_reencoder)),
+        exp_ratio_(ct_reencoder_ == nullptr ? 1
+                                            : ct_reencoder_->ExpansionRatio()),
         relin_keys_(relin_keys),
         decryptor_(decryptor) {}
 
   /**
    * Do the multiplication using the given dimension sizes.
    */
-  Ciphertext multiply(const RepeatedField<uint32_t>& dimensions) {
+  vector<Ciphertext> multiply(const RepeatedField<uint32_t>& dimensions) {
     database_it_ = database_.begin();
     return multiply(dimensions, selection_vector_.begin(), 0);
   }
@@ -151,51 +158,75 @@ class DatabaseMultiplier {
    *  vector for the current depth.
    * @param[in] depth Current depth.
    */
-  Ciphertext multiply(const RepeatedField<uint32_t>& dimensions,
-                      vector<Ciphertext>::const_iterator selection_vector_it,
-                      size_t depth) {
+  vector<Ciphertext> multiply(
+      const RepeatedField<uint32_t>& dimensions,
+      vector<Ciphertext>::const_iterator selection_vector_it, size_t depth) {
     const size_t this_dimension = dimensions[0];
     auto remaining_dimensions =
         RepeatedField<uint32_t>(dimensions.begin() + 1, dimensions.end());
 
     string depth_string(depth, ' ');
 
-    Ciphertext result;
+    vector<Ciphertext> result;
     bool first_pass = true;
     for (size_t i = 0; i < this_dimension; ++i) {
       // make sure we don't go past end of DB
       if (database_it_ == database_.end()) break;
-      Ciphertext temp_ct;
+      vector<Ciphertext> temp_ct;
       if (remaining_dimensions.empty()) {
         // base case: have to multiply against DB
+        temp_ct.resize(1);
         evaluator_->multiply_plain(*(selection_vector_it + i),
-                                   *(database_it_++), temp_ct);
-        print_noise(depth, "base", temp_ct, i);
+                                   *(database_it_++), temp_ct[0]);
+        print_noise(depth, "base", temp_ct[0], i);
 
       } else {
-        temp_ct = multiply(remaining_dimensions,
-                           selection_vector_it + this_dimension, depth + 1);
-        print_noise(depth, "recurse", temp_ct, i);
+        auto lower_result =
+            multiply(remaining_dimensions, selection_vector_it + this_dimension,
+                     depth + 1);
+        print_noise(depth, "recurse", lower_result[0], i);
 
-        evaluator_->multiply_inplace(temp_ct, *(selection_vector_it + i));
-        print_noise(depth, "mult", temp_ct, i);
+        if (ct_reencoder_ == nullptr) {
+          temp_ct.resize(1);
+          evaluator_->multiply(lower_result[0], *(selection_vector_it + i),
+                               temp_ct[0]);
+          print_noise(depth, "mult", temp_ct[0], i);
 
-        if (relin_keys_ != nullptr) {
-          evaluator_->relinearize_inplace(temp_ct, *relin_keys_);
-          print_noise(depth, "relin", temp_ct, i);
+          if (relin_keys_ != nullptr) {
+            evaluator_->relinearize_inplace(temp_ct[0], *relin_keys_);
+            print_noise(depth, "relin", temp_ct[0], i);
+          }
+
+        } else {
+          // TODO: check that all CT are size 2
+          temp_ct.resize(lower_result.size() * exp_ratio_ * 2);
+          auto temp_ct_it = temp_ct.begin();
+          for (const auto& ct : lower_result) {
+            auto pt_decomp = ct_reencoder_->Encode(ct);
+            size_t k = 0;
+            for (const auto& pt : pt_decomp) {
+              evaluator_->multiply_plain(*(selection_vector_it + i), pt,
+                                         *temp_ct_it);
+              print_noise(depth, "mult", *temp_ct_it, k++);
+              ++temp_ct_it;
+            }
+          }
         }
       }
 
       if (first_pass) {
         result = temp_ct;
         first_pass = false;
+        print_noise(depth, "first_pass", result[0], i);
       } else {
-        evaluator_->add_inplace(result, temp_ct);
-        print_noise(depth, "result", temp_ct, i);
+        for (size_t j = 0; j < result.size(); ++j) {
+          evaluator_->add_inplace(result[j], temp_ct[j]);
+          print_noise(depth, "result", result[j], i);
+        }
       }
     }
 
-    print_noise(depth, "final", result);
+    print_noise(depth, "final", result[0]);
     return result;
   }
 
@@ -214,6 +245,8 @@ class DatabaseMultiplier {
   const vector<Plaintext>& database_;
   const vector<Ciphertext>& selection_vector_;
   shared_ptr<Evaluator> evaluator_;
+  unique_ptr<CiphertextReencoder> ct_reencoder_;
+  const size_t exp_ratio_;
 
   // If not null, relinearization keys are applied after each HE op
   const seal::RelinKeys* const relin_keys_;
@@ -226,7 +259,7 @@ class DatabaseMultiplier {
   vector<Plaintext>::const_iterator database_it_;
 };
 
-StatusOr<Ciphertext> PIRDatabase::multiply(
+StatusOr<vector<Ciphertext>> PIRDatabase::multiply(
     const vector<Ciphertext>& selection_vector,
     const seal::RelinKeys* const relin_keys,
     seal::Decryptor* const decryptor) const {
@@ -238,9 +271,15 @@ StatusOr<Ciphertext> PIRDatabase::multiply(
         "Selection vector size does not match dimensions");
   }
 
+  unique_ptr<CiphertextReencoder> ct_reencoder = nullptr;
+  if (!context_->Params()->use_ciphertext_multiplication()) {
+    ASSIGN_OR_RETURN(ct_reencoder,
+                     CiphertextReencoder::Create(context_->SEALContext()));
+  }
+
   try {
     DatabaseMultiplier dbm(db_, selection_vector, context_->Evaluator(),
-                           relin_keys, decryptor);
+                           std::move(ct_reencoder), relin_keys, decryptor);
     return dbm.multiply(dimensions);
   } catch (std::exception& e) {
     return InternalError(e.what());

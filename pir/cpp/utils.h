@@ -42,6 +42,20 @@ uint32_t ceil_log2(uint32_t v);
 // Utility function to find the log base 2 of v truncated.
 uint32_t log2(uint32_t v);
 
+// Utility function to calculate integer power
+inline size_t ipow(size_t base, size_t exp) {
+  size_t result = 1;
+  for (;;) {
+    if (exp & 1) {
+      result *= base;
+    }
+    exp >>= 1;
+    if (!exp) break;
+    base *= base;
+  }
+  return result;
+}
+
 }  // namespace pir
 
 namespace private_join_and_compute {

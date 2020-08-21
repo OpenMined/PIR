@@ -23,6 +23,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "pir/cpp/client.h"
+#include "pir/cpp/ct_reencoder.h"
 #include "pir/cpp/status_asserts.h"
 #include "pir/cpp/test_base.h"
 #include "pir/cpp/utils.h"
@@ -60,14 +61,14 @@ using std::vector;
 constexpr uint32_t POLY_MODULUS_DEGREE = 4096;
 constexpr uint32_t ELEM_SIZE = 7680;
 
-class PIRServerTest : public ::testing::Test, public PIRTestingBase {
+class PIRServerTestBase : public PIRTestingBase {
  protected:
-  void SetUp() { SetUpDB(10); }
-
-  void SetUpDB(size_t dbsize, size_t dimensions = 1,
-               size_t elem_size = ELEM_SIZE, uint32_t plain_mod_bit_size = 20) {
+  void SetUpDBImpl(size_t dbsize, size_t dimensions = 1,
+                   size_t elem_size = ELEM_SIZE,
+                   uint32_t plain_mod_bit_size = 20,
+                   bool use_ciphertext_multiplication = false) {
     SetUpParams(dbsize, elem_size, dimensions, POLY_MODULUS_DEGREE,
-                plain_mod_bit_size);
+                plain_mod_bit_size, 0, use_ciphertext_multiplication);
     GenerateIntDB();
     SetUpSealTools();
 
@@ -84,7 +85,17 @@ class PIRServerTest : public ::testing::Test, public PIRTestingBase {
   RelinKeys relin_keys_;
 };
 
-TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
+class PIRServerTest : public ::testing::TestWithParam<bool>,
+                      public PIRServerTestBase {
+ protected:
+  void SetUp() { SetUpDB(10); }
+  void SetUpDB(size_t dbsize, size_t dimensions = 1,
+               size_t elem_size = ELEM_SIZE, uint32_t plain_mod_bit_size = 20) {
+    SetUpDBImpl(dbsize, dimensions, elem_size, plain_mod_bit_size, GetParam());
+  }
+};
+
+TEST_P(PIRServerTest, TestProcessRequest_SingleCT) {
   const size_t desired_index = 7;
   Plaintext pt(POLY_MODULUS_DEGREE);
   pt.set_zero();
@@ -109,7 +120,7 @@ TEST_F(PIRServerTest, TestProcessRequest_SingleCT) {
               Eq(int_db_[desired_index] * next_power_two(db_size_)));
 }
 
-TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
+TEST_P(PIRServerTest, TestProcessRequest_MultiCT) {
   SetUpDB(5000);
   const size_t desired_index = 4200;
   Plaintext pt(POLY_MODULUS_DEGREE);
@@ -139,7 +150,7 @@ TEST_F(PIRServerTest, TestProcessRequest_MultiCT) {
                  next_power_two(db_size_ - POLY_MODULUS_DEGREE)));
 }
 
-TEST_F(PIRServerTest, TestProcessBatchRequest) {
+TEST_P(PIRServerTest, TestProcessBatchRequest) {
   const vector<size_t> indexes = {3, 4, 5};
   vector<vector<Ciphertext>> queries(indexes.size());
 
@@ -172,7 +183,7 @@ TEST_F(PIRServerTest, TestProcessBatchRequest) {
 }
 
 // Make sure that if we get a weird request from client nothing explodes.
-TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
+TEST_P(PIRServerTest, TestProcessRequestZeroInput) {
   Plaintext pt(POLY_MODULUS_DEGREE);
   pt.set_zero();
 
@@ -195,15 +206,21 @@ TEST_F(PIRServerTest, TestProcessRequestZeroInput) {
   ASSERT_THAT(encoder->decode_int64(result_pt), 0);
 }
 
-TEST_F(PIRServerTest, TestProcessRequest_2Dim) {
+TEST_P(PIRServerTest, TestProcessRequest_2Dim) {
   SetUpDB(82, 2);
   const size_t desired_index = 42;
+
+  uint64_t m_inv;
+  ASSERT_TRUE(seal::util::try_invert_uint_mod(
+      next_power_two(server_->Context()->DimensionsSum()),
+      server_->Context()->EncryptionParams().plain_modulus().value(), m_inv));
+
   Plaintext pt(POLY_MODULUS_DEGREE);
   pt.set_zero();
   // select 4th row
-  pt[4] = 1;
+  pt[4] = m_inv;
   // select 6th column (after 10-item selection vector for rows)
-  pt[16] = 1;
+  pt[16] = m_inv;
 
   vector<Ciphertext> query(1);
   encryptor_->encrypt(pt, query[0]);
@@ -211,24 +228,45 @@ TEST_F(PIRServerTest, TestProcessRequest_2Dim) {
   Request request_proto;
   SaveRequest({query}, gal_keys_, relin_keys_, &request_proto);
 
-  ASSIGN_OR_FAIL(auto result_raw, server_->ProcessRequest(request_proto));
-  ASSERT_EQ(result_raw.reply_size(), 1);
-  ASSIGN_OR_FAIL(auto result, LoadCiphertexts(server_->Context()->SEALContext(),
-                                              result_raw.reply(0)));
-  ASSERT_THAT(result, SizeIs(1));
-  EXPECT_THAT(result[0].size(), Eq(2))
-      << "Ciphertext larger than expected. Were relin keys used?";
+  ASSIGN_OR_FAIL(auto response, server_->ProcessRequest(request_proto));
+  ASSERT_EQ(response.reply_size(), 1);
+  ASSIGN_OR_FAIL(auto reply, LoadCiphertexts(server_->Context()->SEALContext(),
+                                             response.reply(0)));
 
   Plaintext result_pt;
-  decryptor_->decrypt(result[0], result_pt);
+  if (GetParam()) {
+    // CT Multiplication
+    ASSERT_THAT(reply, SizeIs(1));
+    EXPECT_THAT(reply[0].size(), Eq(2))
+        << "Ciphertext larger than expected. Were relin keys used?";
+    decryptor_->decrypt(reply[0], result_pt);
+
+  } else {
+    ASSIGN_OR_FAIL(auto ct_reencoder, CiphertextReencoder::Create(
+                                          server_->Context()->SEALContext()));
+    ASSERT_THAT(reply,
+                SizeIs(ct_reencoder->ExpansionRatio() * query[0].size()));
+    vector<Plaintext> reply_pts(reply.size());
+    for (size_t i = 0; i < reply_pts.size(); ++i) {
+      decryptor_->decrypt(reply[i], reply_pts[i]);
+    }
+    auto result_ct = ct_reencoder->Decode(reply_pts);
+    EXPECT_EQ(result_ct.size(), query[0].size());
+    decryptor_->decrypt(result_ct, result_pt);
+  }
+
   auto encoder = server_->Context()->Encoder();
-  ASSERT_THAT(encoder->decode_int64(result_pt),
-              Eq(int_db_[desired_index] * 32 * 32));
+  ASSERT_THAT(encoder->decode_int64(result_pt), Eq(int_db_[desired_index]));
 }
 
+INSTANTIATE_TEST_SUITE_P(PIRServerTests, PIRServerTest,
+                         testing::Values(false, true));
+
 class SubstituteOperatorTest
-    : public PIRServerTest,
-      public testing::WithParamInterface<tuple<string, uint32_t, string>> {};
+    : public PIRServerTestBase,
+      public testing::TestWithParam<tuple<string, uint32_t, string>> {
+  void SetUp() { SetUpDBImpl(10); }
+};
 
 TEST_P(SubstituteOperatorTest, SubstituteExamples) {
   Plaintext input_pt(get<0>(GetParam()));
@@ -267,8 +305,10 @@ INSTANTIATE_TEST_SUITE_P(
                                "4x^4 + FBFCEx^3 + 222x^2 + FBFE8x^1 + 42")));
 
 class MultiplyInversePowerXTest
-    : public PIRServerTest,
-      public testing::WithParamInterface<tuple<string, uint32_t, string>> {};
+    : public PIRServerTestBase,
+      public testing::TestWithParam<tuple<string, uint32_t, string>> {
+  void SetUp() { SetUpDBImpl(10); }
+};
 
 TEST_P(MultiplyInversePowerXTest, MultiplyInversePowerXExamples) {
   Plaintext input_pt(get<0>(GetParam()));
@@ -299,8 +339,10 @@ INSTANTIATE_TEST_SUITE_P(InversePowersOfX, MultiplyInversePowerXTest,
                                                     "1x^12 + 1x^8 + 1x^4")));
 
 class ObliviousExpansionTest
-    : public PIRServerTest,
-      public testing::WithParamInterface<tuple<string, vector<string>>> {};
+    : public PIRServerTestBase,
+      public testing::TestWithParam<tuple<string, vector<string>>> {
+  void SetUp() { SetUpDBImpl(10); }
+};
 
 TEST_P(ObliviousExpansionTest, ObliviousExpansionExamples) {
   Plaintext input_pt(get<0>(GetParam()));
@@ -341,8 +383,10 @@ INSTANTIATE_TEST_SUITE_P(
                                                        "8"}))));
 
 class ObliviousExpansionTestMultiCT
-    : public PIRServerTest,
-      public testing::WithParamInterface<tuple<size_t, size_t, uint64_t>> {};
+    : public PIRServerTestBase,
+      public testing::TestWithParam<tuple<size_t, size_t, uint64_t>> {
+  void SetUp() { SetUpDBImpl(10); }
+};
 
 TEST_P(ObliviousExpansionTestMultiCT, MultiCTExamples) {
   const auto num_items = get<0>(GetParam());
