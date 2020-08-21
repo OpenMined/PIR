@@ -354,7 +354,7 @@ class ProcessResponseTest
       public testing::WithParamInterface<tuple<
           size_t, size_t, size_t, size_t, vector<size_t>, vector<size_t>>> {
  protected:
-  void SetUp(bool use_ciphertext_multiplication) {
+  void SetUpForCTMultiply(bool use_ciphertext_multiplication) {
     const auto dbsize = get<0>(GetParam());
     d_ = get<1>(GetParam());
     elem_size_ = get<2>(GetParam());
@@ -400,7 +400,7 @@ class ProcessResponseTest
 };
 
 TEST_P(ProcessResponseTest, TestProcessResponse) {
-  SetUp(false);
+  SetUpForCTMultiply(false);
   vector<string> values(desired_indices_.size(), string(pt_size_, 0));
   for (size_t i = 0; i < values.size(); ++i) {
     prng_->generate(values[i].size(),
@@ -428,7 +428,7 @@ TEST_P(ProcessResponseTest, TestProcessResponse) {
 }
 
 TEST_P(ProcessResponseTest, TestProcessResponseCTMultiply) {
-  SetUp(true);
+  SetUpForCTMultiply(true);
   vector<string> values(desired_indices_.size(), string(pt_size_, 0));
   for (size_t i = 0; i < values.size(); ++i) {
     prng_->generate(values[i].size(),
@@ -456,7 +456,7 @@ TEST_P(ProcessResponseTest, TestProcessResponseCTMultiply) {
 }
 
 TEST_P(ProcessResponseTest, TestProcessResponseInteger) {
-  SetUp(false);
+  SetUpForCTMultiply(false);
   vector<int64_t> values(desired_indices_.size());
   for (size_t i = 0; i < values.size(); ++i) {
     prng_->generate(sizeof(values[i]),
@@ -481,7 +481,7 @@ TEST_P(ProcessResponseTest, TestProcessResponseInteger) {
 }
 
 TEST_P(ProcessResponseTest, TestProcessResponseIntegerCTMultiply) {
-  SetUp(true);
+  SetUpForCTMultiply(true);
   vector<int64_t> values(desired_indices_.size());
   for (size_t i = 0; i < values.size(); ++i) {
     prng_->generate(sizeof(values[i]),
