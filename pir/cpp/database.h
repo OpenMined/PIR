@@ -87,7 +87,7 @@ class PIRDatabase {
    * @returns Ciphertext resulting from multiplication, or error
    */
   StatusOr<std::vector<seal::Ciphertext>> multiply(
-      const std::vector<seal::Ciphertext>& selection_vector,
+      std::vector<seal::Ciphertext>& selection_vector,
       const seal::RelinKeys* const relin_keys = nullptr,
       seal::Decryptor* const decryptor = nullptr) const;
 

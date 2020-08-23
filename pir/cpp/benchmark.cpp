@@ -14,7 +14,7 @@ namespace pir {
 
 using namespace ::testing;
 
-constexpr bool USE_CIPHERTEXT_MULTIPLICATION = true;
+constexpr bool USE_CIPHERTEXT_MULTIPLICATION = false;
 constexpr uint32_t ITEM_SIZE = 288;
 constexpr uint32_t DIMENSIONS = 2;
 constexpr uint32_t POLY_MOD_DEGREE = 4096;

@@ -68,10 +68,15 @@ Status PIRDatabase::populate(const vector<std::int64_t>& rawdb) {
         std::to_string(context_->Params()->num_items()));
   }
 
+  auto evaluator = std::make_unique<seal::Evaluator>(context_->SEALContext());
   db_.resize(rawdb.size());
   for (size_t idx = 0; idx < rawdb.size(); ++idx) {
     try {
       context_->Encoder()->encode(rawdb[idx], db_[idx]);
+      if (!context_->Params()->use_ciphertext_multiplication()) {
+        evaluator->transform_to_ntt_inplace(
+            db_[idx], context_->SEALContext()->first_parms_id());
+      }
     } catch (std::exception& e) {
       return InvalidArgumentError(e.what());
     }
@@ -90,6 +95,7 @@ Status PIRDatabase::populate(const vector<string>& rawdb) {
   const auto items_per_pt = context_->Params()->items_per_plaintext();
   db_.resize(context_->Params()->num_pt());
   auto encoder = std::make_unique<StringEncoder>(context_->SEALContext());
+  auto evaluator = std::make_unique<seal::Evaluator>(context_->SEALContext());
   if (context_->Params()->bits_per_coeff() > 0) {
     encoder->set_bits_per_coeff(context_->Params()->bits_per_coeff());
   }
@@ -97,6 +103,10 @@ Status PIRDatabase::populate(const vector<string>& rawdb) {
   for (size_t i = 0; i < db_.size(); ++i) {
     auto end_it = std::min(raw_it + items_per_pt, rawdb.end());
     RETURN_IF_ERROR(encoder->encode(raw_it, end_it, db_[i]));
+    if (!context_->Params()->use_ciphertext_multiplication()) {
+      evaluator->transform_to_ntt_inplace(
+          db_[i], context_->SEALContext()->first_parms_id());
+    }
     raw_it += items_per_pt;
   }
   return Status::OK;
@@ -121,15 +131,17 @@ class DatabaseMultiplier {
    *    remaining after every homomorphic operation.
    */
   DatabaseMultiplier(const vector<Plaintext>& database,
-                     const vector<Ciphertext>& selection_vector,
+                     vector<Ciphertext>& selection_vector,
                      shared_ptr<Evaluator> evaluator,
                      unique_ptr<CiphertextReencoder> ct_reencoder,
+                     std::shared_ptr<seal::SEALContext> seal_context,
                      const seal::RelinKeys* const relin_keys,
                      seal::Decryptor* const decryptor)
       : database_(database),
         selection_vector_(selection_vector),
         evaluator_(evaluator),
         ct_reencoder_(std::move(ct_reencoder)),
+        seal_context_(seal_context),
         exp_ratio_(ct_reencoder_ == nullptr ? 1
                                             : ct_reencoder_->ExpansionRatio()),
         relin_keys_(relin_keys),
@@ -158,9 +170,9 @@ class DatabaseMultiplier {
    *  vector for the current depth.
    * @param[in] depth Current depth.
    */
-  vector<Ciphertext> multiply(
-      const RepeatedField<uint32_t>& dimensions,
-      vector<Ciphertext>::const_iterator selection_vector_it, size_t depth) {
+  vector<Ciphertext> multiply(const RepeatedField<uint32_t>& dimensions,
+                              vector<Ciphertext>::iterator selection_vector_it,
+                              size_t depth) {
     const size_t this_dimension = dimensions[0];
     auto remaining_dimensions =
         RepeatedField<uint32_t>(dimensions.begin() + 1, dimensions.end());
@@ -176,6 +188,10 @@ class DatabaseMultiplier {
       if (remaining_dimensions.empty()) {
         // base case: have to multiply against DB
         temp_ct.resize(1);
+        if (ct_reencoder_ != nullptr &&
+            !(selection_vector_it + i)->is_ntt_form()) {
+          evaluator_->transform_to_ntt_inplace(*(selection_vector_it + i));
+        }
         evaluator_->multiply_plain(*(selection_vector_it + i),
                                    *(database_it_++), temp_ct[0]);
         print_noise(depth, "base", temp_ct[0], i);
@@ -204,7 +220,15 @@ class DatabaseMultiplier {
           for (const auto& ct : lower_result) {
             auto pt_decomp = ct_reencoder_->Encode(ct);
             size_t k = 0;
-            for (const auto& pt : pt_decomp) {
+            for (auto pt : pt_decomp) {
+              if (!(selection_vector_it + i)->is_ntt_form()) {
+                evaluator_->transform_to_ntt_inplace(
+                    *(selection_vector_it + i));
+              }
+              if (!pt.is_ntt_form()) {
+                evaluator_->transform_to_ntt_inplace(
+                    pt, seal_context_->first_parms_id());
+              }
               evaluator_->multiply_plain(*(selection_vector_it + i), pt,
                                          *temp_ct_it);
               print_noise(depth, "mult", *temp_ct_it, k++);
@@ -226,6 +250,12 @@ class DatabaseMultiplier {
       }
     }
 
+    for (auto& ct : result) {
+      if (ct.is_ntt_form()) {
+        evaluator_->transform_from_ntt_inplace(ct);
+      }
+    }
+
     print_noise(depth, "final", result[0]);
     return result;
   }
@@ -243,9 +273,10 @@ class DatabaseMultiplier {
   }
 
   const vector<Plaintext>& database_;
-  const vector<Ciphertext>& selection_vector_;
+  vector<Ciphertext>& selection_vector_;
   shared_ptr<Evaluator> evaluator_;
   unique_ptr<CiphertextReencoder> ct_reencoder_;
+  std::shared_ptr<seal::SEALContext> seal_context_;
   const size_t exp_ratio_;
 
   // If not null, relinearization keys are applied after each HE op
@@ -260,7 +291,7 @@ class DatabaseMultiplier {
 };
 
 StatusOr<vector<Ciphertext>> PIRDatabase::multiply(
-    const vector<Ciphertext>& selection_vector,
+    vector<Ciphertext>& selection_vector,
     const seal::RelinKeys* const relin_keys,
     seal::Decryptor* const decryptor) const {
   auto& dimensions = context_->Params()->dimensions();
@@ -279,7 +310,8 @@ StatusOr<vector<Ciphertext>> PIRDatabase::multiply(
 
   try {
     DatabaseMultiplier dbm(db_, selection_vector, context_->Evaluator(),
-                           std::move(ct_reencoder), relin_keys, decryptor);
+                           std::move(ct_reencoder), context_->SEALContext(),
+                           relin_keys, decryptor);
     return dbm.multiply(dimensions);
   } catch (std::exception& e) {
     return InternalError(e.what());
