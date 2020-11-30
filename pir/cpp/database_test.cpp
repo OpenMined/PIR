@@ -276,7 +276,7 @@ TEST_P(PIRDatabaseTest, TestMultiplyStringValuesD2) {
 
   const auto dims = PIRDatabase::calculate_dimensions(db_size, d);
   const auto indices = pir_db_->calculate_indices(desired_index);
-  const auto sv = create_selection_vector(dims, indices, *encryptor_);
+  auto sv = create_selection_vector(dims, indices, *encryptor_);
 
   auto relin_keys = keygen_->relin_keys_local();
   ASSIGN_OR_FAIL(auto result_cts, pir_db_->multiply(sv, &relin_keys));
@@ -308,7 +308,7 @@ TEST_P(PIRDatabaseTest, TestMultiplyMultipleValuesPerPT) {
 
   const auto dims = PIRDatabase::calculate_dimensions(num_db_pt, d);
   const auto indices = pir_db_->calculate_indices(desired_index);
-  const auto sv = create_selection_vector(dims, indices, *encryptor_);
+  auto sv = create_selection_vector(dims, indices, *encryptor_);
 
   auto relin_keys = keygen_->relin_keys_local();
   ASSIGN_OR_FAIL(auto result_cts, pir_db_->multiply(sv, &relin_keys));
@@ -358,7 +358,7 @@ class MultiplyMultiDimTest
     const size_t elem_size = pir_params_->bytes_per_item();
     const auto dims = PIRDatabase::calculate_dimensions(dbsize, d);
     const auto indices = pir_db_->calculate_indices(desired_index);
-    const auto cts = create_selection_vector(dims, indices, *encryptor_);
+    auto cts = create_selection_vector(dims, indices, *encryptor_);
 
     unique_ptr<RelinKeys> relin_keys;
     if (use_ciphertext_multiplication) {
