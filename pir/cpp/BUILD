@@ -35,11 +35,11 @@ cc_library(
         "serialization.cpp",
         "serialization.h",
         "server.cpp",
+        "status_asserts.h",
         "string_encoder.cpp",
         "string_encoder.h",
         "utils.cpp",
         "utils.h",
-        "status_asserts.h",
     ],
     hdrs = [
         "client.h",
