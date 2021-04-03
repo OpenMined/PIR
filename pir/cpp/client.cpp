@@ -15,21 +15,18 @@
 //
 #include "pir/cpp/client.h"
 
-#include "absl/memory/memory.h"
 #include "pir/cpp/ct_reencoder.h"
 #include "pir/cpp/database.h"
+#include "pir/cpp/status_asserts.h"
 #include "pir/cpp/string_encoder.h"
 #include "pir/cpp/utils.h"
 #include "seal/seal.h"
-#include "util/canonical_errors.h"
-#include "util/status_macros.h"
-#include "util/statusor.h"
 
 namespace pir {
 
-using ::private_join_and_compute::InternalError;
-using ::private_join_and_compute::InvalidArgumentError;
-using ::private_join_and_compute::StatusOr;
+using absl::InternalError;
+using absl::InvalidArgumentError;
+using absl::StatusOr;
 using ::seal::Ciphertext;
 using ::seal::GaloisKeys;
 using ::seal::Plaintext;
@@ -58,7 +55,7 @@ Status PIRClient::initialize() {
   } catch (const std::exception& ex) {
     return InternalError(ex.what());
   }
-  return Status::OK;
+  return absl::OkStatus();
 }
 
 StatusOr<std::unique_ptr<PIRClient>> PIRClient::Create(
@@ -143,7 +140,7 @@ Status PIRClient::createQueryFor(size_t desired_index,
     }
   }
 
-  return Status::OK;
+  return absl::OkStatus();
 }
 
 StatusOr<std::vector<int64_t>> PIRClient::ProcessResponseInteger(

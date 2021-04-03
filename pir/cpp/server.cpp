@@ -15,20 +15,15 @@
 //
 #include "pir/cpp/server.h"
 
-#include "absl/memory/memory.h"
+#include "pir/cpp/status_asserts.h"
 #include "pir/cpp/utils.h"
 #include "seal/seal.h"
 #include "seal/util/polyarithsmallmod.h"
-#include "util/canonical_errors.h"
-#include "util/status_macros.h"
-#include "util/statusor.h"
 
 namespace pir {
 
-using ::private_join_and_compute::InternalError;
-using ::private_join_and_compute::InvalidArgumentError;
-using ::private_join_and_compute::Status;
-using ::private_join_and_compute::StatusOr;
+using absl::Status;
+using absl::StatusOr;
 using ::seal::GaloisKeys;
 using ::seal::RelinKeys;
 using ::std::shared_ptr;
@@ -40,7 +35,7 @@ PIRServer::PIRServer(std::unique_ptr<PIRContext> context,
 StatusOr<std::unique_ptr<PIRServer>> PIRServer::Create(
     std::shared_ptr<PIRDatabase> db, shared_ptr<PIRParameters> params) {
   if (params->num_pt() != db->size()) {
-    return InvalidArgumentError("database size mismatch");
+    return absl::InvalidArgumentError("database size mismatch");
   }
   ASSIGN_OR_RETURN(auto context, PIRContext::Create(params));
   return absl::WrapUnique(new PIRServer(std::move(context), db));
@@ -75,9 +70,9 @@ Status PIRServer::substitute_power_x_inplace(
   try {
     context_->Evaluator()->apply_galois_inplace(ct, power, gal_keys);
   } catch (const std::exception& e) {
-    return InternalError(e.what());
+    return absl::InternalError(e.what());
   }
-  return Status::OK;
+  return absl::OkStatus();
 }
 
 void PIRServer::multiply_inverse_power_of_x(
@@ -114,7 +109,7 @@ StatusOr<std::vector<seal::Ciphertext>> PIRServer::oblivious_expansion(
       context_->EncryptionParams().poly_modulus_degree();
 
   if (num_items > poly_modulus_degree) {
-    return InvalidArgumentError(
+    return absl::InvalidArgumentError(
         "Cannot expand more items from a CT than poly modulus degree");
   }
 
@@ -157,7 +152,7 @@ StatusOr<std::vector<seal::Ciphertext>> PIRServer::oblivious_expansion(
       context_->EncryptionParams().poly_modulus_degree();
 
   if (cts.size() != total_items / poly_modulus_degree + 1) {
-    return InvalidArgumentError(
+    return absl::InvalidArgumentError(
         "Number of ciphertexts doesn't match number of items for oblivious "
         "expansion.");
   }
@@ -196,7 +191,7 @@ Status PIRServer::processQuery(const Ciphertexts& query_proto,
 
   RETURN_IF_ERROR(SaveCiphertexts(results, output));
 
-  return Status::OK;
+  return absl::OkStatus();
 }
 
 }  // namespace pir

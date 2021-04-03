@@ -18,21 +18,18 @@
 #include <iostream>
 #include <memory>
 
-#include "absl/memory/memory.h"
 #include "pir/cpp/ct_reencoder.h"
+#include "pir/cpp/status_asserts.h"
 #include "pir/cpp/string_encoder.h"
 #include "pir/cpp/utils.h"
 #include "seal/seal.h"
-#include "util/canonical_errors.h"
-#include "util/status_macros.h"
-#include "util/statusor.h"
 
 namespace pir {
 
+using absl::InternalError;
+using absl::InvalidArgumentError;
+using absl::StatusOr;
 using google::protobuf::RepeatedField;
-using private_join_and_compute::InternalError;
-using private_join_and_compute::InvalidArgumentError;
-using private_join_and_compute::StatusOr;
 using seal::Ciphertext;
 using seal::Evaluator;
 using seal::Plaintext;
@@ -81,7 +78,7 @@ Status PIRDatabase::populate(const vector<std::int64_t>& rawdb) {
       return InvalidArgumentError(e.what());
     }
   }
-  return Status::OK;
+  return absl::OkStatus();
 }
 
 Status PIRDatabase::populate(const vector<string>& rawdb) {
@@ -109,7 +106,7 @@ Status PIRDatabase::populate(const vector<string>& rawdb) {
     }
     raw_it += items_per_pt;
   }
-  return Status::OK;
+  return absl::OkStatus();
 }
 
 /**

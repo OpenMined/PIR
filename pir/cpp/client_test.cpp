@@ -47,10 +47,9 @@ class PIRClientTest : public ::testing::Test {
     db_size_ = dbsize;
     encryption_params_ = GenerateEncryptionParams(POLY_MODULUS_DEGREE, 16);
     pir_params_ =
-        CreatePIRParameters(dbsize, elem_size, dimensions, encryption_params_,
-                            use_ciphertext_multiplication)
-            .ValueOrDie();
-    client_ = PIRClient::Create(pir_params_).ValueOrDie();
+        *(CreatePIRParameters(dbsize, elem_size, dimensions, encryption_params_,
+                              use_ciphertext_multiplication));
+    client_ = *(PIRClient::Create(pir_params_));
 
     ASSERT_TRUE(client_ != nullptr);
   }
@@ -269,8 +268,7 @@ TEST_F(PIRClientTest, TestCreateRequestMultiDimMultiCT2) {
 
 TEST_F(PIRClientTest, TestCreateRequest_InvalidIndex) {
   auto request_or = client_->CreateRequest({db_size_ + 1});
-  ASSERT_EQ(request_or.status().code(),
-            private_join_and_compute::StatusCode::kInvalidArgument);
+  ASSERT_EQ(request_or.status().code(), absl::StatusCode::kInvalidArgument);
 }
 
 class CreateRequestTest : public PIRClientTest,

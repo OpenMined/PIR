@@ -16,12 +16,11 @@
 
 #include "pir/cpp/string_encoder.h"
 
-#include "util/canonical_errors.h"
-#include "util/status_macros.h"
+#include "pir/cpp/status_asserts.h"
 
 namespace pir {
 
-using ::private_join_and_compute::InvalidArgumentError;
+using absl::InvalidArgumentError;
 
 size_t StringEncoder::num_items_per_plaintext(size_t item_size) {
   return poly_modulus_degree_ * bits_per_coeff_ / item_size / 8;
@@ -103,7 +102,7 @@ Status StringEncoder::encode(const string& value,
   StringEncoderImpl impl(destination, bits_per_coeff_);
   impl.encode(value);
   impl.terminate();
-  return Status::OK;
+  return absl::OkStatus();
 }
 
 Status StringEncoder::encode(vector<string>::const_iterator v,
@@ -119,7 +118,7 @@ Status StringEncoder::encode(vector<string>::const_iterator v,
     impl.encode(*(v++));
   }
   impl.terminate();
-  return Status::OK;
+  return absl::OkStatus();
 }
 
 StatusOr<string> StringEncoder::decode(const Plaintext& pt, size_t length,

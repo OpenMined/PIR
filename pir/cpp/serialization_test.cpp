@@ -16,13 +16,13 @@
 
 #include "pir/cpp/serialization.h"
 
+#include "absl/status/statusor.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "pir/cpp/context.h"
 #include "pir/cpp/status_asserts.h"
 #include "pir/cpp/utils.h"
 #include "seal/seal.h"
-#include "util/statusor.h"
 
 namespace pir {
 
@@ -42,8 +42,8 @@ class PIRSerializationTest : public ::testing::Test {
   void SetUp() { SetUpDB(DB_SIZE); }
 
   void SetUpDB(size_t dbsize) {
-    auto pir_params = CreatePIRParameters(dbsize, ELEM_SIZE).ValueOrDie();
-    context_ = std::move(PIRContext::Create(pir_params).ValueOrDie());
+    auto pir_params = *(CreatePIRParameters(dbsize, ELEM_SIZE));
+    context_ = std::move(*(PIRContext::Create(pir_params)));
 
     auto keygen_ =
         std::make_unique<seal::KeyGenerator>(context_->SEALContext());

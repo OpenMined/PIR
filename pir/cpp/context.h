@@ -17,13 +17,13 @@
 #ifndef PIR_CONTEXT_H_
 #define PIR_CONTEXT_H_
 
+#include "absl/status/statusor.h"
 #include "pir/cpp/parameters.h"
 #include "seal/seal.h"
-#include "util/statusor.h"
 
 namespace pir {
 
-using ::private_join_and_compute::StatusOr;
+using absl::StatusOr;
 
 using ::std::optional;
 using ::std::shared_ptr;

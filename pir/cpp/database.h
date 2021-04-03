@@ -20,14 +20,14 @@
 #include <string>
 #include <vector>
 
+#include "absl/status/statusor.h"
 #include "pir/cpp/context.h"
 #include "seal/seal.h"
-#include "util/statusor.h"
 
 namespace pir {
 
-using private_join_and_compute::Status;
-using private_join_and_compute::StatusOr;
+using absl::Status;
+using absl::StatusOr;
 using std::shared_ptr;
 using std::vector;
 

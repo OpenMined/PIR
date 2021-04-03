@@ -195,7 +195,7 @@ TEST_P(PIRDatabaseTest, TestMultiplySelectionVectorTooSmall) {
   cts.resize(cts.size() - 1);
   auto results_or = pir_db_->multiply(cts);
   ASSERT_THAT(results_or.status().code(),
-              Eq(private_join_and_compute::StatusCode::kInvalidArgument));
+              Eq(absl::StatusCode::kInvalidArgument));
 }
 
 TEST_P(PIRDatabaseTest, TestMultiplySelectionVectorTooBig) {
@@ -215,7 +215,7 @@ TEST_P(PIRDatabaseTest, TestMultiplySelectionVectorTooBig) {
 
   auto results_or = pir_db_->multiply(cts);
   ASSERT_THAT(results_or.status().code(),
-              Eq(private_join_and_compute::StatusCode::kInvalidArgument));
+              Eq(absl::StatusCode::kInvalidArgument));
 }
 
 TEST_P(PIRDatabaseTest, TestMultiplyStringValues) {
@@ -335,8 +335,7 @@ TEST_P(PIRDatabaseTest, TestCreateValueDoesntMatch) {
 
   auto pir_db_or = PIRDatabase::Create(db, pir_params_);
   ASSERT_FALSE(pir_db_or.ok());
-  ASSERT_EQ(pir_db_or.status().code(),
-            private_join_and_compute::StatusCode::kInvalidArgument);
+  ASSERT_EQ(pir_db_or.status().code(), absl::StatusCode::kInvalidArgument);
 }
 
 INSTANTIATE_TEST_SUITE_P(PIRDatabaseTests, PIRDatabaseTest,

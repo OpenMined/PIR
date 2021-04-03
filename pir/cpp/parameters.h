@@ -20,10 +20,9 @@
 #include <vector>
 
 #include "absl/memory/memory.h"
+#include "absl/status/statusor.h"
 #include "pir/proto/payload.pb.h"
 #include "seal/seal.h"
-#include "util/canonical_errors.h"
-#include "util/statusor.h"
 
 namespace pir {
 
@@ -35,8 +34,8 @@ using ::std::vector;
 using ::seal::EncryptionParameters;
 using ::seal::Modulus;
 
-using ::private_join_and_compute::InvalidArgumentError;
-using ::private_join_and_compute::StatusOr;
+using absl::InvalidArgumentError;
+using absl::StatusOr;
 
 constexpr uint32_t DEFAULT_POLY_MODULUS_DEGREE = 4096;
 

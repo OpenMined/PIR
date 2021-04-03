@@ -19,14 +19,14 @@
 
 #include <string>
 
+#include "absl/status/statusor.h"
 #include "pir/cpp/context.h"
 #include "pir/cpp/database.h"
 #include "pir/cpp/serialization.h"
-#include "util/statusor.h"
 
 namespace pir {
 
-using ::private_join_and_compute::StatusOr;
+using absl::StatusOr;
 
 class PIRClient {
   friend class PIRClientTest;

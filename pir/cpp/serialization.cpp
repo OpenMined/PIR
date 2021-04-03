@@ -15,16 +15,14 @@
 //
 #include "pir/cpp/serialization.h"
 
+#include "pir/cpp/status_asserts.h"
 #include "pir/cpp/utils.h"
 #include "seal/seal.h"
-#include "util/canonical_errors.h"
-#include "util/status_macros.h"
-#include "util/statusor.h"
 
 namespace pir {
 
-using ::private_join_and_compute::InvalidArgumentError;
-using ::private_join_and_compute::StatusOr;
+using absl::InvalidArgumentError;
+using absl::StatusOr;
 using seal::Ciphertext;
 using seal::GaloisKeys;
 using seal::RelinKeys;
@@ -53,14 +51,14 @@ Status SaveCiphertexts(const vector<Ciphertext>& ciphertexts,
     RETURN_IF_ERROR(
         SEALSerialize<Ciphertext>(ciphertexts[idx], output->add_ct()));
   }
-  return Status::OK;
+  return absl::OkStatus();
 }
 
 Status SaveRequest(const vector<vector<Ciphertext>>& cts, Request* request) {
   for (const auto& ct : cts) {
     RETURN_IF_ERROR(SaveCiphertexts(ct, request->add_query()));
   }
-  return Status::OK;
+  return absl::OkStatus();
 }
 
 Status SaveRequest(const vector<vector<Ciphertext>>& cts,
@@ -71,7 +69,7 @@ Status SaveRequest(const vector<vector<Ciphertext>>& cts,
       SEALSerialize<GaloisKeys>(galois_keys, request->mutable_galois_keys()));
   RETURN_IF_ERROR(
       SEALSerialize<RelinKeys>(relin_keys, request->mutable_relin_keys()));
-  return Status::OK;
+  return absl::OkStatus();
 }
 
 };  // namespace pir
