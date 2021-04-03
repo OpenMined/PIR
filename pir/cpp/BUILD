@@ -39,6 +39,7 @@ cc_library(
         "string_encoder.h",
         "utils.cpp",
         "utils.h",
+        "status_asserts.h",
     ],
     hdrs = [
         "client.h",
