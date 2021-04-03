@@ -33,8 +33,8 @@ class PIRFixture : public benchmark::Fixture, public PIRTestingBase {
     GenerateDB();
     SetUpSealTools();
 
-    client_ = PIRClient::Create(pir_params_).ValueOrDie();
-    server_ = PIRServer::Create(pir_db_, pir_params_).ValueOrDie();
+    client_ = *(PIRClient::Create(pir_params_));
+    server_ = *(PIRServer::Create(pir_db_, pir_params_));
     ASSERT_THAT(client_, NotNull());
     ASSERT_THAT(server_, NotNull());
   }

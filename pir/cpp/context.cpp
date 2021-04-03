@@ -15,18 +15,15 @@
 //
 #include "pir/cpp/context.h"
 
-#include "absl/memory/memory.h"
 #include "pir/cpp/serialization.h"
+#include "pir/cpp/status_asserts.h"
 #include "seal/seal.h"
-#include "util/canonical_errors.h"
-#include "util/status_macros.h"
-#include "util/statusor.h"
 
 namespace pir {
 
-using ::private_join_and_compute::InternalError;
-using ::private_join_and_compute::InvalidArgumentError;
-using ::private_join_and_compute::StatusOr;
+using absl::InternalError;
+using absl::InvalidArgumentError;
+using absl::StatusOr;
 using seal::EncryptionParameters;
 
 PIRContext::PIRContext(shared_ptr<PIRParameters> params,

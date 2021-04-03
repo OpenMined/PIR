@@ -59,7 +59,7 @@ class CiphertextReencoderTest : public ::testing::Test {
     encryptor_ = make_unique<Encryptor>(seal_context_, keygen_->public_key());
     decryptor_ = make_unique<Decryptor>(seal_context_, keygen_->secret_key());
     encoder_ = make_unique<StringEncoder>(seal_context_);
-    ct_reencoder_ = CiphertextReencoder::Create(seal_context_).ValueOrDie();
+    ct_reencoder_ = *(CiphertextReencoder::Create(seal_context_));
   }
 
   string GenerateSampleString() {

@@ -19,16 +19,16 @@
 
 #include <vector>
 
+#include "absl/status/statusor.h"
 #include "pir/cpp/context.h"
 #include "pir/cpp/database.h"
 #include "pir/cpp/serialization.h"
 #include "seal/seal.h"
-#include "util/statusor.h"
 
 namespace pir {
 
-using ::private_join_and_compute::Status;
-using ::private_join_and_compute::StatusOr;
+using absl::Status;
+using absl::StatusOr;
 using ::seal::GaloisKeys;
 using ::seal::RelinKeys;
 

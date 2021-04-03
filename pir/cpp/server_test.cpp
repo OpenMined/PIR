@@ -76,7 +76,7 @@ class PIRServerTestBase : public PIRTestingBase {
         keygen_->galois_keys_local(generate_galois_elts(POLY_MODULUS_DEGREE));
     relin_keys_ = keygen_->relin_keys_local();
 
-    server_ = PIRServer::Create(pir_db_, pir_params_).ValueOrDie();
+    server_ = *(PIRServer::Create(pir_db_, pir_params_));
     ASSERT_THAT(server_, NotNull());
   }
 

@@ -17,16 +17,15 @@
 
 #include "pir/cpp/database.h"
 #include "pir/cpp/serialization.h"
+#include "pir/cpp/status_asserts.h"
 #include "pir/cpp/string_encoder.h"
 #include "pir/cpp/utils.h"
 #include "seal/seal.h"
-#include "util/canonical_errors.h"
-#include "util/statusor.h"
 
 namespace pir {
 
-using ::private_join_and_compute::InvalidArgumentError;
-using ::private_join_and_compute::StatusOr;
+using absl::InvalidArgumentError;
+using absl::StatusOr;
 using ::seal::EncryptionParameters;
 using ::std::make_shared;
 using ::std::shared_ptr;

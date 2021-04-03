@@ -17,12 +17,12 @@
 #ifndef PIR_CT_REENCODER_H_
 #define PIR_CT_REENCODER_H_
 
+#include "absl/status/statusor.h"
 #include "seal/seal.h"
-#include "util/statusor.h"
 
 namespace pir {
 
-using ::private_join_and_compute::StatusOr;
+using absl::StatusOr;
 
 using seal::Ciphertext;
 using seal::Plaintext;

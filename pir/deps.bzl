@@ -38,17 +38,9 @@ def pir_deps():
     if "com_google_absl" not in native.existing_rules():
         http_archive(
             name = "com_google_absl",
-            sha256 = "9ab2dbebf6f209d6680bd3088a837c07f0788852ab81700aef6e2f2a746a7acb",
-            strip_prefix = "abseil-cpp-b35973e3e35cb1eccb086d6a549c253c49579474",
-            url = "https://github.com/abseil/abseil-cpp/archive/b35973e3e35cb1eccb086d6a549c253c49579474.zip",
-        )
-
-    if "private_join_and_compute" not in native.existing_rules():
-        http_archive(
-            name = "private_join_and_compute",
-            sha256 = "64be17ff362ff0338be49fe28658df73cc539c1b0f1d84b957d4a567097929ca",
-            strip_prefix = "private-join-and-compute-eaec47fa64619e9a6467630663c7af70a4eadfcc",
-            url = "https://github.com/google/private-join-and-compute/archive/eaec47fa64619e9a6467630663c7af70a4eadfcc.zip",
+            sha256 = "d29785bb94deaba45946d40bde5b356c66a4eb76505de0181ea9a23c46bc5ed4",
+            strip_prefix = "abseil-cpp-592924480acf034aec0454160492a20bccdbdf3e",
+            url = "https://github.com/abseil/abseil-cpp/archive/592924480acf034aec0454160492a20bccdbdf3e.zip",
         )
 
     if "com_github_glog_glog" not in native.existing_rules():

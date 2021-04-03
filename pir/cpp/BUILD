@@ -35,6 +35,7 @@ cc_library(
         "serialization.cpp",
         "serialization.h",
         "server.cpp",
+        "status_asserts.h",
         "string_encoder.cpp",
         "string_encoder.h",
         "utils.cpp",
@@ -49,8 +50,11 @@ cc_library(
     deps = [
         "//pir/proto:payload_cc_proto",
         "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
         "@com_microsoft_seal//:seal",
-        "@private_join_and_compute//util:status",
     ],
 )
 
@@ -75,6 +79,7 @@ cc_test(
     linkstatic = True,
     deps = [
         ":pir",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
     ],
@@ -93,6 +98,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         ":pir",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_benchmark//:benchmark_main",
         "@com_google_googletest//:gtest",
     ],

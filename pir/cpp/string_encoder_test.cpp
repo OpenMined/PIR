@@ -127,8 +127,7 @@ TEST_F(StringEncoderTest, TestEncodeDecodeTooBig) {
   Plaintext pt;
   auto status = encoder_->encode(v, pt);
   EXPECT_FALSE(status.ok());
-  EXPECT_EQ(status.code(),
-            private_join_and_compute::StatusCode::kInvalidArgument);
+  EXPECT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
 }
 
 TEST_F(StringEncoderTest, TestEncodeVectorTooBig) {
@@ -143,8 +142,7 @@ TEST_F(StringEncoderTest, TestEncodeVectorTooBig) {
   Plaintext pt;
   auto status = encoder_->encode(v.begin(), v.end(), pt);
   EXPECT_FALSE(status.ok());
-  EXPECT_EQ(status.code(),
-            private_join_and_compute::StatusCode::kInvalidArgument);
+  EXPECT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
 }
 
 TEST_F(StringEncoderTest, TestDecodeTooBig) {
@@ -156,8 +154,7 @@ TEST_F(StringEncoderTest, TestDecodeTooBig) {
   EXPECT_OK(encoder_->encode(v, pt));
   auto result_or = encoder_->decode(pt, 100, 9629);
   EXPECT_FALSE(result_or.status().ok());
-  EXPECT_EQ(result_or.status().code(),
-            private_join_and_compute::StatusCode::kInvalidArgument);
+  EXPECT_EQ(result_or.status().code(), absl::StatusCode::kInvalidArgument);
 }
 
 TEST_F(StringEncoderTest, TestEncOp) {

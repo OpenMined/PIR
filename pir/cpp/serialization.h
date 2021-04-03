@@ -19,18 +19,16 @@
 
 #include <string>
 
+#include "absl/status/statusor.h"
 #include "pir/proto/payload.pb.h"
 #include "seal/seal.h"
-#include "util/canonical_errors.h"
-#include "util/status_macros.h"
-#include "util/statusor.h"
 
 namespace pir {
 
-using ::private_join_and_compute::InternalError;
-using ::private_join_and_compute::InvalidArgumentError;
-using ::private_join_and_compute::Status;
-using ::private_join_and_compute::StatusOr;
+using absl::InternalError;
+using absl::InvalidArgumentError;
+using absl::Status;
+using absl::StatusOr;
 using seal::Ciphertext;
 using seal::SEALContext;
 using std::shared_ptr;
@@ -94,7 +92,7 @@ Status SEALSerialize(const T& sealobj, string* output) {
   }
 
   *output = stream.str();
-  return Status::OK;
+  return absl::OkStatus();
 }
 
 /**

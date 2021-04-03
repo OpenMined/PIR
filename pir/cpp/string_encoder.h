@@ -19,14 +19,13 @@
 
 #include <string>
 
+#include "absl/status/statusor.h"
 #include "seal/seal.h"
-#include "util/status.h"
-#include "util/statusor.h"
 
 namespace pir {
 
-using private_join_and_compute::Status;
-using private_join_and_compute::StatusOr;
+using absl::Status;
+using absl::StatusOr;
 using seal::Plaintext;
 using std::shared_ptr;
 using std::string;
